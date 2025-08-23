@@ -17,7 +17,36 @@ if (typeof document !== 'undefined') {
     const playBtn = document.getElementById('play-stop');
     const instrumentSelect = document.getElementById('instrument-select');
     const familySelect = document.getElementById('family-select');
+    const assignmentModal = document.getElementById('assignment-modal');
+    const modalInstrumentList = document.getElementById('modal-instrument-list');
+    const modalFamilyZones = document.getElementById('modal-family-zones');
+    const applyAssignmentsBtn = document.getElementById('apply-assignments');
     let currentTracks = [];
+
+    function saveAssignments() {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
+      }
+    }
+
+    function updateTrackFamily(inst, fam) {
+      const track = currentTracks.find((t) => t.instrument === inst);
+      if (track) {
+        track.family = fam;
+        const preset = FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+        track.shape = preset.shape;
+        track.color = preset.color;
+      }
+    }
+
+    function applyStoredAssignments() {
+      currentTracks.forEach((t) => {
+        const fam = assignedFamilies[t.instrument];
+        if (fam) {
+          updateTrackFamily(t.instrument, fam);
+        }
+      });
+    }
 
     function populateInstrumentDropdown(tracks) {
       instrumentSelect.innerHTML = '<option>Instrumento</option>';
@@ -31,8 +60,93 @@ if (typeof document !== 'undefined') {
 
     instrumentSelect.addEventListener('change', () => {
       const selected = instrumentSelect.value;
-      const track = currentTracks.find((t) => t.instrument === selected);
-      familySelect.value = track ? track.family : '';
+      familySelect.value = assignedFamilies[selected] || '';
+    });
+
+    familySelect.addEventListener('change', () => {
+      const inst = instrumentSelect.value;
+      if (!inst || inst === 'Instrumento') return;
+      const fam = familySelect.value;
+      if (fam) {
+        assignedFamilies[inst] = fam;
+      } else {
+        delete assignedFamilies[inst];
+      }
+      saveAssignments();
+      updateTrackFamily(inst, fam);
+    });
+
+    function showAssignmentModal(tracks) {
+      modalInstrumentList.innerHTML = '';
+      modalFamilyZones.innerHTML = '';
+      assignmentModal.style.display = 'flex';
+
+      modalInstrumentList.addEventListener('dragover', (e) => e.preventDefault());
+      modalInstrumentList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const inst = e.dataTransfer.getData('text/plain');
+        const li = assignmentModal.querySelector(`li[data-instrument="${inst}"]`);
+        if (li) modalInstrumentList.appendChild(li);
+      });
+
+      FAMILY_LIST.forEach((family) => {
+        const zone = document.createElement('div');
+        zone.className = 'family-zone';
+        zone.dataset.family = family;
+        zone.addEventListener('dragover', (e) => e.preventDefault());
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const inst = e.dataTransfer.getData('text/plain');
+          const li = assignmentModal.querySelector(`li[data-instrument="${inst}"]`);
+          if (li) zone.querySelector('ul').appendChild(li);
+        });
+        const h4 = document.createElement('h4');
+        h4.textContent = family;
+        const ul = document.createElement('ul');
+        zone.appendChild(h4);
+        zone.appendChild(ul);
+        modalFamilyZones.appendChild(zone);
+      });
+
+      const instrumentNames = [...new Set(tracks.map((t) => t.instrument))];
+      instrumentNames.forEach((name) => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        li.dataset.instrument = name;
+        li.className = 'instrument-item';
+        li.draggable = true;
+        li.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', name);
+        });
+
+        const assigned = assignedFamilies[name];
+        if (assigned) {
+          const zone = modalFamilyZones.querySelector(`.family-zone[data-family="${assigned}"] ul`);
+          if (zone) zone.appendChild(li);
+          else modalInstrumentList.appendChild(li);
+        } else {
+          modalInstrumentList.appendChild(li);
+        }
+      });
+    }
+
+    applyAssignmentsBtn.addEventListener('click', () => {
+      modalFamilyZones.querySelectorAll('.family-zone').forEach((zone) => {
+        const fam = zone.dataset.family;
+        zone.querySelectorAll('li').forEach((li) => {
+          assignedFamilies[li.dataset.instrument] = fam;
+          updateTrackFamily(li.dataset.instrument, fam);
+        });
+      });
+      modalInstrumentList.querySelectorAll('li').forEach((li) => {
+        delete assignedFamilies[li.dataset.instrument];
+        updateTrackFamily(li.dataset.instrument, '');
+      });
+      saveAssignments();
+      populateInstrumentDropdown(currentTracks);
+      instrumentSelect.value = 'Instrumento';
+      familySelect.value = '';
+      assignmentModal.style.display = 'none';
     });
 
     // ----- Configuración de Audio -----
@@ -56,7 +170,9 @@ if (typeof document !== 'undefined') {
         reader.onload = (ev) => {
           const midi = parseMIDI(ev.target.result);
           currentTracks = midi.tracks;
+          applyStoredAssignments();
           populateInstrumentDropdown(currentTracks);
+          showAssignmentModal(currentTracks);
           console.log('MIDI parsed', midi);
         };
         reader.readAsArrayBuffer(file);
@@ -64,7 +180,9 @@ if (typeof document !== 'undefined') {
         reader.onload = (ev) => {
           const xml = parseMusicXML(ev.target.result);
           currentTracks = xml.tracks;
+          applyStoredAssignments();
           populateInstrumentDropdown(currentTracks);
+          showAssignmentModal(currentTracks);
           console.log('MusicXML parsed', xml);
         };
         reader.readAsText(file);
@@ -148,6 +266,26 @@ const INSTRUMENT_FAMILIES = {
   Contrabajo: 'Cuerdas frotadas',
   Voz: 'Voces',
 };
+
+const FAMILY_LIST = [
+  'Maderas de timbre "redondo"',
+  'Dobles cañas',
+  'Saxofones',
+  'Metales',
+  'Percusión menor',
+  'Tambores',
+  'Platillos',
+  'Placas',
+  'Auxiliares',
+  'Cuerdas frotadas',
+  'Cuerdas pulsadas',
+  'Voces',
+];
+
+let assignedFamilies = {};
+if (typeof localStorage !== 'undefined') {
+  assignedFamilies = JSON.parse(localStorage.getItem('instrumentFamilies') || '{}');
+}
 
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
