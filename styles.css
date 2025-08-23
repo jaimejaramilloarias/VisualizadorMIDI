@@ -11,7 +11,7 @@ body {
 
 #app-title {
   margin: 20px 0 10px;
-  font-size: 3rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -69,30 +69,44 @@ select:hover {
 }
 
 #family-config-panel {
-    display: none;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 0 10px 10px;
-    background: #222;
-    padding: 10px;
-    width: calc(100% - 20px);
-    justify-content: center;
-    font-size: 0.7rem;
-  }
+  display: none;
+  gap: 10px;
+  margin: 0 10px 10px;
+  background: #222;
+  padding: 10px;
+  width: calc(100% - 20px);
+  justify-content: center;
+  font-size: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
 
 #family-config-panel.active {
-  display: flex;
+  display: grid;
 }
 
 #developer-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
-    margin-bottom: 10px;
-    justify-content: center;
-    font-size: 0.7rem;
-  }
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+  justify-content: center;
+  font-size: 1rem;
+  grid-column: 1 / -1;
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inst-section {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
 .dev-control {
   display: flex;
