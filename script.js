@@ -15,6 +15,9 @@ const {
   calculateCanvasSize,
   computeSeekOffset,
   resetStartOffset,
+  applyGlowEffect,
+  startFixedFPSLoop,
+  ticksToSeconds,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
@@ -30,10 +33,16 @@ const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
 
 // Estado de activación de instrumentos
-const enabledInstruments = {};
+const enabledInstruments =
+  (typeof localStorage !== 'undefined' &&
+    JSON.parse(localStorage.getItem('enabledInstruments') || '{}')) ||
+  {};
 
 function setInstrumentEnabled(inst, enabled) {
   enabledInstruments[inst] = enabled;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('enabledInstruments', JSON.stringify(enabledInstruments));
+  }
 }
 
 function getVisibleNotes(allNotes) {
@@ -76,7 +85,9 @@ if (typeof document !== 'undefined') {
     const BASE_HEIGHT = 720;
     let currentAspect = '16:9';
     let pixelsPerSecond = canvas.width / 6;
-    let animationId = null;
+    let stopLoop = null;
+    let tempoMap = [];
+    let timeDivision = 1;
     const audioPlayer = createAudioPlayer();
 
     function saveAssignments() {
@@ -412,11 +423,13 @@ if (typeof document !== 'undefined') {
       const file = e.target.files[0];
       if (!file) return;
       try {
-        const { tracks, secondsPerUnit } = await loadMusicFile(file, {
-          parseMIDI,
-          parseMusicXML,
-        });
+        const { tracks, tempoMap: tMap, timeDivision: tDiv } = await loadMusicFile(
+          file,
+          { parseMIDI, parseMusicXML }
+        );
         currentTracks = tracks;
+        tempoMap = tMap || [];
+        timeDivision = tDiv || 1;
         currentTracks.forEach((t) => {
           if (!(t.instrument in enabledInstruments)) {
             setInstrumentEnabled(t.instrument, true);
@@ -425,7 +438,7 @@ if (typeof document !== 'undefined') {
         applyStoredAssignments();
         populateInstrumentDropdown(currentTracks);
         showAssignmentModal(currentTracks);
-        prepareNotesFromTracks(currentTracks, secondsPerUnit);
+        prepareNotesFromTracks(currentTracks, tempoMap, timeDivision);
         buildFamilyPanel();
         audioPlayer.resetStartOffset();
         renderFrame(0);
@@ -488,16 +501,20 @@ if (typeof document !== 'undefined') {
       }
     });
 
-    function prepareNotesFromTracks(tracks, secPerUnit) {
+    function prepareNotesFromTracks(tracks, tempoMap, timeDivision) {
       notes = [];
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
           if (ev.type === 'note') {
-            const start = ev.start * secPerUnit;
-            const duration = ev.duration * secPerUnit;
+            const start = ticksToSeconds(ev.start, tempoMap, timeDivision);
+            const end = ticksToSeconds(
+              ev.start + ev.duration,
+              tempoMap,
+              timeDivision
+            );
             notes.push({
               start,
-              end: start + duration,
+              end,
               noteNumber: ev.noteNumber,
               color: track.color || '#ffffff',
               shape: track.shape || 'square',
@@ -551,14 +568,15 @@ if (typeof document !== 'undefined') {
 
         // Brillo blanco corto en el NOTE ON presente
         const glowAlpha = computeGlowAlpha(currentSec, n.start);
-        if (glowAlpha > 0) {
-          offscreenCtx.save();
-          offscreenCtx.globalAlpha = glowAlpha;
-          offscreenCtx.strokeStyle = '#fff';
-          offscreenCtx.lineWidth = 2;
-          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height, true);
-          offscreenCtx.restore();
-        }
+        applyGlowEffect(
+          offscreenCtx,
+          n.shape,
+          xStart,
+          y,
+          width,
+          height,
+          glowAlpha
+        );
       });
       // Línea de presente omitida para mantenerla invisible
 
@@ -575,17 +593,16 @@ if (typeof document !== 'undefined') {
     }
 
     function startAnimation() {
-      const step = () => {
+      stopLoop = startFixedFPSLoop(() => {
         const currentSec = audioPlayer.getCurrentTime();
         renderFrame(currentSec);
-        if (audioPlayer.isPlaying()) animationId = requestAnimationFrame(step);
-      };
-      animationId = requestAnimationFrame(step);
+        if (!audioPlayer.isPlaying()) stopAnimation();
+      }, 60);
     }
 
     function stopAnimation() {
-      if (animationId) cancelAnimationFrame(animationId);
-      animationId = null;
+      if (stopLoop) stopLoop();
+      stopLoop = null;
     }
   });
 }
@@ -719,13 +736,18 @@ function resetFamilyCustomizations(tracks = []) {
 }
 
 function exportConfiguration() {
-  return JSON.stringify({ assignedFamilies, familyCustomizations });
+  return JSON.stringify({
+    assignedFamilies,
+    familyCustomizations,
+    enabledInstruments,
+  });
 }
 
 function importConfiguration(json, tracks = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
   assignedFamilies = data.assignedFamilies || {};
   familyCustomizations = data.familyCustomizations || {};
+  Object.assign(enabledInstruments, data.enabledInstruments || {});
 
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
@@ -739,6 +761,7 @@ function importConfiguration(json, tracks = []) {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
     localStorage.setItem('familyCustomizations', JSON.stringify(familyCustomizations));
+    localStorage.setItem('enabledInstruments', JSON.stringify(enabledInstruments));
   }
   tracks.forEach((t) => {
     const fam = assignedFamilies[t.instrument] || t.family;
@@ -870,6 +893,13 @@ function parseMIDI(arrayBuffer) {
     result.tracks.push({ name: trackName, events });
   }
 
+  const tempoEvents = result.tracks
+    .flatMap((t) => t.events.filter((e) => e.type === 'tempo'))
+    .sort((a, b) => a.time - b.time);
+  result.tempoMap =
+    tempoEvents.length > 0
+      ? tempoEvents
+      : [{ time: 0, microsecondsPerBeat: 500000 }];
   result.tracks = assignTrackInfo(result.tracks);
   return result;
 }
@@ -955,6 +985,7 @@ if (typeof module !== 'undefined') {
     computeOpacity,
     computeBumpHeight,
     computeGlowAlpha,
+    applyGlowEffect,
     computeSeekOffset,
     resetStartOffset,
     drawNoteShape,
@@ -962,6 +993,8 @@ if (typeof module !== 'undefined') {
     computeNoteWidth,
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
+    startFixedFPSLoop,
+    ticksToSeconds,
     setFamilyCustomization,
     resetFamilyCustomizations,
     exportConfiguration,

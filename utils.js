@@ -54,6 +54,18 @@ function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
   return 1 - progress;
 }
 
+// Aplica un efecto de brillo con desenfoque alrededor de la figura
+function applyGlowEffect(ctx, shape, x, y, width, height, alpha) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = '#ffffff';
+  ctx.fillStyle = '#ffffff';
+  drawNoteShape(ctx, shape, x, y, width, height);
+  ctx.restore();
+}
+
 // Dibuja una figura en el contexto del canvas según el tipo especificado
 function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
   ctx.beginPath();
@@ -228,10 +240,39 @@ function canStartPlayback(audioBuffer, notes) {
   return !!(audioBuffer || (Array.isArray(notes) && notes.length > 0));
 }
 
+// Inicia un bucle de animación a fps constantes utilizando setInterval
+function startFixedFPSLoop(callback, fps = 60) {
+  const interval = 1000 / fps;
+  const id = setInterval(callback, interval);
+  return () => clearInterval(id);
+}
+
+// Convierte ticks de MIDI a segundos utilizando un mapa de tempo
+function ticksToSeconds(tick, tempoMap, timeDivision) {
+  if (!tempoMap || tempoMap.length === 0) {
+    return (tick / timeDivision) * 0.5; // 120 BPM por defecto
+  }
+  let lastTick = 0;
+  let lastTempo = tempoMap[0].microsecondsPerBeat;
+  let seconds = 0;
+  for (let i = 0; i < tempoMap.length; i++) {
+    const ev = tempoMap[i];
+    if (tick < ev.time) break;
+    const secPerTick = lastTempo / 1e6 / timeDivision;
+    seconds += (ev.time - lastTick) * secPerTick;
+    lastTick = ev.time;
+    lastTempo = ev.microsecondsPerBeat;
+  }
+  const secPerTick = lastTempo / 1e6 / timeDivision;
+  seconds += (tick - lastTick) * secPerTick;
+  return seconds;
+}
+
 const utils = {
   computeOpacity,
   computeBumpHeight,
   computeGlowAlpha,
+  applyGlowEffect,
   drawNoteShape,
   adjustColorBrightness,
   NON_STRETCHED_SHAPES,
@@ -242,6 +283,8 @@ const utils = {
   computeSeekOffset,
   resetStartOffset,
   canStartPlayback,
+  startFixedFPSLoop,
+  ticksToSeconds,
 };
 
 if (typeof module !== 'undefined' && module.exports) {

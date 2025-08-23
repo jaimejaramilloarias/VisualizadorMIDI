@@ -12,12 +12,11 @@
         reader.onload = (ev) => {
           try {
             const midi = parsers.parseMIDI(ev.target.result);
-            const tempoEvent = midi.tracks
-              .flatMap((t) => t.events)
-              .find((e) => e.type === 'tempo');
-            const microPerBeat = tempoEvent ? tempoEvent.microsecondsPerBeat : 500000;
-            const secondsPerTick = microPerBeat / 1e6 / midi.timeDivision;
-            resolve({ tracks: midi.tracks, secondsPerUnit: secondsPerTick });
+            resolve({
+              tracks: midi.tracks,
+              tempoMap: midi.tempoMap,
+              timeDivision: midi.timeDivision,
+            });
           } catch (err) {
             reject(err);
           }
@@ -27,8 +26,17 @@
         reader.onload = (ev) => {
           try {
             const xml = parsers.parseMusicXML(ev.target.result);
-            const secondsPerDiv = (60 / xml.tempo) / xml.divisions;
-            resolve({ tracks: xml.tracks, secondsPerUnit: secondsPerDiv });
+            const tempoMap = [
+              {
+                time: 0,
+                microsecondsPerBeat: (60 / xml.tempo) * 1e6,
+              },
+            ];
+            resolve({
+              tracks: xml.tracks,
+              tempoMap,
+              timeDivision: xml.divisions,
+            });
           } catch (err) {
             reject(err);
           }
