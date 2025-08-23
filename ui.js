@@ -46,8 +46,21 @@ function initializeUI({
   };
 }
 
+function initializeDeveloperMode({ button, panel }) {
+  let active = false;
+  button.addEventListener('click', () => {
+    active = !active;
+    panel.classList.toggle('hidden', !active);
+  });
+  return {
+    isActive: () => active,
+    button,
+    panel,
+  };
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { initializeUI };
+  module.exports = { initializeUI, initializeDeveloperMode };
 } else {
-  window.ui = { initializeUI };
+  window.ui = { initializeUI, initializeDeveloperMode };
 }

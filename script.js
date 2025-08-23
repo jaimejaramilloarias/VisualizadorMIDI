@@ -25,7 +25,7 @@ const {
 // "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
 // Para evitar un error de "Identifier has already been declared" al importar
 // la función en este archivo, renombramos la referencia local.
-const { initializeUI: initializeUIControls } =
+const { initializeUI: initializeUIControls, initializeDeveloperMode } =
   typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
@@ -76,10 +76,14 @@ if (typeof document !== 'undefined') {
     const familySelect = document.getElementById('family-select');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
+    const developerBtn = document.getElementById('developer-mode');
+    const developerControls = document.getElementById('developer-controls');
     const assignmentModal = document.getElementById('assignment-modal');
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
+    initializeDeveloperMode({ button: developerBtn, panel: developerControls });
+
     let currentTracks = [];
     let notes = [];
     const NOTE_MIN = 21;

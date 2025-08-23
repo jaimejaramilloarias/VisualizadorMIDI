@@ -10,7 +10,8 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <select id="instrument-select"></select>
 <select id="family-select"></select>
 <button id="toggle-family-panel"></button>
-<div id="family-config-panel"></div>
+<button id="developer-mode"></button>
+<div id="family-config-panel"><div id="developer-controls"></div></div>
 <div id="assignment-modal"></div>
 <div id="modal-instrument-list"></div>
 <div id="modal-family-zones"></div>
