@@ -15,7 +15,6 @@ const {
   calculateCanvasSize,
   computeSeekOffset,
   resetStartOffset,
-  canStartPlayback,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
@@ -27,6 +26,8 @@ const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
 const { loadWavFile } =
   typeof require !== 'undefined' ? require('./wavLoader.js') : window.wavLoader;
+const { createAudioPlayer } =
+  typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -65,8 +66,7 @@ if (typeof document !== 'undefined') {
     let currentAspect = '16:9';
     let pixelsPerSecond = canvas.width / 6;
     let animationId = null;
-    let playStartTime = 0;
-    let startOffset = 0;
+    const audioPlayer = createAudioPlayer();
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -315,22 +315,6 @@ if (typeof document !== 'undefined') {
     buildFamilyPanel();
 
     // ----- Configuración de Audio -----
-    let audioCtx;
-    function getAudioContext() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-      return audioCtx;
-    }
-
-    let audioBuffer = null; // Buffer de audio cargado
-    let trimOffset = 0; // Tiempo inicial ignorando silencio
-    let source = null; // Fuente de audio en reproducción
-    let isPlaying = false;
-
     function applyCanvasSize(fullscreen = !!document.fullscreenElement) {
       const { width, height, styleWidth, styleHeight } = calculateCanvasSize(
         currentAspect,
@@ -356,58 +340,35 @@ if (typeof document !== 'undefined') {
     });
 
     function startPlayback() {
-      const ctx = getAudioContext();
-      if (!canStartPlayback(audioBuffer, notes)) return;
-      playStartTime = ctx.currentTime;
-      if (audioBuffer) {
-        source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.onended = () => {
-          isPlaying = false;
-          source = null;
+      if (
+        !audioPlayer.start(notes, () => {
           stopAnimation();
-          startOffset = 0;
           renderFrame(0);
-        };
-        source.start(0, trimOffset + startOffset);
-      } else {
-        source = null;
-      }
-      isPlaying = true;
+        })
+      )
+        return;
       startAnimation();
     }
 
     function stopPlayback(preserveOffset = true) {
-      if (!isPlaying) return;
-      const ctx = getAudioContext();
-      if (preserveOffset) {
-        startOffset += ctx.currentTime - playStartTime;
-      } else {
-        startOffset = 0;
-      }
-      if (source) {
-        source.onended = null;
-        source.stop();
-        source = null;
-      }
-      isPlaying = false;
+      audioPlayer.stop(preserveOffset);
       stopAnimation();
-      renderFrame(startOffset);
+      renderFrame(audioPlayer.getStartOffset());
     }
 
     function seek(delta) {
-      if (!audioBuffer && notes.length === 0) return;
-      const wasPlaying = isPlaying;
-      stopPlayback(true);
-      const duration = audioBuffer
-        ? audioBuffer.duration
+      if (!audioPlayer.canStart(notes)) return;
+      const wasPlaying = audioPlayer.isPlaying();
+      audioPlayer.stop(true);
+      stopAnimation();
+      const duration = audioPlayer.getAudioBuffer()
+        ? audioPlayer.getAudioBuffer().duration
         : notes.length > 0
         ? notes[notes.length - 1].end
         : 0;
-      const trim = audioBuffer ? trimOffset : 0;
-      startOffset = computeSeekOffset(startOffset, delta, duration, trim);
-      renderFrame(startOffset);
+      const trim = audioPlayer.getTrimOffset();
+      audioPlayer.seek(delta, duration, trim);
+      renderFrame(audioPlayer.getStartOffset());
       if (wasPlaying) startPlayback();
     }
 
@@ -428,7 +389,7 @@ if (typeof document !== 'undefined') {
         populateInstrumentDropdown(currentTracks);
         showAssignmentModal(currentTracks);
         prepareNotesFromTracks(currentTracks, secondsPerUnit);
-        startOffset = 0;
+        audioPlayer.resetStartOffset();
         renderFrame(0);
       } catch (err) {
         alert(err.message);
@@ -440,11 +401,9 @@ if (typeof document !== 'undefined') {
       const file = e.target.files[0];
       if (!file) return;
       try {
-        const result = await loadWavFile(file, getAudioContext());
-        audioBuffer = result.audioBuffer;
-        trimOffset = result.trimOffset;
-        startOffset = 0;
-        console.log('WAV cargado, trimOffset =', trimOffset);
+      const result = await loadWavFile(file, audioPlayer.getAudioContext());
+        audioPlayer.loadBuffer(result.audioBuffer, result.trimOffset);
+        console.log('WAV cargado, trimOffset =', result.trimOffset);
       } catch (err) {
         alert(err.message);
       }
@@ -452,9 +411,9 @@ if (typeof document !== 'undefined') {
 
     // Reproducción básica Play/Stop con animación y controles de búsqueda
     const uiControls = initializeUIControls({
-      isPlaying: () => isPlaying,
+      isPlaying: () => audioPlayer.isPlaying(),
       onPlay: async () => {
-        const ctx = getAudioContext();
+        const ctx = audioPlayer.getAudioContext();
         await ctx.resume();
         startPlayback();
       },
@@ -462,10 +421,10 @@ if (typeof document !== 'undefined') {
       onForward: () => seek(3),
       onBackward: () => seek(-3),
       onRestart: () => {
-        const wasPlaying = isPlaying;
-        stopPlayback(false);
-        startOffset = resetStartOffset();
-        renderFrame(startOffset);
+        const wasPlaying = audioPlayer.isPlaying();
+        audioPlayer.stop(false);
+        stopAnimation();
+        renderFrame(audioPlayer.getStartOffset());
         if (wasPlaying) startPlayback();
       },
       onAspect169: () => {
@@ -575,10 +534,9 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       const step = () => {
-        const currentSec =
-          startOffset + (getAudioContext().currentTime - playStartTime);
+        const currentSec = audioPlayer.getCurrentTime();
         renderFrame(currentSec);
-        if (isPlaying) animationId = requestAnimationFrame(step);
+        if (audioPlayer.isPlaying()) animationId = requestAnimationFrame(step);
       };
       animationId = requestAnimationFrame(step);
     }
