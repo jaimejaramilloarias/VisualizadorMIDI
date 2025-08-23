@@ -15,6 +15,9 @@ if (typeof document !== 'undefined') {
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
     const playBtn = document.getElementById('play-stop');
+    const forwardBtn = document.getElementById('seek-forward');
+    const backwardBtn = document.getElementById('seek-backward');
+    const restartBtn = document.getElementById('restart');
     const instrumentSelect = document.getElementById('instrument-select');
     const familySelect = document.getElementById('family-select');
     const assignmentModal = document.getElementById('assignment-modal');
@@ -28,6 +31,7 @@ if (typeof document !== 'undefined') {
     const pixelsPerSecond = canvas.width / 6;
     let animationId = null;
     let playStartTime = 0;
+    let startOffset = 0;
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -173,6 +177,51 @@ if (typeof document !== 'undefined') {
     let source = null; // Fuente de audio en reproducción
     let isPlaying = false;
 
+    function startPlayback() {
+      if (!audioBuffer) return;
+      const ctx = getAudioContext();
+      source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.onended = () => {
+        isPlaying = false;
+        source = null;
+        stopAnimation();
+        startOffset = 0;
+        renderFrame(0);
+      };
+      playStartTime = ctx.currentTime;
+      source.start(0, trimOffset + startOffset);
+      isPlaying = true;
+      startAnimation();
+    }
+
+    function stopPlayback(preserveOffset = true) {
+      if (!isPlaying || !source) return;
+      const ctx = getAudioContext();
+      if (preserveOffset) {
+        startOffset += ctx.currentTime - playStartTime;
+      } else {
+        startOffset = 0;
+      }
+      source.onended = null;
+      source.stop();
+      source = null;
+      isPlaying = false;
+      stopAnimation();
+      renderFrame(startOffset);
+    }
+
+    function seek(delta) {
+      if (!audioBuffer) return;
+      const wasPlaying = isPlaying;
+      stopPlayback(true);
+      const maxOffset = Math.max(0, audioBuffer.duration - trimOffset);
+      startOffset = Math.min(Math.max(0, startOffset + delta), maxOffset);
+      renderFrame(startOffset);
+      if (wasPlaying) startPlayback();
+    }
+
     loadBtn.addEventListener('click', () => fileInput.click());
     loadWavBtn.addEventListener('click', () => wavInput.click());
 
@@ -196,6 +245,7 @@ if (typeof document !== 'undefined') {
           const microPerBeat = tempoEvent ? tempoEvent.microsecondsPerBeat : 500000;
           const secondsPerTick = microPerBeat / 1e6 / midi.timeDivision;
           prepareNotesFromTracks(currentTracks, secondsPerTick);
+          startOffset = 0;
           renderFrame(0);
           console.log('MIDI parsed', midi);
         };
@@ -209,6 +259,7 @@ if (typeof document !== 'undefined') {
           showAssignmentModal(currentTracks);
           const secondsPerDiv = (60 / xml.tempo) / xml.divisions;
           prepareNotesFromTracks(currentTracks, secondsPerDiv);
+          startOffset = 0;
           renderFrame(0);
           console.log('MusicXML parsed', xml);
         };
@@ -233,30 +284,34 @@ if (typeof document !== 'undefined') {
         startIndex++;
       }
       trimOffset = startIndex / audioBuffer.sampleRate;
+      startOffset = 0;
       console.log('WAV cargado, trimOffset =', trimOffset);
     });
 
-    // Reproducción básica Play/Stop con animación
+    // Reproducción básica Play/Stop con animación y controles de búsqueda
     playBtn.addEventListener('click', async () => {
       if (!audioBuffer) return;
+      const ctx = getAudioContext();
+      await ctx.resume();
       if (!isPlaying) {
-        const ctx = getAudioContext();
-        await ctx.resume();
-        source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.onended = () => {
-          isPlaying = false;
-          stopAnimation();
-        };
-        playStartTime = ctx.currentTime;
-        source.start(0, trimOffset);
-        isPlaying = true;
-        startAnimation();
+        startPlayback();
       } else {
-        source.stop();
-        isPlaying = false;
-        stopAnimation();
+        stopPlayback(true);
+      }
+    });
+    forwardBtn.addEventListener('click', () => seek(3));
+    backwardBtn.addEventListener('click', () => seek(-3));
+    restartBtn.addEventListener('click', () => {
+      const wasPlaying = isPlaying;
+      stopPlayback(false);
+      startOffset = 0;
+      renderFrame(0);
+      if (wasPlaying) startPlayback();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        playBtn.click();
       }
     });
 
@@ -340,7 +395,8 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       const step = () => {
-        const currentSec = getAudioContext().currentTime - playStartTime;
+        const currentSec =
+          startOffset + (getAudioContext().currentTime - playStartTime);
         renderFrame(currentSec);
         if (isPlaying) animationId = requestAnimationFrame(step);
       };
