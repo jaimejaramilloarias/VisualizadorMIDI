@@ -17,6 +17,9 @@ const {
   resetStartOffset,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
+const { initializeUI } =
+  typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('visualizer');
@@ -30,13 +33,6 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const playBtn = document.getElementById('play-stop');
-    const forwardBtn = document.getElementById('seek-forward');
-    const backwardBtn = document.getElementById('seek-backward');
-    const restartBtn = document.getElementById('restart');
-    const aspect169Btn = document.getElementById('aspect-16-9');
-    const aspect916Btn = document.getElementById('aspect-9-16');
-    const fullScreenBtn = document.getElementById('full-screen');
     const instrumentSelect = document.getElementById('instrument-select');
     const familySelect = document.getElementById('family-select');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
@@ -308,24 +304,6 @@ if (typeof document !== 'undefined') {
 
     applyCanvasSize(false);
 
-    aspect169Btn.addEventListener('click', () => {
-      currentAspect = '16:9';
-      applyCanvasSize();
-    });
-
-    aspect916Btn.addEventListener('click', () => {
-      currentAspect = '9:16';
-      applyCanvasSize();
-    });
-
-    fullScreenBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        canvas.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    });
-
     document.addEventListener('fullscreenchange', () => {
       applyCanvasSize();
     });
@@ -441,29 +419,44 @@ if (typeof document !== 'undefined') {
     });
 
     // Reproducción básica Play/Stop con animación y controles de búsqueda
-    playBtn.addEventListener('click', async () => {
-      if (!audioBuffer) return;
-      const ctx = getAudioContext();
-      await ctx.resume();
-      if (!isPlaying) {
+    const uiControls = initializeUI({
+      isPlaying: () => isPlaying,
+      onPlay: async () => {
+        if (!audioBuffer) return;
+        const ctx = getAudioContext();
+        await ctx.resume();
         startPlayback();
-      } else {
-        stopPlayback(true);
-      }
-    });
-    forwardBtn.addEventListener('click', () => seek(3));
-    backwardBtn.addEventListener('click', () => seek(-3));
-    restartBtn.addEventListener('click', () => {
-      const wasPlaying = isPlaying;
-      stopPlayback(false);
-      startOffset = resetStartOffset();
-      renderFrame(startOffset);
-      if (wasPlaying) startPlayback();
+      },
+      onStop: () => stopPlayback(true),
+      onForward: () => seek(3),
+      onBackward: () => seek(-3),
+      onRestart: () => {
+        const wasPlaying = isPlaying;
+        stopPlayback(false);
+        startOffset = resetStartOffset();
+        renderFrame(startOffset);
+        if (wasPlaying) startPlayback();
+      },
+      onAspect169: () => {
+        currentAspect = '16:9';
+        applyCanvasSize();
+      },
+      onAspect916: () => {
+        currentAspect = '9:16';
+        applyCanvasSize();
+      },
+      onFullScreen: () => {
+        if (!document.fullscreenElement) {
+          canvas.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      },
     });
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        playBtn.click();
+        uiControls.playBtn.click();
       }
     });
 
