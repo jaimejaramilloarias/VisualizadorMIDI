@@ -64,11 +64,13 @@
 63. [ ] Agregar controles con porcentajes que modifiquen la escala de opacidad en los diferentes puntos del canvas.
 64. [ ] Agregar un control porcentual para manejar el tamaño, la difuminación y la duración del glow.
 65. [ ] Agregar un control porcentual para manejar la cantidad de bump y el tiempo de regreso al tamaño normal.
-66. [ ] Agregar un control para definir la velocidad base donde 67 (número editable) represente el 100%.
+66. [x] Agregar un control para definir la velocidad base donde 67 (número editable) represente el 100%.
 67. [x] Crear pruebas unitarias para la variación de altura basada en velocidad MIDI.
 68. [x] Crear pruebas unitarias para el reconocimiento de tildes en los nombres de los instrumentos.
 69. [ ] Crear pruebas unitarias para los rangos de tono de color por familia.
 70. [ ] Crear pruebas unitarias para la escala de opacidad configurable.
 71. [ ] Crear pruebas unitarias para el control de tamaño, difuminación y duración del glow.
 72. [ ] Crear pruebas unitarias para el control de cantidad y duración del bump.
-73. [ ] Crear pruebas unitarias para la definición de la velocidad base.
+73. [x] Crear pruebas unitarias para la definición de la velocidad base.
+74. [ ] Persistir la velocidad base en la configuración local.
+75. [ ] Crear pruebas unitarias para la persistencia de la velocidad base.
