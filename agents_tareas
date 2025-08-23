@@ -77,5 +77,7 @@
 76. [x] Incluir la velocidad base en la exportación e importación de configuraciones.
 77. [x] Crear pruebas unitarias para la exportación e importación de la velocidad base.
 78. [x] Asegurar que los controles del modo desarrollador permanezcan visibles tras reconstruir el panel de familias.
-79. [ ] Incluir los parámetros de opacidad, glow y bump en la exportación e importación de configuraciones.
-80. [ ] Crear pruebas unitarias para la exportación e importación de los parámetros de opacidad, glow y bump.
+79. [x] Incluir los parámetros de opacidad, glow y bump en la exportación e importación de configuraciones.
+80. [x] Crear pruebas unitarias para la exportación e importación de los parámetros de opacidad, glow y bump.
+81. [ ] Incluir los rangos de tono de color por familia en la exportación e importación de configuraciones.
+82. [ ] Crear pruebas unitarias para la exportación e importación de los rangos de tono de color por familia.
