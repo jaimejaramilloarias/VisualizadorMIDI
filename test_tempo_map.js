@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { ticksToSeconds } = require('./script');
+const { ticksToSeconds, preprocessTempoMap } = require('./script');
 
 const tempoMap = [
   { time: 0, microsecondsPerBeat: 500000 },
@@ -7,8 +7,9 @@ const tempoMap = [
 ];
 const timeDivision = 480;
 
-const t1 = ticksToSeconds(480, tempoMap, timeDivision);
-const t2 = ticksToSeconds(960, tempoMap, timeDivision);
+const pre = preprocessTempoMap(tempoMap, timeDivision);
+const t1 = ticksToSeconds(480, pre, timeDivision);
+const t2 = ticksToSeconds(960, pre, timeDivision);
 assert(Math.abs(t1 - 0.5) < 1e-6);
 assert(Math.abs(t2 - 0.75) < 1e-6);
 

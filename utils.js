@@ -47,6 +47,11 @@ function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
   return baseHeight * (1 + bump * (1 - clamped));
 }
 
+// Escala la altura base de la nota según la velocidad MIDI
+function computeVelocityHeight(baseHeight, velocity, reference = 67) {
+  return baseHeight * (velocity / reference);
+}
+
 // Calcula la intensidad del brillo en el NOTE ON
 function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
   if (currentSec < start || currentSec > start + glowDuration) return 0;
@@ -247,25 +252,33 @@ function startFixedFPSLoop(callback, fps = 60) {
   return () => clearInterval(id);
 }
 
-// Convierte ticks de MIDI a segundos utilizando un mapa de tempo
-function ticksToSeconds(tick, tempoMap, timeDivision) {
-  if (!tempoMap || tempoMap.length === 0) {
-    return (tick / timeDivision) * 0.5; // 120 BPM por defecto
-  }
+// Preprocesa el mapa de tempo agregando acumulados de segundos
+function preprocessTempoMap(tempoMap, timeDivision) {
   let lastTick = 0;
   let lastTempo = tempoMap[0].microsecondsPerBeat;
   let seconds = 0;
-  for (let i = 0; i < tempoMap.length; i++) {
-    const ev = tempoMap[i];
-    if (tick < ev.time) break;
+  return tempoMap.map((ev) => {
     const secPerTick = lastTempo / 1e6 / timeDivision;
     seconds += (ev.time - lastTick) * secPerTick;
     lastTick = ev.time;
     lastTempo = ev.microsecondsPerBeat;
+    return { ...ev, seconds };
+  });
+}
+
+// Convierte ticks de MIDI a segundos utilizando un mapa de tempo (preprocesado)
+function ticksToSeconds(tick, tempoMap, timeDivision) {
+  if (!tempoMap || tempoMap.length === 0) {
+    return (tick / timeDivision) * 0.5; // 120 BPM por defecto
   }
-  const secPerTick = lastTempo / 1e6 / timeDivision;
-  seconds += (tick - lastTick) * secPerTick;
-  return seconds;
+  const map = 'seconds' in tempoMap[0] ? tempoMap : preprocessTempoMap(tempoMap, timeDivision);
+  let last = map[0];
+  for (let i = 0; i < map.length; i++) {
+    if (tick < map[i].time) break;
+    last = map[i];
+  }
+  const secPerTick = last.microsecondsPerBeat / 1e6 / timeDivision;
+  return last.seconds + (tick - last.time) * secPerTick;
 }
 
 const utils = {
@@ -275,6 +288,7 @@ const utils = {
   applyGlowEffect,
   drawNoteShape,
   adjustColorBrightness,
+  computeVelocityHeight,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
@@ -284,6 +298,7 @@ const utils = {
   resetStartOffset,
   canStartPlayback,
   startFixedFPSLoop,
+  preprocessTempoMap,
   ticksToSeconds,
 };
 
