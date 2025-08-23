@@ -22,11 +22,13 @@ const {
   ticksToSeconds,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
-// "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
-// Para evitar un error de "Identifier has already been declared" al importar
-// la función en este archivo, renombramos la referencia local.
-const { initializeUI: initializeUIControls, initializeDeveloperMode } =
-  typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+// "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
+// carga en el navegador. Para evitar errores de "Identifier has already been declared"
+// al importar estas funciones, renombramos las referencias locales.
+const {
+  initializeUI: initializeUIControls,
+  initializeDeveloperMode: initDeveloperMode,
+} = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
 const { loadWavFile } =
@@ -82,7 +84,7 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    initializeDeveloperMode({ button: developerBtn, panel: developerControls });
+    initDeveloperMode({ button: developerBtn, panel: developerControls });
 
     let currentTracks = [];
     let notes = [];
