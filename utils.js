@@ -27,6 +27,36 @@ function adjustColorBrightness(color, factor) {
   return result;
 }
 
+// Parámetros configurables de opacidad
+let opacityScale = { edge: 0.05, mid: 0.7 };
+
+function setOpacityScale(edge, mid) {
+  opacityScale = { edge, mid };
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('opacityScale', JSON.stringify(opacityScale));
+  }
+}
+
+function getOpacityScale() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = localStorage.getItem('opacityScale');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (
+          typeof parsed.edge === 'number' &&
+          typeof parsed.mid === 'number'
+        ) {
+          opacityScale = parsed;
+        }
+      } catch {}
+    }
+  }
+  return opacityScale;
+}
+
+getOpacityScale();
+
 // Calcula opacidad según la distancia de la nota a la línea de presente
 function computeOpacity(xStart, xEnd, canvasWidth) {
   const center = canvasWidth / 2;
@@ -35,16 +65,38 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   const dist = Math.abs(noteCenter - center);
   const maxDist = canvasWidth / 2;
   const progress = 1 - Math.min(dist / maxDist, 1);
-  return 0.05 + 0.65 * progress;
+  return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
+
+// Control global para el efecto "bump"
+let bumpControl = 1;
+
+function setBumpControl(value) {
+  bumpControl = value;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('bumpControl', String(bumpControl));
+  }
+}
+
+function getBumpControl() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = parseFloat(localStorage.getItem('bumpControl'));
+    if (!isNaN(stored)) bumpControl = stored;
+  }
+  return bumpControl;
+}
+
+getBumpControl();
 
 // Calcula la altura con efecto "bump" para una nota en reproducción
 // "bump" indica el incremento inicial de altura (0.5 = +50%)
 function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
-  if (currentSec < start || currentSec > end) return baseHeight;
-  const progress = (currentSec - start) / (end - start);
+  const amount = bump * bumpControl;
+  const duration = (end - start) * bumpControl;
+  if (currentSec < start || currentSec > start + duration) return baseHeight;
+  const progress = (currentSec - start) / duration;
   const clamped = Math.min(Math.max(progress, 0), 1);
-  return baseHeight * (1 + bump * (1 - clamped));
+  return baseHeight * (1 + amount * (1 - clamped));
 }
 
 // Referencia de velocidad MIDI para altura 100%
@@ -74,10 +126,31 @@ function computeVelocityHeight(baseHeight, velocity, reference = velocityBase) {
   return baseHeight * (velocity / reference);
 }
 
+// Control global del glow
+let glowStrength = 1;
+
+function setGlowStrength(value) {
+  glowStrength = value;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('glowStrength', String(glowStrength));
+  }
+}
+
+function getGlowStrength() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = parseFloat(localStorage.getItem('glowStrength'));
+    if (!isNaN(stored)) glowStrength = stored;
+  }
+  return glowStrength;
+}
+
+getGlowStrength();
+
 // Calcula la intensidad del brillo en el NOTE ON
-function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
-  if (currentSec < start || currentSec > start + glowDuration) return 0;
-  const progress = (currentSec - start) / glowDuration;
+function computeGlowAlpha(currentSec, start, baseDuration = 0.2) {
+  const duration = baseDuration * glowStrength;
+  if (currentSec < start || currentSec > start + duration) return 0;
+  const progress = (currentSec - start) / duration;
   return 1 - progress;
 }
 
@@ -86,10 +159,14 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha) {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 20 * glowStrength;
   ctx.shadowColor = '#ffffff';
   ctx.fillStyle = '#ffffff';
-  drawNoteShape(ctx, shape, x, y, width, height);
+  const w = width * glowStrength;
+  const h = height * glowStrength;
+  const offsetX = x - (w - width) / 2;
+  const offsetY = y - (h - height) / 2;
+  drawNoteShape(ctx, shape, offsetX, offsetY, w, h);
   ctx.restore();
 }
 
@@ -312,6 +389,12 @@ const utils = {
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,
+  setOpacityScale,
+  getOpacityScale,
+  setGlowStrength,
+  getGlowStrength,
+  setBumpControl,
+  getBumpControl,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
