@@ -28,9 +28,16 @@ if (typeof document !== 'undefined') {
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
 
-    // Relleno inicial del canvas como marcador de posición
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Canvas offscreen para optimizar el renderizado de notas
+    const offscreenCanvas = document.createElement('canvas');
+    const offscreenCtx = offscreenCanvas.getContext('2d');
+    offscreenCanvas.width = canvas.width;
+    offscreenCanvas.height = canvas.height;
+
+    // Relleno inicial del canvas como marcador de posición usando el canvas offscreen
+    offscreenCtx.fillStyle = '#222';
+    offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    ctx.drawImage(offscreenCanvas, 0, 0);
 
     const loadBtn = document.getElementById('load-midi');
     const fileInput = document.getElementById('midi-file-input');
@@ -300,6 +307,8 @@ if (typeof document !== 'undefined') {
       );
       canvas.width = width;
       canvas.height = height;
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
       canvas.style.width = `${styleWidth}px`;
       canvas.style.height = `${styleHeight}px`;
       pixelsPerSecond = canvas.width / 6;
@@ -485,9 +494,9 @@ if (typeof document !== 'undefined') {
     }
 
     function renderFrame(currentSec) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#222';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
+      offscreenCtx.fillStyle = '#222';
+      offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
       notes.forEach((n) => {
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
@@ -516,28 +525,31 @@ if (typeof document !== 'undefined') {
 
         // Opacidad variable según distancia al centro
         const alpha = computeOpacity(xStart, xEnd, canvas.width);
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = n.color;
-        drawNoteShape(ctx, n.shape, xStart, y, width, height);
-        ctx.restore();
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = alpha;
+        offscreenCtx.fillStyle = n.color;
+        drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
+        offscreenCtx.restore();
 
         // Brillo blanco corto en el NOTE ON presente
         const glowAlpha = computeGlowAlpha(currentSec, n.start);
         if (glowAlpha > 0) {
-          ctx.save();
-          ctx.globalAlpha = glowAlpha;
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2;
-          drawNoteShape(ctx, n.shape, xStart, y, width, height, true);
-          ctx.restore();
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = glowAlpha;
+          offscreenCtx.strokeStyle = '#fff';
+          offscreenCtx.lineWidth = 2;
+          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height, true);
+          offscreenCtx.restore();
         }
       });
-      ctx.strokeStyle = '#fff';
-      ctx.beginPath();
-      ctx.moveTo(canvas.width / 2, 0);
-      ctx.lineTo(canvas.width / 2, canvas.height);
-      ctx.stroke();
+      offscreenCtx.strokeStyle = '#fff';
+      offscreenCtx.beginPath();
+      offscreenCtx.moveTo(canvas.width / 2, 0);
+      offscreenCtx.lineTo(canvas.width / 2, canvas.height);
+      offscreenCtx.stroke();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(offscreenCanvas, 0, 0);
     }
 
     function startAnimation() {
