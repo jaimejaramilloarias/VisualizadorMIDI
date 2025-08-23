@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visualizador MIDI</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav id="top-menu">
+    <button>Cargar MIDI/XML</button>
+    <button>Cargar WAV</button>
+    <button>Play/Stop</button>
+    <button>Adelantar</button>
+    <button>Atrasar</button>
+    <button>Inicio</button>
+    <button>16:9</button>
+    <button>9:16</button>
+    <button>Pantalla completa</button>
+  </nav>
+
+  <canvas id="visualizer" width="1280" height="720"></canvas>
+
+  <nav id="bottom-menu">
+    <select id="instrument-select">
+      <option>Instrumento</option>
+    </select>
+    <select id="family-select">
+      <option value="">Familia</option>
+      <option>Maderas de timbre "redondo"</option>
+      <option>Dobles cañas</option>
+      <option>Saxofones</option>
+      <option>Metales</option>
+      <option>Percusión menor</option>
+      <option>Tambores</option>
+      <option>Platillos</option>
+      <option>Placas</option>
+      <option>Auxiliares</option>
+      <option>Cuerdas frotadas</option>
+      <option>Cuerdas pulsadas</option>
+      <option>Voces</option>
+    </select>
+  </nav>
+
+  <script src="script.js"></script>
+</body>
+</html>
