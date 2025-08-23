@@ -355,45 +355,57 @@ if (typeof document !== 'undefined') {
     });
 
     function startPlayback() {
-      if (!audioBuffer) return;
       const ctx = getAudioContext();
-      source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      source.onended = () => {
-        isPlaying = false;
-        source = null;
-        stopAnimation();
-        startOffset = 0;
-        renderFrame(0);
-      };
+      if (!audioBuffer && notes.length === 0) return;
       playStartTime = ctx.currentTime;
-      source.start(0, trimOffset + startOffset);
+      if (audioBuffer) {
+        source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.onended = () => {
+          isPlaying = false;
+          source = null;
+          stopAnimation();
+          startOffset = 0;
+          renderFrame(0);
+        };
+        source.start(0, trimOffset + startOffset);
+      } else {
+        source = null;
+      }
       isPlaying = true;
       startAnimation();
     }
 
     function stopPlayback(preserveOffset = true) {
-      if (!isPlaying || !source) return;
+      if (!isPlaying) return;
       const ctx = getAudioContext();
       if (preserveOffset) {
         startOffset += ctx.currentTime - playStartTime;
       } else {
         startOffset = 0;
       }
-      source.onended = null;
-      source.stop();
-      source = null;
+      if (source) {
+        source.onended = null;
+        source.stop();
+        source = null;
+      }
       isPlaying = false;
       stopAnimation();
       renderFrame(startOffset);
     }
 
     function seek(delta) {
-      if (!audioBuffer) return;
+      if (!audioBuffer && notes.length === 0) return;
       const wasPlaying = isPlaying;
       stopPlayback(true);
-      startOffset = computeSeekOffset(startOffset, delta, audioBuffer.duration, trimOffset);
+      const duration = audioBuffer
+        ? audioBuffer.duration
+        : notes.length > 0
+        ? notes[notes.length - 1].end
+        : 0;
+      const trim = audioBuffer ? trimOffset : 0;
+      startOffset = computeSeekOffset(startOffset, delta, duration, trim);
       renderFrame(startOffset);
       if (wasPlaying) startPlayback();
     }
@@ -441,7 +453,6 @@ if (typeof document !== 'undefined') {
     const uiControls = initializeUIControls({
       isPlaying: () => isPlaying,
       onPlay: async () => {
-        if (!audioBuffer) return;
         const ctx = getAudioContext();
         await ctx.resume();
         startPlayback();
