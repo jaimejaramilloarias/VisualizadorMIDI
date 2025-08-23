@@ -46,13 +46,28 @@ function initializeUI({
   };
 }
 
-function initializeFontSizeControl({ slider, target }) {
-  const update = () => {
-    target.style.setProperty('--global-font-size', slider.value + 'rem');
-  };
-  slider.addEventListener('input', update);
-  update();
-  return { slider };
+function initializeFontLoader({ button, input, target }) {
+  button.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fontName = file.name.replace(/\.[^/.]+$/, '');
+      target.style.fontFamily = `'${fontName}', sans-serif`;
+      if (typeof FontFace !== 'undefined' && document.fonts) {
+        const font = new FontFace(fontName, e.target.result);
+        font
+          .load()
+          .then((loaded) => {
+            document.fonts.add(loaded);
+          })
+          .catch(() => {});
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+  return { button, input };
 }
 
 function initializeDeveloperMode({ button, panel }) {
@@ -69,7 +84,7 @@ function initializeDeveloperMode({ button, panel }) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { initializeUI, initializeDeveloperMode, initializeFontSizeControl };
+  module.exports = { initializeUI, initializeDeveloperMode, initializeFontLoader };
 } else {
-  window.ui = { initializeUI, initializeDeveloperMode, initializeFontSizeControl };
+  window.ui = { initializeUI, initializeDeveloperMode, initializeFontLoader };
 }

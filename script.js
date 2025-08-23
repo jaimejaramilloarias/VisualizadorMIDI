@@ -38,7 +38,7 @@ const {
 const {
   initializeUI: initializeUIControls,
   initializeDeveloperMode: initDeveloperMode,
-  initializeFontSizeControl: initFontSizeControl,
+  initializeFontLoader: initFontLoader,
 } = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
@@ -106,9 +106,10 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    const fontSizeControl = document.getElementById('font-size-control');
-    if (fontSizeControl) {
-      initFontSizeControl({ slider: fontSizeControl, target: document.documentElement });
+    const loadFontBtn = document.getElementById('load-font');
+    const fontFileInput = document.getElementById('font-file-input');
+    if (loadFontBtn && fontFileInput) {
+      initFontLoader({ button: loadFontBtn, input: fontFileInput, target: document.documentElement });
     }
     
     let velocityBase = getVelocityBase();
