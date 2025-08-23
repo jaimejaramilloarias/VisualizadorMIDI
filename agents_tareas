@@ -21,4 +21,5 @@
 21. [x] Aplicar variaciones de tono de color por instrumento dentro de cada familia.
 22. [x] Crear pruebas unitarias para las figuras geométricas alargadas.
 23. [x] Crear pruebas unitarias para las variaciones de tono de color por instrumento.
-24. Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
+24. [x] Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
+25. [x] Crear pruebas unitarias para los modificadores de familia.

@@ -16,6 +16,7 @@ approx(computeBumpHeight(base, -0.1, 0, 1), base); // Antes de la nota
 approx(computeBumpHeight(base, 0, 0, 1), 15); // En el NOTE ON
 approx(computeBumpHeight(base, 0.5, 0, 1), 12.5); // Mitad del intervalo
 approx(computeBumpHeight(base, 1, 0, 1), base); // En el NOTE OFF
+approx(computeBumpHeight(base, 0, 0, 1, 0.8), 18); // Bump +30%
 
 // Pruebas para computeGlowAlpha
 approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
