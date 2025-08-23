@@ -55,3 +55,13 @@
 54. [x] Persistir el estado de activación de instrumentos en la configuración local.
 55. [ ] Crear pruebas unitarias para la persistencia del estado de activación de instrumentos.
 56. [ ] Optimizar la conversión de ticks a segundos utilizando un mapa de tempo preprocesado.
+57. [ ] Modificar la altura de las figuras geométricas para que ocupen el 100% de una de las 88 divisiones verticales del canvas.
+58. [ ] Implementar una función para que la altura de las figuras varíe proporcionalmente a la velocidad MIDI, tomando como referencia que la velocidad 67 equivale al 100% de la altura predeterminada.
+59. [ ] Corregir el reconocimiento de tildes en los nombres de los instrumentos.
+60. [ ] Corregir la figura triángulo y triángulo alargado para que tengan su punto de alineación en su esquina izquierda.
+61. [ ] Crear el botón "Modo desarrollador" que habilite opciones avanzadas en el panel inferior.
+62. [ ] Permitir definir rangos de tono de color para las familias, eligiendo el color más brillante y el más oscuro para calcular matices intermedios.
+63. [ ] Agregar controles con porcentajes que modifiquen la escala de opacidad en los diferentes puntos del canvas.
+64. [ ] Agregar un control porcentual para manejar el tamaño, la difuminación y la duración del glow.
+65. [ ] Agregar un control porcentual para manejar la cantidad de bump y el tiempo de regreso al tamaño normal.
+66. [ ] Agregar un control para definir la velocidad base donde 67 (número editable) represente el 100%.
