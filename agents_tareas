@@ -14,5 +14,6 @@
 14. [x] Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
 15. [x] Renderizar rectángulos estáticos en el canvas representando notas basadas en eventos (subtarea de la 5).
 16. [x] Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.
-17. Crear pruebas unitarias para la lógica de opacidad y efectos visuales.
+17. [x] Crear pruebas unitarias para la lógica de opacidad y efectos visuales.
 18. Crear pruebas unitarias para los controles de reproducción.
+19. Crear pruebas unitarias para el efecto de brillo en el NOTE ON.
