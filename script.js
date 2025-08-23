@@ -12,9 +12,21 @@ if (typeof document !== 'undefined') {
 
     const loadBtn = document.getElementById('load-midi');
     const fileInput = document.getElementById('midi-file-input');
+    const loadWavBtn = document.getElementById('load-wav');
+    const wavInput = document.getElementById('wav-file-input');
+    const playBtn = document.getElementById('play-stop');
+
+    // ----- Configuración de Audio -----
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioBuffer = null; // Buffer de audio cargado
+    let trimOffset = 0; // Tiempo inicial ignorando silencio
+    let source = null; // Fuente de audio en reproducción
+    let isPlaying = false;
 
     loadBtn.addEventListener('click', () => fileInput.click());
+    loadWavBtn.addEventListener('click', () => wavInput.click());
 
+    // Carga y parseo de archivos MIDI/XML
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -35,6 +47,43 @@ if (typeof document !== 'undefined') {
         reader.readAsText(file);
       } else {
         alert('Formato no soportado');
+      }
+    });
+
+    // Carga de archivo WAV y eliminación de silencio inicial
+    wavInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+      // Detectar primer sample significativo para ignorar silencio
+      const channel = audioBuffer.getChannelData(0);
+      const threshold = 0.001;
+      let startIndex = 0;
+      while (startIndex < channel.length && Math.abs(channel[startIndex]) < threshold) {
+        startIndex++;
+      }
+      trimOffset = startIndex / audioBuffer.sampleRate;
+      console.log('WAV cargado, trimOffset =', trimOffset);
+    });
+
+    // Reproducción básica Play/Stop
+    playBtn.addEventListener('click', async () => {
+      if (!audioBuffer) return;
+      if (!isPlaying) {
+        await audioCtx.resume();
+        source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.onended = () => {
+          isPlaying = false;
+        };
+        source.start(0, trimOffset);
+        isPlaying = true;
+      } else {
+        source.stop();
+        isPlaying = false;
       }
     });
   });
@@ -154,6 +203,32 @@ function parseMIDI(arrayBuffer) {
 }
 
 function parseMusicXML(text) {
+  // Fallback simple parsing for entornos sin DOMParser (ej. pruebas en Node)
+  if (typeof DOMParser === 'undefined') {
+    const tempo = parseFloat((text.match(/<sound[^>]*tempo="([0-9.]+)"/i) || [0, '120'])[1]);
+    const divisions = parseInt((text.match(/<divisions>(\d+)<\/divisions>/i) || [0, '1'])[1], 10);
+    const trackName = (text.match(/<part-name>([^<]+)<\/part-name>/i) || [0, 'part'])[1];
+    const stepToMidi = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const events = [];
+    let currentTime = 0;
+    const noteRegex = /<note>([\s\S]*?)<\/note>/gi;
+    let m;
+    while ((m = noteRegex.exec(text))) {
+      const block = m[1];
+      const isRest = /<rest\b/i.test(block);
+      const duration = parseInt((block.match(/<duration>(\d+)<\/duration>/i) || [0, '0'])[1], 10);
+      if (!isRest) {
+        const step = (block.match(/<step>([A-G])<\/step>/i) || [0, 'C'])[1];
+        const octave = parseInt((block.match(/<octave>(\d+)<\/octave>/i) || [0, '4'])[1], 10);
+        const alter = parseInt((block.match(/<alter>(-?\d+)<\/alter>/i) || [0, '0'])[1], 10);
+        const noteNumber = stepToMidi[step] + alter + (octave + 1) * 12;
+        events.push({ type: 'note', noteNumber, velocity: 64, start: currentTime, duration });
+      }
+      currentTime += duration;
+    }
+    return { tempo, divisions, tracks: [{ name: trackName, events }] };
+  }
+
   const parser = new DOMParser();
   const xml = parser.parseFromString(text, 'application/xml');
   const tempo = parseFloat(xml.querySelector('sound[tempo]')?.getAttribute('tempo')) || 120;
