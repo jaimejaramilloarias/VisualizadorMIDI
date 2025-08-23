@@ -62,12 +62,16 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
       break;
     case 'capsule': {
-      const r = height / 2;
+      const r = Math.min(width, height) * 0.25;
       ctx.moveTo(x + r, y);
       ctx.lineTo(x + width - r, y);
-      ctx.arc(x + width - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+      ctx.arc(x + width - r, y + r, r, -Math.PI / 2, 0);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.arc(x + width - r, y + height - r, r, 0, Math.PI / 2);
       ctx.lineTo(x + r, y + height);
-      ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2, true);
+      ctx.arc(x + r, y + height - r, r, Math.PI / 2, Math.PI);
+      ctx.lineTo(x, y + r);
+      ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2);
       break;
     }
     case 'star': {

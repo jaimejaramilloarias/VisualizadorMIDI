@@ -38,9 +38,10 @@ if (typeof document !== 'undefined') {
     offscreenCanvas.width = canvas.width;
     offscreenCanvas.height = canvas.height;
 
-    // Relleno inicial del canvas como marcador de posición usando el canvas offscreen
-    offscreenCtx.fillStyle = '#222';
+    // Relleno inicial del canvas en negro absoluto
+    offscreenCtx.fillStyle = '#000000';
     offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    canvas.style.backgroundColor = '#000000';
     ctx.drawImage(offscreenCanvas, 0, 0);
 
     const loadBtn = document.getElementById('load-midi');
@@ -94,6 +95,35 @@ if (typeof document !== 'undefined') {
 
     function buildFamilyPanel() {
       familyPanel.innerHTML = '';
+
+      const bgItem = document.createElement('div');
+      bgItem.className = 'family-config-item';
+      const bgLabel = document.createElement('label');
+      bgLabel.textContent = 'Color del canvas';
+      const bgInput = document.createElement('input');
+      bgInput.type = 'color';
+      bgInput.id = 'canvas-color-input';
+      const toHex = (val) => {
+        if (!val) return '#000000';
+        if (val.startsWith('#')) return val;
+        const m = val.match(/\d+/g);
+        if (!m) return '#000000';
+        return `#${m
+          .slice(0, 3)
+          .map((n) => parseInt(n, 10).toString(16).padStart(2, '0'))
+          .join('')}`;
+      };
+      bgInput.value = toHex(canvas.style.backgroundColor);
+      bgInput.addEventListener('change', () => {
+        canvas.style.backgroundColor = bgInput.value;
+        offscreenCtx.fillStyle = bgInput.value;
+        offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        ctx.drawImage(offscreenCanvas, 0, 0);
+      });
+      bgItem.appendChild(bgLabel);
+      bgItem.appendChild(bgInput);
+      familyPanel.appendChild(bgItem);
+
       FAMILY_LIST.forEach((family) => {
         const item = document.createElement('div');
         item.className = 'family-config-item';
