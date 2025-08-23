@@ -82,3 +82,4 @@
 81. [x] Incluir los rangos de tono de color por familia en la exportación e importación de configuraciones.
 82. [x] Crear pruebas unitarias para la exportación e importación de los rangos de tono de color por familia.
 83. [ ] Validar que los rangos de tono de color tengan contraste adecuado y que el color brillante sea más claro que el oscuro.
+84. [x] Corregir la aplicación del rango de colores del modo desarrollador a las familias de instrumentos.

@@ -13,11 +13,18 @@ const tracks = assignTrackInfo([
   { name: 'Oboe', events: [] },
   { name: 'Clarinete', events: [] },
 ]);
+const notes = tracks.map((t) => ({
+  instrument: t.instrument,
+  family: t.family,
+  color: t.color,
+  shape: t.shape,
+}));
 
 setFamilyCustomization(
   'Dobles cañas',
   { colorBright: '#0000ff', colorDark: '#000044' },
   tracks,
+  notes,
 );
 
 const bright = '#0000ff';
@@ -34,5 +41,11 @@ const expectedClarinete = interpolateColor(dark, bright, factorClarinete);
 
 assert.strictEqual(oboe.color, expectedOboe);
 assert.strictEqual(clarinete.color, expectedClarinete);
+
+const noteOboe = notes.find((n) => n.instrument === 'Oboe');
+const noteClarinete = notes.find((n) => n.instrument === 'Clarinete');
+
+assert.strictEqual(noteOboe.color, expectedOboe);
+assert.strictEqual(noteClarinete.color, expectedClarinete);
 
 console.log('Pruebas de rangos de color por familia completadas');
