@@ -306,6 +306,15 @@ if (typeof document !== 'undefined') {
         item.appendChild(shapeSelect);
         familyPanel.appendChild(item);
       });
+
+      const resetBtn = document.createElement('button');
+      resetBtn.id = 'reset-family-defaults';
+      resetBtn.textContent = 'Restablecer predeterminados';
+      resetBtn.addEventListener('click', () => {
+        resetFamilyCustomizations(currentTracks);
+        buildFamilyPanel();
+      });
+      familyPanel.appendChild(resetBtn);
     }
 
     function populateInstrumentDropdown(tracks) {
@@ -708,7 +717,7 @@ if (typeof document !== 'undefined') {
 // ----- Parsing helpers -----
 
 // Datos de familias con formas y colores predeterminados
-const FAMILY_PRESETS = {
+const FAMILY_DEFAULTS = {
   'Maderas de timbre "redondo"': { shape: 'oval', color: '#0000ff' },
   'Dobles cañas': { shape: 'star', color: '#8a2be2' },
   'Saxofones': { shape: 'star', color: '#a0522d' },
@@ -722,6 +731,9 @@ const FAMILY_PRESETS = {
   'Cuerdas pulsadas': { shape: 'star4', color: '#008000' },
   Voces: { shape: 'capsule', color: '#808080' },
 };
+
+// Copia mutable de los valores predeterminados
+const FAMILY_PRESETS = JSON.parse(JSON.stringify(FAMILY_DEFAULTS));
 
 // Relación simple de instrumentos con familias
 const INSTRUMENT_FAMILIES = {
@@ -811,6 +823,22 @@ function setFamilyCustomization(family, { color, shape }, tracks = []) {
       const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
       t.color = adjustColorBrightness(preset.color, shift);
     }
+  });
+}
+
+function resetFamilyCustomizations(tracks = []) {
+  Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
+    FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
+  });
+  familyCustomizations = {};
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('familyCustomizations');
+  }
+  tracks.forEach((t) => {
+    const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
+    t.shape = preset.shape;
+    const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
+    t.color = adjustColorBrightness(preset.color, shift);
   });
 }
 
@@ -1012,6 +1040,7 @@ if (typeof module !== 'undefined') {
     parseMusicXML,
     assignTrackInfo,
     FAMILY_PRESETS,
+    FAMILY_DEFAULTS,
     INSTRUMENT_FAMILIES,
     INSTRUMENT_COLOR_SHIFT,
     adjustColorBrightness,
@@ -1026,5 +1055,6 @@ if (typeof module !== 'undefined') {
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
     setFamilyCustomization,
+    resetFamilyCustomizations,
   };
 }

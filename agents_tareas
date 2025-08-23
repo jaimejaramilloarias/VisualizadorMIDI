@@ -24,4 +24,5 @@
 24. [x] Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
 25. [x] Crear pruebas unitarias para los modificadores de familia.
 26. [x] Crear pruebas unitarias para la lógica de cambio de aspecto y pantalla completa.
-27. Permitir restablecer los colores y figuras personalizados de las familias a los valores predeterminados.
+27. [x] Permitir restablecer los colores y figuras personalizados de las familias a los valores predeterminados.
+28. Permitir exportar e importar la configuración de familias e instrumentos en archivos JSON.
