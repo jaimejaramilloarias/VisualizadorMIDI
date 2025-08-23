@@ -88,8 +88,9 @@
 87. [x] Ajustar el código para que la velocidad MIDI base afecte la altura de las figuras: si la base es 67, la altura de la figura será el 100%, pero al leer la velocidad MIDI desde el archivo, la altura debe crecer y decrecer dinámicamente partiendo de la referencia base.
 88. [x] Ajustar el layout del panel de familias y de desarrollador para que tenga una apariencia más organizada y limpia.
 89. [x] Cambiar las fuentes de texto por algo con una apariencia más moderna.
-90. [ ] Implementar acciones que mejoren la fluidez de la animación, manteniendo 60 fps fijos sin retrasos por bump o glow.
+90. [x] Implementar acciones que mejoren la fluidez de la animación, manteniendo 60 fps fijos sin retrasos por bump o glow.
 91. [x] Agregar un título: “Visualizador MIDI - Jaime Jaramillo Arias”.
-92. [ ] Ajustar la detección de silencio del audio para que la visualización del MIDI comience exactamente con la señal de audio.
+92. [x] Ajustar la detección de silencio del audio para que la visualización del MIDI comience exactamente con la señal de audio.
 93. [ ] Mejorar en general la apariencia de la UI para que se vea más profesional.
 94. [x] Crear pruebas unitarias para asegurar que la altura de las notas renderizadas se adapte según la velocidad MIDI.
+95. [x] Crear pruebas unitarias para la detección precisa de silencio en archivos WAV.
