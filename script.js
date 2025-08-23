@@ -17,7 +17,10 @@ const {
   resetStartOffset,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
-const { initializeUI } =
+// "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
+// Para evitar un error de "Identifier has already been declared" al importar
+// la función en este archivo, renombramos la referencia local.
+const { initializeUI: initializeUIControls } =
   typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 
 if (typeof document !== 'undefined') {
@@ -419,7 +422,7 @@ if (typeof document !== 'undefined') {
     });
 
     // Reproducción básica Play/Stop con animación y controles de búsqueda
-    const uiControls = initializeUI({
+    const uiControls = initializeUIControls({
       isPlaying: () => isPlaying,
       onPlay: async () => {
         if (!audioBuffer) return;
