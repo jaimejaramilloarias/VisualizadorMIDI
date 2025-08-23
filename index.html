@@ -8,7 +8,7 @@
 </head>
 <body>
   <nav id="top-menu">
-    <button>Cargar MIDI/XML</button>
+    <button id="load-midi">Cargar MIDI/XML</button>
     <button>Cargar WAV</button>
     <button>Play/Stop</button>
     <button>Adelantar</button>
@@ -20,6 +20,13 @@
   </nav>
 
   <canvas id="visualizer" width="1280" height="720"></canvas>
+
+  <input
+    type="file"
+    id="midi-file-input"
+    accept=".mid,.midi,.xml"
+    style="display: none"
+  />
 
   <nav id="bottom-menu">
     <select id="instrument-select">
