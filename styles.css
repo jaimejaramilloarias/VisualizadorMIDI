@@ -43,28 +43,30 @@ select:hover {
 }
 
 #family-config-panel {
-  display: none;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 10px 10px;
-  background: #222;
-  padding: 10px;
-  width: calc(100% - 20px);
-  justify-content: center;
-}
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 10px 10px;
+    background: #222;
+    padding: 10px;
+    width: calc(100% - 20px);
+    justify-content: center;
+    font-size: 0.7rem;
+  }
 
 #family-config-panel.active {
   display: flex;
 }
 
 #developer-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 10px;
-  justify-content: center;
-}
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 10px;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
 
 .dev-control {
   display: flex;

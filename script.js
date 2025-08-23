@@ -795,13 +795,13 @@ const INSTRUMENT_FAMILIES = {
   Oboe: 'Dobles cañas',
   Clarinete: 'Dobles cañas',
   Fagot: 'Dobles cañas',
-  Saxofón: 'Saxofones',
+  Saxofon: 'Saxofones',
   Trompeta: 'Metales',
-  Trombón: 'Metales',
+  Trombon: 'Metales',
   Tuba: 'Metales',
-  'Corno francés': 'Metales',
+  'Corno frances': 'Metales',
   Piano: 'Cuerdas pulsadas',
-  Violín: 'Cuerdas frotadas',
+  Violin: 'Cuerdas frotadas',
   Viola: 'Cuerdas frotadas',
   Violonchelo: 'Cuerdas frotadas',
   Contrabajo: 'Cuerdas frotadas',
@@ -810,6 +810,9 @@ const INSTRUMENT_FAMILIES = {
 
 const normalizeInstrumentName = (name) =>
   name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const stripAccents = (name) =>
+  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
   (acc, inst) => {
@@ -825,13 +828,13 @@ const INSTRUMENT_COLOR_SHIFT = {
   Clarinete: -0.2,
   Oboe: 0,
   Fagot: -0.3,
-  Saxofón: -0.1,
+  Saxofon: -0.1,
   Trompeta: 0.1,
-  Trombón: -0.1,
+  Trombon: -0.1,
   Tuba: -0.2,
-  'Corno francés': 0,
+  'Corno frances': 0,
   Piano: 0,
-  Violín: 0.1,
+  Violin: 0.1,
   Viola: 0,
   Violonchelo: -0.1,
   Contrabajo: -0.2,
@@ -1027,7 +1030,7 @@ function importConfiguration(json, tracks = []) {
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
     const key = normalizeInstrumentName(t.name);
-    const instrument = NORMALIZED_INSTRUMENT_MAP[key] || t.name;
+    const instrument = NORMALIZED_INSTRUMENT_MAP[key] || stripAccents(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
     const color = getInstrumentColor(preset, instrument);
