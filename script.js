@@ -1070,11 +1070,20 @@ function importConfiguration(json, tracks = []) {
 }
 
 async function loadDefaultConfiguration(tracks = []) {
-  if (typeof fetch !== 'function') return Promise.resolve();
   try {
-    const response = await fetch('configuracion.json');
-    if (!response.ok) return;
-    const data = await response.json();
+    let data;
+    if (typeof window === 'undefined' && typeof require === 'function') {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname || '.', 'configuracion.json');
+      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } else if (typeof fetch === 'function') {
+      const response = await fetch('configuracion.json');
+      if (!response.ok) return;
+      data = await response.json();
+    } else {
+      return;
+    }
     importConfiguration(data, tracks);
   } catch (err) {
     /* Silent failure loading default configuration */
