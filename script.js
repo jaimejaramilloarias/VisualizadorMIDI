@@ -256,6 +256,13 @@ if (typeof document !== 'undefined') {
       familyPanel.innerHTML = '';
       if (devControls) familyPanel.appendChild(devControls);
 
+      const colorColumn = document.createElement('div');
+      colorColumn.className = 'side-column';
+      const shapeColumn = document.createElement('div');
+      shapeColumn.className = 'side-column';
+      familyPanel.appendChild(colorColumn);
+      familyPanel.appendChild(shapeColumn);
+
       const bgItem = document.createElement('div');
       bgItem.className = 'family-config-item';
       const bgLabel = document.createElement('label');
@@ -282,9 +289,10 @@ if (typeof document !== 'undefined') {
       });
       bgItem.appendChild(bgLabel);
       bgItem.appendChild(bgInput);
-      familyPanel.appendChild(bgItem);
+      colorColumn.appendChild(bgItem);
 
       const instSection = document.createElement('div');
+      instSection.className = 'inst-section';
       const instTitle = document.createElement('h4');
       instTitle.textContent = 'Instrumentos activos';
       instSection.appendChild(instTitle);
@@ -306,12 +314,11 @@ if (typeof document !== 'undefined') {
       familyPanel.appendChild(instSection);
 
       FAMILY_LIST.forEach((family) => {
-        const item = document.createElement('div');
-        item.className = 'family-config-item';
-        item.dataset.family = family;
-
-        const label = document.createElement('label');
-        label.textContent = family;
+        const colorItem = document.createElement('div');
+        colorItem.className = 'family-config-item';
+        colorItem.dataset.family = family;
+        const colorLabel = document.createElement('label');
+        colorLabel.textContent = family;
         const brightInput = document.createElement('input');
         brightInput.type = 'color';
         brightInput.value =
@@ -324,15 +331,6 @@ if (typeof document !== 'undefined') {
           FAMILY_PRESETS[family]?.colorDark ||
           FAMILY_PRESETS[family]?.color ||
           '#000000';
-        const shapeSelect = document.createElement('select');
-        SHAPE_OPTIONS.forEach((opt) => {
-          const o = document.createElement('option');
-          o.value = opt.value;
-          o.textContent = opt.label;
-          if (opt.value === (FAMILY_PRESETS[family]?.shape || '')) o.selected = true;
-          shapeSelect.appendChild(o);
-        });
-
         brightInput.addEventListener('change', () => {
           setFamilyCustomization(
             family,
@@ -349,6 +347,24 @@ if (typeof document !== 'undefined') {
             notes,
           );
         });
+        colorItem.appendChild(colorLabel);
+        colorItem.appendChild(brightInput);
+        colorItem.appendChild(darkInput);
+        colorColumn.appendChild(colorItem);
+
+        const shapeItem = document.createElement('div');
+        shapeItem.className = 'family-config-item';
+        shapeItem.dataset.family = family;
+        const shapeLabel = document.createElement('label');
+        shapeLabel.textContent = family;
+        const shapeSelect = document.createElement('select');
+        SHAPE_OPTIONS.forEach((opt) => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (opt.value === (FAMILY_PRESETS[family]?.shape || '')) o.selected = true;
+          shapeSelect.appendChild(o);
+        });
         shapeSelect.addEventListener('change', () => {
           setFamilyCustomization(
             family,
@@ -357,12 +373,9 @@ if (typeof document !== 'undefined') {
             notes,
           );
         });
-
-        item.appendChild(label);
-        item.appendChild(brightInput);
-        item.appendChild(darkInput);
-        item.appendChild(shapeSelect);
-        familyPanel.appendChild(item);
+        shapeItem.appendChild(shapeLabel);
+        shapeItem.appendChild(shapeSelect);
+        shapeColumn.appendChild(shapeItem);
       });
 
       const resetBtn = document.createElement('button');
@@ -372,6 +385,7 @@ if (typeof document !== 'undefined') {
         resetFamilyCustomizations(currentTracks, notes);
         buildFamilyPanel();
       });
+      resetBtn.style.gridColumn = '1 / -1';
       familyPanel.appendChild(resetBtn);
 
       const exportBtn = document.createElement('button');
@@ -408,6 +422,8 @@ if (typeof document !== 'undefined') {
       });
       importBtn.addEventListener('click', () => importInput.click());
 
+      exportBtn.style.gridColumn = '1 / -1';
+      importBtn.style.gridColumn = '1 / -1';
       familyPanel.appendChild(exportBtn);
       familyPanel.appendChild(importBtn);
       familyPanel.appendChild(importInput);
@@ -826,11 +842,20 @@ const INSTRUMENT_FAMILIES = {
   Voz: 'Voces',
 };
 
-const normalizeInstrumentName = (name) =>
-  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const stripAccents = (name) => {
+  let cleaned = name;
+  try {
+    cleaned = decodeURIComponent(escape(name));
+  } catch (e) {
+    // Si falla la decodificación, se usa el nombre original
+  }
+  return cleaned
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x00-\x7F]/g, '');
+};
 
-const stripAccents = (name) =>
-  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const normalizeInstrumentName = (name) => stripAccents(name).toLowerCase();
 
 const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
   (acc, inst) => {
