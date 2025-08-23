@@ -4,7 +4,7 @@ const { initializeFontSizeControl } = require('./ui');
 
 const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <h1 id="app-title" style="font-size:2.5rem"></h1>
-<input type="range" id="font-size-control" value="1" />
+<input type="range" id="font-size-control" value="0.8" />
 </body></html>`);
 
 global.document = dom.window.document;
@@ -14,7 +14,7 @@ initializeFontSizeControl({ slider, target: document.documentElement });
 
 assert.strictEqual(
   document.documentElement.style.getPropertyValue('--global-font-size'),
-  '1rem'
+  '0.8rem'
 );
 
 slider.value = '1.3';

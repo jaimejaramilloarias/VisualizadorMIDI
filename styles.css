@@ -1,7 +1,7 @@
 @charset "UTF-8";
 /* Estilos básicos para la estructura inicial */
 :root {
-  --global-font-size: 1rem;
+  --global-font-size: 0.8rem;
 }
 body {
   margin: 0;
