@@ -91,6 +91,51 @@ if (typeof document !== 'undefined') {
 
 // ----- Parsing helpers -----
 
+// Datos de familias con formas y colores predeterminados
+const FAMILY_PRESETS = {
+  'Maderas de timbre "redondo"': { shape: 'oval', color: '#0000ff' },
+  'Dobles cañas': { shape: 'star', color: '#8a2be2' },
+  'Saxofones': { shape: 'star', color: '#a0522d' },
+  Metales: { shape: 'capsule', color: '#ffff00' },
+  'Percusión menor': { shape: 'pentagon', color: '#808080' },
+  Tambores: { shape: 'circle', color: '#808080' },
+  Platillos: { shape: 'circle', color: '#808080' },
+  Placas: { shape: 'square', color: '#ff0000' },
+  Auxiliares: { shape: 'circle', color: '#4b0082' },
+  'Cuerdas frotadas': { shape: 'triangle', color: '#ffa500' },
+  'Cuerdas pulsadas': { shape: 'star4', color: '#008000' },
+  Voces: { shape: 'capsule', color: '#808080' },
+};
+
+// Relación simple de instrumentos con familias
+const INSTRUMENT_FAMILIES = {
+  Flauta: 'Maderas de timbre "redondo"',
+  Oboe: 'Dobles cañas',
+  Clarinete: 'Dobles cañas',
+  Fagot: 'Dobles cañas',
+  Saxofón: 'Saxofones',
+  Trompeta: 'Metales',
+  Trombón: 'Metales',
+  Tuba: 'Metales',
+  'Corno francés': 'Metales',
+  Piano: 'Cuerdas pulsadas',
+  Violín: 'Cuerdas frotadas',
+  Viola: 'Cuerdas frotadas',
+  Violonchelo: 'Cuerdas frotadas',
+  Contrabajo: 'Cuerdas frotadas',
+  Voz: 'Voces',
+};
+
+// Asigna instrumento, familia, forma y color a cada pista
+function assignTrackInfo(tracks) {
+  return tracks.map((t) => {
+    const instrument = t.name;
+    const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
+    const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
+    return { ...t, instrument, family, shape: preset.shape, color: preset.color };
+  });
+}
+
 function parseMIDI(arrayBuffer) {
   const data = new DataView(arrayBuffer);
   let offset = 0;
@@ -199,6 +244,7 @@ function parseMIDI(arrayBuffer) {
     result.tracks.push({ name: trackName, events });
   }
 
+  result.tracks = assignTrackInfo(result.tracks);
   return result;
 }
 
@@ -226,7 +272,8 @@ function parseMusicXML(text) {
       }
       currentTime += duration;
     }
-    return { tempo, divisions, tracks: [{ name: trackName, events }] };
+    const tracks = assignTrackInfo([{ name: trackName, events }]);
+    return { tempo, divisions, tracks };
   }
 
   const parser = new DOMParser();
@@ -266,9 +313,15 @@ function parseMusicXML(text) {
     return { name: trackName, events };
   });
 
-  return { tempo, divisions, tracks };
+  return { tempo, divisions, tracks: assignTrackInfo(tracks) };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { parseMIDI, parseMusicXML };
+  module.exports = {
+    parseMIDI,
+    parseMusicXML,
+    assignTrackInfo,
+    FAMILY_PRESETS,
+    INSTRUMENT_FAMILIES,
+  };
 }

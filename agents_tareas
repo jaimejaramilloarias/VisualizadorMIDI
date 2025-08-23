@@ -1,7 +1,7 @@
 1. [x] Configurar la estructura base del proyecto web (HTML, CSS, JS) y mostrar un canvas de 720px de alto junto a los menús superior e inferior sin funcionalidades.
 2. [x] Implementar botón “Cargar MIDI/XML” y lógica básica para leer archivos MIDI/XML extrayendo note ON/OFF, duración, velocidad, tempo y nombres de pista.
 3. [x] Implementar botón “Cargar WAV” y reproducción de audio, eliminando silencios iniciales y sincronizando el playhead con la animación.
-4. Crear estructura de datos que relacione cada pista con su instrumento y familia, asignando formas y colores predeterminados.
+4. [x] Crear estructura de datos que relacione cada pista con su instrumento y familia, asignando formas y colores predeterminados.
 5. Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
 6. Incorporar opacidad variable en los extremos, cambio brusco al 100% en la línea de presente y retorno progresivo al 5%.
 7. Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
@@ -11,3 +11,4 @@
 11. Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
 12. Optimizar rendimiento y modularizar el código con comentarios claros para facilitar el desarrollo incremental.
 13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI y MusicXML.
+14. Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
