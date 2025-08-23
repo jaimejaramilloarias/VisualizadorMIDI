@@ -110,11 +110,10 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
     case 'triangle': {
       const side = Math.min(width, (2 / Math.sqrt(3)) * height);
       const h = (Math.sqrt(3) / 2) * side;
-      const offsetX = x + (width - side) / 2;
       const offsetY = y + (height - h);
-      ctx.moveTo(x + width / 2, offsetY);
-      ctx.lineTo(offsetX + side, offsetY + h);
-      ctx.lineTo(offsetX, offsetY + h);
+      ctx.moveTo(x + side / 2, offsetY);
+      ctx.lineTo(x + side, offsetY + h);
+      ctx.lineTo(x, offsetY + h);
       ctx.closePath();
       break;
     }

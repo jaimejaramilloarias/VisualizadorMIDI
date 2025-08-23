@@ -83,4 +83,21 @@ const tol = 1e-6;
 assert(Math.abs(a - b) < tol && Math.abs(b - c) < tol, 'lados no iguales');
 assert(Math.abs(top[0] - 5) < tol, 'vértice superior no centrado');
 
+// Verificación de alineación a la izquierda para triángulo alargado
+const triCtxWide = {
+  path: [],
+  beginPath() {},
+  moveTo(x, y) {
+    this.path.push([x, y]);
+  },
+  lineTo(x, y) {
+    this.path.push([x, y]);
+  },
+  closePath() {},
+  fill() {},
+};
+drawNoteShape(triCtxWide, 'triangle', 0, 0, 20, 10);
+const minX = Math.min(...triCtxWide.path.map((p) => p[0]));
+assert.strictEqual(minX, 0, 'triángulo alargado no alineado a la izquierda');
+
 console.log('Pruebas de figuras geométricas completadas');
