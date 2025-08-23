@@ -4,7 +4,7 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "test": "node test_parsers.js && node test_visual_effects.js && node test_playback_controls.js && node test_color_variations.js && node test_shapes.js && node test_family_modifiers.js && node test_aspect_ratio.js && node test_family_customization.js && node test_config_export_import.js && node test_ui_integration.js && node test_canvas_color.js && node test_play_button_single_source.js && node test_audio_player.js"
+    "test": "node test_parsers.js && node test_visual_effects.js && node test_playback_controls.js && node test_color_variations.js && node test_shapes.js && node test_family_modifiers.js && node test_aspect_ratio.js && node test_family_customization.js && node test_config_export_import.js && node test_ui_integration.js && node test_canvas_color.js && node test_play_button_single_source.js && node test_audio_player.js && node test_offscreen_render.js"
   },
   "keywords": [],
   "author": "",
