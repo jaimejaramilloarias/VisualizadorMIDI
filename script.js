@@ -311,6 +311,7 @@ if (typeof document !== 'undefined') {
             family,
             { colorBright: brightInput.value },
             currentTracks,
+            notes,
           );
         });
         darkInput.addEventListener('change', () => {
@@ -318,10 +319,16 @@ if (typeof document !== 'undefined') {
             family,
             { colorDark: darkInput.value },
             currentTracks,
+            notes,
           );
         });
         shapeSelect.addEventListener('change', () => {
-          setFamilyCustomization(family, { shape: shapeSelect.value }, currentTracks);
+          setFamilyCustomization(
+            family,
+            { shape: shapeSelect.value },
+            currentTracks,
+            notes,
+          );
         });
 
         item.appendChild(label);
@@ -335,7 +342,7 @@ if (typeof document !== 'undefined') {
       resetBtn.id = 'reset-family-defaults';
       resetBtn.textContent = 'Restablecer predeterminados';
       resetBtn.addEventListener('click', () => {
-        resetFamilyCustomizations(currentTracks);
+        resetFamilyCustomizations(currentTracks, notes);
         buildFamilyPanel();
       });
       familyPanel.appendChild(resetBtn);
@@ -864,7 +871,8 @@ function saveFamilyCustomizations() {
 function setFamilyCustomization(
   family,
   { color, shape, colorBright, colorDark },
-  tracks = []
+  tracks = [],
+  notes = []
 ) {
   const preset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
   if (color) {
@@ -891,9 +899,15 @@ function setFamilyCustomization(
       t.color = getInstrumentColor(preset, t.instrument);
     }
   });
+  notes.forEach((n) => {
+    if (n.family === family) {
+      n.shape = preset.shape;
+      n.color = getInstrumentColor(preset, n.instrument);
+    }
+  });
 }
 
-function resetFamilyCustomizations(tracks = []) {
+function resetFamilyCustomizations(tracks = [], notes = []) {
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
   });
@@ -905,6 +919,11 @@ function resetFamilyCustomizations(tracks = []) {
     const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset, t.instrument);
+  });
+  notes.forEach((n) => {
+    const preset = FAMILY_PRESETS[n.family] || { shape: 'square', color: '#ffffff' };
+    n.shape = preset.shape;
+    n.color = getInstrumentColor(preset, n.instrument);
   });
 }
 
