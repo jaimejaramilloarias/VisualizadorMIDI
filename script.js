@@ -65,6 +65,17 @@ function getVisibleNotes(allNotes) {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
+    const titleEl = document.getElementById('app-title');
+    if (titleEl) {
+      const vibrantColors = ['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff924c', '#ff4d6d'];
+      titleEl.innerHTML = [...titleEl.textContent]
+        .map(
+          (ch, i) =>
+            `<span style="color:${vibrantColors[i % vibrantColors.length]}">${ch}</span>`
+        )
+        .join('');
+    }
+
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
 
@@ -510,6 +521,13 @@ if (typeof document !== 'undefined') {
     });
 
     buildFamilyPanel();
+
+    loadDefaultConfiguration(currentTracks)
+      .catch(() => {})
+      .then(() => {
+        populateInstrumentDropdown(currentTracks);
+        buildFamilyPanel();
+      });
 
     // ----- Configuración de Audio -----
     function applyCanvasSize(fullscreen = !!document.fullscreenElement) {
@@ -1026,6 +1044,18 @@ function importConfiguration(json, tracks = []) {
   });
 }
 
+async function loadDefaultConfiguration(tracks = []) {
+  if (typeof fetch !== 'function') return Promise.resolve();
+  try {
+    const response = await fetch('configuracion.json');
+    if (!response.ok) return;
+    const data = await response.json();
+    importConfiguration(data, tracks);
+  } catch (err) {
+    /* Silent failure loading default configuration */
+  }
+}
+
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
@@ -1262,6 +1292,7 @@ if (typeof module !== 'undefined') {
     resetFamilyCustomizations,
     exportConfiguration,
     importConfiguration,
+    loadDefaultConfiguration,
     setInstrumentEnabled,
     getVisibleNotes,
   };
