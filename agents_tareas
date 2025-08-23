@@ -18,6 +18,6 @@
 18. [x] Crear pruebas unitarias para los controles de reproducción.
 19. [x] Crear pruebas unitarias para el efecto de brillo en el NOTE ON.
 20. Implementar figuras geométricas alargadas para cada familia.
-21. Aplicar variaciones de tono de color por instrumento dentro de cada familia.
+21. [x] Aplicar variaciones de tono de color por instrumento dentro de cada familia.
 22. Crear pruebas unitarias para las figuras geométricas alargadas.
-23. Crear pruebas unitarias para las variaciones de tono de color por instrumento.
+23. [x] Crear pruebas unitarias para las variaciones de tono de color por instrumento.
