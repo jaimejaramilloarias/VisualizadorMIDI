@@ -519,11 +519,7 @@ if (typeof document !== 'undefined') {
           offscreenCtx.restore();
         }
       });
-      offscreenCtx.strokeStyle = '#fff';
-      offscreenCtx.beginPath();
-      offscreenCtx.moveTo(canvas.width / 2, 0);
-      offscreenCtx.lineTo(canvas.width / 2, canvas.height);
-      offscreenCtx.stroke();
+      // Línea de presente omitida para mantenerla invisible
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(offscreenCanvas, 0, 0);
