@@ -22,6 +22,10 @@ const {
 // la función en este archivo, renombramos la referencia local.
 const { initializeUI: initializeUIControls } =
   typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+const { loadMusicFile } =
+  typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
+const { loadWavFile } =
+  typeof require !== 'undefined' ? require('./wavLoader.js') : window.wavLoader;
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -367,67 +371,40 @@ if (typeof document !== 'undefined') {
     loadBtn.addEventListener('click', () => fileInput.click());
     loadWavBtn.addEventListener('click', () => wavInput.click());
 
-    // Carga y parseo de archivos MIDI/XML
-    fileInput.addEventListener('change', (e) => {
+    // Carga y parseo de archivos MIDI/XML mediante módulo dedicado
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const ext = file.name.split('.').pop().toLowerCase();
-
-      const reader = new FileReader();
-      if (ext === 'mid' || ext === 'midi') {
-        reader.onload = (ev) => {
-          const midi = parseMIDI(ev.target.result);
-          currentTracks = midi.tracks;
-          applyStoredAssignments();
-          populateInstrumentDropdown(currentTracks);
-          showAssignmentModal(currentTracks);
-          const tempoEvent = midi.tracks
-            .flatMap((t) => t.events)
-            .find((e) => e.type === 'tempo');
-          const microPerBeat = tempoEvent ? tempoEvent.microsecondsPerBeat : 500000;
-          const secondsPerTick = microPerBeat / 1e6 / midi.timeDivision;
-          prepareNotesFromTracks(currentTracks, secondsPerTick);
-          startOffset = 0;
-          renderFrame(0);
-          console.log('MIDI parsed', midi);
-        };
-        reader.readAsArrayBuffer(file);
-      } else if (ext === 'xml') {
-        reader.onload = (ev) => {
-          const xml = parseMusicXML(ev.target.result);
-          currentTracks = xml.tracks;
-          applyStoredAssignments();
-          populateInstrumentDropdown(currentTracks);
-          showAssignmentModal(currentTracks);
-          const secondsPerDiv = (60 / xml.tempo) / xml.divisions;
-          prepareNotesFromTracks(currentTracks, secondsPerDiv);
-          startOffset = 0;
-          renderFrame(0);
-          console.log('MusicXML parsed', xml);
-        };
-        reader.readAsText(file);
-      } else {
-        alert('Formato no soportado');
+      try {
+        const { tracks, secondsPerUnit } = await loadMusicFile(file, {
+          parseMIDI,
+          parseMusicXML,
+        });
+        currentTracks = tracks;
+        applyStoredAssignments();
+        populateInstrumentDropdown(currentTracks);
+        showAssignmentModal(currentTracks);
+        prepareNotesFromTracks(currentTracks, secondsPerUnit);
+        startOffset = 0;
+        renderFrame(0);
+      } catch (err) {
+        alert(err.message);
       }
     });
 
-    // Carga de archivo WAV y eliminación de silencio inicial
+    // Carga de archivo WAV y eliminación de silencio inicial mediante módulo dedicado
     wavInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const arrayBuffer = await file.arrayBuffer();
-      audioBuffer = await getAudioContext().decodeAudioData(arrayBuffer);
-
-      // Detectar primer sample significativo para ignorar silencio
-      const channel = audioBuffer.getChannelData(0);
-      const threshold = 0.001;
-      let startIndex = 0;
-      while (startIndex < channel.length && Math.abs(channel[startIndex]) < threshold) {
-        startIndex++;
+      try {
+        const result = await loadWavFile(file, getAudioContext());
+        audioBuffer = result.audioBuffer;
+        trimOffset = result.trimOffset;
+        startOffset = 0;
+        console.log('WAV cargado, trimOffset =', trimOffset);
+      } catch (err) {
+        alert(err.message);
       }
-      trimOffset = startIndex / audioBuffer.sampleRate;
-      startOffset = 0;
-      console.log('WAV cargado, trimOffset =', trimOffset);
     });
 
     // Reproducción básica Play/Stop con animación y controles de búsqueda
