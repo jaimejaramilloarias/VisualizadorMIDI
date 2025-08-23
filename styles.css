@@ -25,6 +25,32 @@ body {
   border-radius: 6px;
 }
 
+/* Layout específico para el menú inferior para mantener
+   un formato organizado y simétrico */
+#bottom-menu {
+  justify-content: center;
+  align-items: center;
+}
+
+#bottom-menu #instrument-select,
+#bottom-menu #family-select,
+#bottom-menu #developer-mode {
+  flex: 1;
+  min-width: 150px;
+}
+
+#bottom-menu #toggle-family-panel {
+  flex: 0 0 40px;
+  text-align: center;
+  padding: 6px;
+}
+
+#bottom-menu select,
+#bottom-menu button {
+  width: 100%;
+  text-align: center;
+}
+
 button,
 select {
   background: #333;
