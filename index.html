@@ -19,8 +19,7 @@
     <button id="aspect-16-9">16:9</button>
     <button id="aspect-9-16">9:16</button>
     <button id="full-screen">Pantalla completa</button>
-    <label for="font-size-control">Tamaño texto</label>
-    <input type="range" id="font-size-control" min="0.8" max="1.5" step="0.1" value="0.8" />
+    <button id="load-font">Cargar fuente</button>
   </nav>
 
   <canvas id="visualizer" width="1280" height="720"></canvas>
@@ -36,6 +35,13 @@
     type="file"
     id="wav-file-input"
     accept=".wav,audio/wav"
+    style="display: none"
+  />
+
+  <input
+    type="file"
+    id="font-file-input"
+    accept=".ttf,.otf,.woff,.woff2"
     style="display: none"
   />
 
