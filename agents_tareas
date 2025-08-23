@@ -29,5 +29,7 @@
 29. [x] Crear pruebas unitarias para la exportación e importación de configuraciones.
 30. [x] Refactorizar la lógica de la interfaz en módulos separados y crear pruebas de integración básicas.
 31. [x] Optimizar el renderizado de notas utilizando técnicas de canvas offscreen.
-32. Modularizar la lógica de carga de archivos MIDI y WAV en componentes separados.
+32. [x] Modularizar la lógica de carga de archivos MIDI y WAV en componentes separados.
 33. Crear pruebas unitarias para el renderizado mediante canvas offscreen.
+34. Modularizar la lógica de reproducción de audio en un componente separado.
+35. Crear pruebas unitarias para la lógica modular de reproducción de audio.
