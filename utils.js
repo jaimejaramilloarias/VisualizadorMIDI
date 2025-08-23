@@ -217,6 +217,12 @@ function resetStartOffset() {
   return 0;
 }
 
+// Determina si se puede iniciar la reproducción
+// Devuelve true si existe un buffer de audio o al menos una nota
+function canStartPlayback(audioBuffer, notes) {
+  return !!(audioBuffer || (Array.isArray(notes) && notes.length > 0));
+}
+
 const utils = {
   computeOpacity,
   computeBumpHeight,
@@ -230,6 +236,7 @@ const utils = {
   calculateCanvasSize,
   computeSeekOffset,
   resetStartOffset,
+  canStartPlayback,
 };
 
 if (typeof module !== 'undefined' && module.exports) {

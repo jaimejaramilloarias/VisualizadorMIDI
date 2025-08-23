@@ -15,6 +15,7 @@ const {
   calculateCanvasSize,
   computeSeekOffset,
   resetStartOffset,
+  canStartPlayback,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" se declara globalmente en ui.js cuando se carga en el navegador.
@@ -356,7 +357,7 @@ if (typeof document !== 'undefined') {
 
     function startPlayback() {
       const ctx = getAudioContext();
-      if (!audioBuffer && notes.length === 0) return;
+      if (!canStartPlayback(audioBuffer, notes)) return;
       playStartTime = ctx.currentTime;
       if (audioBuffer) {
         source = ctx.createBufferSource();
