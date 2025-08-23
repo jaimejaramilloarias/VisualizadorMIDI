@@ -13,11 +13,12 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
 }
 
 // Calcula la altura con efecto "bump" para una nota en reproducción
-function computeBumpHeight(baseHeight, currentSec, start, end) {
+// "bump" indica el incremento inicial de altura (0.5 = +50%)
+function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
   if (currentSec < start || currentSec > end) return baseHeight;
   const progress = (currentSec - start) / (end - start);
   const clamped = Math.min(Math.max(progress, 0), 1);
-  return baseHeight * (1.5 - 0.5 * clamped);
+  return baseHeight * (1 + bump * (1 - clamped));
 }
 
 // Calcula la intensidad del brillo en el NOTE ON
@@ -125,6 +126,29 @@ function adjustColorBrightness(color, factor) {
   return `#${nr.toString(16).padStart(2, '0')}${ng
     .toString(16)
     .padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+}
+
+const NON_STRETCHED_SHAPES = new Set(['circle', 'square', 'star4', 'pentagon']);
+
+function getFamilyModifiers(family) {
+  switch (family) {
+    case 'Platillos':
+      return { sizeFactor: 1.3, bump: 0.5 };
+    case 'Auxiliares':
+      return { sizeFactor: 1, bump: 0.8 };
+    default:
+      return { sizeFactor: 1, bump: 0.5 };
+  }
+}
+
+// Calcula el ancho base de la nota en píxeles
+function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
+  const { sizeFactor } = getFamilyModifiers(note.family);
+  const baseHeight = noteHeight * sizeFactor;
+  if (NON_STRETCHED_SHAPES.has(note.shape)) {
+    return baseHeight;
+  }
+  return (note.end - note.start) * pixelsPerSecond;
 }
 
 // Calcula un nuevo offset al buscar hacia adelante o atrás
@@ -465,6 +489,7 @@ if (typeof document !== 'undefined') {
               noteNumber: ev.noteNumber,
               color: track.color || '#ffffff',
               shape: track.shape || 'square',
+              family: track.family,
             });
           }
         });
@@ -478,14 +503,26 @@ if (typeof document !== 'undefined') {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
       notes.forEach((n) => {
-        const xStart = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
-        const xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
+        const { sizeFactor, bump } = getFamilyModifiers(n.family);
+        const baseHeight = noteHeight * sizeFactor;
+        let xStart;
+        let xEnd;
+        let width;
+        if (NON_STRETCHED_SHAPES.has(n.shape)) {
+          width = baseHeight;
+          const xCenter = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+          xStart = xCenter - width / 2;
+          xEnd = xStart + width;
+        } else {
+          xStart = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+          xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
+          width = xEnd - xStart;
+        }
         if (xEnd < 0 || xStart > canvas.width) return;
-        const width = xEnd - xStart;
         const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
 
         // Altura con efecto "bump" cuando la nota cruza la línea de presente
-        const height = computeBumpHeight(noteHeight, currentSec, n.start, n.end);
+        const height = computeBumpHeight(baseHeight, currentSec, n.start, n.end, bump);
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
@@ -816,5 +853,8 @@ if (typeof module !== 'undefined') {
     computeSeekOffset,
     resetStartOffset,
     drawNoteShape,
+    getFamilyModifiers,
+    computeNoteWidth,
+    NON_STRETCHED_SHAPES,
   };
 }
