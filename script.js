@@ -533,7 +533,9 @@ if (typeof document !== 'undefined') {
     applyCanvasSize(false);
 
     document.addEventListener('fullscreenchange', () => {
-      applyCanvasSize();
+      const fs = !!document.fullscreenElement;
+      applyCanvasSize(fs);
+      canvas.style.cursor = fs ? 'none' : 'default';
     });
 
     function startPlayback() {
@@ -643,8 +645,10 @@ if (typeof document !== 'undefined') {
       onFullScreen: () => {
         if (!document.fullscreenElement) {
           canvas.requestFullscreen();
+          canvas.style.cursor = 'none';
         } else {
           document.exitFullscreen();
+          canvas.style.cursor = 'default';
         }
       },
     });
@@ -777,7 +781,7 @@ const FAMILY_DEFAULTS = {
   Platillos: { shape: 'circle', color: '#808080' },
   Placas: { shape: 'square', color: '#ff0000' },
   Auxiliares: { shape: 'circle', color: '#4b0082' },
-  'Cuerdas frotadas': { shape: 'triangle', color: '#ffa500' },
+  'Cuerdas frotadas': { shape: 'diamond', color: '#ffa500' },
   'Cuerdas pulsadas': { shape: 'star4', color: '#008000' },
   Voces: { shape: 'capsule', color: '#808080' },
 };

@@ -45,7 +45,7 @@ const shapes = [
   ['capsule', 'arcCalled'],
   ['circle', 'arcCalled'],
   ['square', 'rectCalled'],
-  ['triangle', 'lineToCalled'],
+  ['diamond', 'lineToCalled'],
   ['star', 'lineToCalled'],
   ['star4', 'lineToCalled'],
   ['pentagon', 'lineToCalled'],
@@ -59,8 +59,8 @@ shapes.forEach(([shape, expected]) => {
   assert(ctx.fillCalled, 'fill no llamado');
 });
 
-// Verificación de vértice centrado y extremos alineados con NOTE ON/OFF
-const triCtx = {
+// Verificación de vértices centrados y extremos alineados con NOTE ON/OFF
+const diaCtx = {
   path: [],
   beginPath() {},
   moveTo(x, y) {
@@ -72,16 +72,17 @@ const triCtx = {
   closePath() {},
   fill() {},
 };
-drawNoteShape(triCtx, 'triangle', 0, 0, 10, 10);
-assert.strictEqual(triCtx.path.length, 3, 'triángulo con puntos incorrectos');
-const [top, right, left] = triCtx.path;
+drawNoteShape(diaCtx, 'diamond', 0, 0, 10, 10);
+assert.strictEqual(diaCtx.path.length, 4, 'diamante con puntos incorrectos');
+const [left, top, right, bottom] = diaCtx.path;
 const tol = 1e-6;
+assert(Math.abs(left[0]) < tol && Math.abs(left[1] - 5) < tol, 'extremo izquierdo mal posicionado');
 assert(Math.abs(top[0] - 5) < tol && Math.abs(top[1]) < tol, 'vértice superior no centrado');
-assert(Math.abs(right[0] - 10) < tol && Math.abs(right[1] - 10) < tol, 'extremo derecho mal posicionado');
-assert(Math.abs(left[0]) < tol && Math.abs(left[1] - 10) < tol, 'extremo izquierdo mal posicionado');
+assert(Math.abs(right[0] - 10) < tol && Math.abs(right[1] - 5) < tol, 'extremo derecho mal posicionado');
+assert(Math.abs(bottom[0] - 5) < tol && Math.abs(bottom[1] - 10) < tol, 'vértice inferior mal posicionado');
 
-// Verificación de alineación izquierda/derecha para triángulo alargado
-const triCtxWide = {
+// Verificación de alineación izquierda/derecha para diamante alargado
+const diaCtxWide = {
   path: [],
   beginPath() {},
   moveTo(x, y) {
@@ -93,11 +94,11 @@ const triCtxWide = {
   closePath() {},
   fill() {},
 };
-drawNoteShape(triCtxWide, 'triangle', 0, 0, 20, 10);
-const xs = triCtxWide.path.map((p) => p[0]);
+drawNoteShape(diaCtxWide, 'diamond', 0, 0, 20, 10);
+const xs = diaCtxWide.path.map((p) => p[0]);
 const minX = Math.min(...xs);
 const maxX = Math.max(...xs);
-assert.strictEqual(minX, 0, 'triángulo alargado no alineado a la izquierda');
-assert.strictEqual(maxX, 20, 'triángulo alargado no alineado a la derecha');
+assert.strictEqual(minX, 0, 'diamante alargado no alineado a la izquierda');
+assert.strictEqual(maxX, 20, 'diamante alargado no alineado a la derecha');
 
 console.log('Pruebas de figuras geométricas completadas');

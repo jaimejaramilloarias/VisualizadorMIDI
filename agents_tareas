@@ -91,6 +91,9 @@
 90. [x] Implementar acciones que mejoren la fluidez de la animación, manteniendo 60 fps fijos sin retrasos por bump o glow.
 91. [x] Agregar un título: “Visualizador MIDI - Jaime Jaramillo Arias”.
 92. [x] Ajustar la detección de silencio del audio para que la visualización del MIDI comience exactamente con la señal de audio.
-93. [ ] Mejorar en general la apariencia de la UI para que se vea más profesional.
+93. [x] Mejorar en general la apariencia de la UI para que se vea más profesional.
 94. [x] Crear pruebas unitarias para asegurar que la altura de las notas renderizadas se adapte según la velocidad MIDI.
 95. [x] Crear pruebas unitarias para la detección precisa de silencio en archivos WAV.
+96. [x] Cambiar la figura triángulo alargado por un diamante alargado con lados rectos.
+97. [x] Ocultar el puntero del mouse al activar el modo de pantalla completa.
+98. [x] Actualizar las pruebas unitarias para el diamante alargado.

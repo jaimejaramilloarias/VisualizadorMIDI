@@ -40,7 +40,7 @@ Figuras geométricas a emplear:
 1.	Ovalos alargados (del note on al off).
 2.	Cápsulas alargadas (rectángulos con bordes redondeados).
 3.	Estrellas alargadas (de 4 puntas y con lados cóncavos).
-4.	Triángulos alargados (con uno de los ángulos al centro entre el note on y el off).
+4.	Diamantes alargados con lados rectos (alineados entre el note on y el note off).
 5.	Círculos SIN alargamiento (para dibujarla solo se toman en cuenta la altura del grid y el note ON, no el note off).
 6.	Cuadrados SIN alargamiento.
 7.	Triángulos invertidos SIN alargamiento.
@@ -59,7 +59,7 @@ Figuras y colores de las familias:
 8.	Platillos: círculos sin alargamiento, grises con tamaño + 30%.
 9.	Placas: cuadrados sin alargamiento rojos.
 10.	Auxiliares: círculos sin alargamiento morado oscuro con bump + 30%.
-11.	Cuerdas frotadas: triángulos alargados naranja.
+11.	Cuerdas frotadas: diamantes alargados naranjas.
 12.	Cuerdas pulsadas: estrellas de 4 puntas sin alargamiento verdes.
 13.	Voces: cápsulas alargadas grises.
 

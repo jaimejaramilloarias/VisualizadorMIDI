@@ -15,7 +15,7 @@ const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
 
 const config = {
   assignedFamilies: { Flauta: 'Metales' },
-  familyCustomizations: { Metales: { color: '#123456', shape: 'triangle' } },
+  familyCustomizations: { Metales: { color: '#123456', shape: 'diamond' } },
   enabledInstruments: { Flauta: true },
   velocityBase: 80,
   opacityScale: { edge: 0.1, mid: 0.8 },
@@ -26,7 +26,7 @@ const config = {
 importConfiguration(config, tracks);
 
 assert.strictEqual(tracks[0].family, 'Metales');
-assert.strictEqual(tracks[0].shape, 'triangle');
+assert.strictEqual(tracks[0].shape, 'diamond');
 const expectedColor = adjustColorBrightness(
   '#123456',
   INSTRUMENT_COLOR_SHIFT['Flauta']
