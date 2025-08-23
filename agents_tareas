@@ -27,5 +27,6 @@
 27. [x] Permitir restablecer los colores y figuras personalizados de las familias a los valores predeterminados.
 28. [x] Permitir exportar e importar la configuración de familias e instrumentos en archivos JSON.
 29. [x] Crear pruebas unitarias para la exportación e importación de configuraciones.
-30. Refactorizar la lógica de la interfaz en módulos separados y crear pruebas de integración básicas.
+30. [x] Refactorizar la lógica de la interfaz en módulos separados y crear pruebas de integración básicas.
 31. Optimizar el renderizado de notas utilizando técnicas de canvas offscreen.
+32. Modularizar la lógica de carga de archivos MIDI y WAV en componentes separados.
