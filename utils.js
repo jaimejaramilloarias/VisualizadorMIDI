@@ -4,6 +4,7 @@
  * la modularidad y facilitar su reutilización en pruebas.
  */
 
+(function (global) {
 // Cache simple para evitar recalcular ajustes de color
 const colorCache = new Map();
 
@@ -227,9 +228,10 @@ const utils = {
   resetStartOffset,
 };
 
-if (typeof module !== 'undefined') {
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = utils;
 } else {
-  window.utils = utils;
+  global.utils = utils;
 }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
 
