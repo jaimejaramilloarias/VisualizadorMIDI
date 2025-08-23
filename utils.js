@@ -90,12 +90,17 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.closePath();
       break;
     }
-    case 'triangle':
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + width, y + height / 2);
-      ctx.lineTo(x, y + height);
+    case 'triangle': {
+      const side = Math.min(width, (2 / Math.sqrt(3)) * height);
+      const h = (Math.sqrt(3) / 2) * side;
+      const offsetX = x + (width - side) / 2;
+      const offsetY = y + (height - h);
+      ctx.moveTo(x + width / 2, offsetY);
+      ctx.lineTo(offsetX + side, offsetY + h);
+      ctx.lineTo(offsetX, offsetY + h);
       ctx.closePath();
       break;
+    }
     case 'circle':
       ctx.arc(x + width / 2, y + height / 2, height / 2, 0, Math.PI * 2);
       break;
