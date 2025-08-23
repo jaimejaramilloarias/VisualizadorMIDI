@@ -861,10 +861,11 @@ const normalizeAccents = (name) => {
 const normalizeInstrumentName = (name) =>
   normalizeAccents(name)
     .toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '') // elimina diacríticos para coincidencias flexibles
     .replace(/\(.*?\)/g, '') // elimina texto entre paréntesis
     .replace(/\b[ivx]+\b/g, '') // elimina numerales romanos
     .replace(/\d+/g, '') // elimina dígitos
-    .replace(/[^a-záéíóúüñ\s]/g, '') // remueve otros caracteres
+    .replace(/[^\p{L}\s]/gu, '') // remueve caracteres no alfabéticos, preservando cualquier letra Unicode
     .replace(/\s+/g, ' ') // colapsa espacios múltiples
     .trim();
 
