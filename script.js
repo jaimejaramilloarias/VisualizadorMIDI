@@ -876,6 +876,16 @@ const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
   {}
 );
 
+// Determina el nombre del instrumento permitiendo coincidencias parciales
+const resolveInstrumentName = (name) => {
+  const key = normalizeInstrumentName(name);
+  if (NORMALIZED_INSTRUMENT_MAP[key]) return NORMALIZED_INSTRUMENT_MAP[key];
+  const match = Object.entries(NORMALIZED_INSTRUMENT_MAP).find(
+    ([norm]) => key.startsWith(norm) || norm.startsWith(key),
+  );
+  return match ? match[1] : normalizeAccents(name);
+};
+
 // Variación de tono por instrumento según su registro
 const INSTRUMENT_COLOR_SHIFT = {
   Flauta: 0,
@@ -1031,8 +1041,7 @@ function importConfiguration(json, tracks = [], notes = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
   assignedFamilies = {};
   Object.entries(data.assignedFamilies || {}).forEach(([name, fam]) => {
-    const key = normalizeInstrumentName(name);
-    const inst = NORMALIZED_INSTRUMENT_MAP[key] || normalizeAccents(name);
+    const inst = resolveInstrumentName(name);
     assignedFamilies[inst] = fam;
   });
   const famCustoms = data.familyCustomizations || {};
@@ -1122,8 +1131,7 @@ async function loadDefaultConfiguration(tracks = [], notes = []) {
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
-    const key = normalizeInstrumentName(t.name);
-    const instrument = NORMALIZED_INSTRUMENT_MAP[key] || normalizeAccents(t.name);
+    const instrument = resolveInstrumentName(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
     const color = getInstrumentColor(preset, instrument);
