@@ -72,5 +72,7 @@
 71. [ ] Crear pruebas unitarias para el control de tamaño, difuminación y duración del glow.
 72. [ ] Crear pruebas unitarias para el control de cantidad y duración del bump.
 73. [x] Crear pruebas unitarias para la definición de la velocidad base.
-74. [ ] Persistir la velocidad base en la configuración local.
-75. [ ] Crear pruebas unitarias para la persistencia de la velocidad base.
+74. [x] Persistir la velocidad base en la configuración local.
+75. [x] Crear pruebas unitarias para la persistencia de la velocidad base.
+76. [ ] Incluir la velocidad base en la exportación e importación de configuraciones.
+77. [ ] Crear pruebas unitarias para la exportación e importación de la velocidad base.

@@ -53,10 +53,19 @@ let velocityBase = 67;
 // Permite definir una nueva velocidad base
 function setVelocityBase(value) {
   velocityBase = value;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('velocityBase', String(velocityBase));
+  }
 }
 
 // Devuelve la velocidad base actual
 function getVelocityBase() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = parseInt(localStorage.getItem('velocityBase'), 10);
+    if (!isNaN(stored)) {
+      velocityBase = stored;
+    }
+  }
   return velocityBase;
 }
 
