@@ -1,6 +1,25 @@
 // Script inicial para preparar el canvas
 // En esta etapa no se implementa funcionalidad adicional
 
+// Calcula opacidad según la distancia de la nota a la línea de presente
+function computeOpacity(xStart, xEnd, canvasWidth) {
+  const center = canvasWidth / 2;
+  if (xStart <= center && xEnd >= center) return 1;
+  const noteCenter = (xStart + xEnd) / 2;
+  const dist = Math.abs(noteCenter - center);
+  const maxDist = canvasWidth / 2;
+  const progress = 1 - Math.min(dist / maxDist, 1);
+  return 0.05 + 0.65 * progress;
+}
+
+// Calcula la altura con efecto "bump" para una nota en reproducción
+function computeBumpHeight(baseHeight, currentSec, start, end) {
+  if (currentSec < start || currentSec > end) return baseHeight;
+  const progress = (currentSec - start) / (end - start);
+  const clamped = Math.min(Math.max(progress, 0), 1);
+  return baseHeight * (1.5 - 0.5 * clamped);
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('visualizer');
@@ -334,17 +353,6 @@ if (typeof document !== 'undefined') {
       notes.sort((a, b) => a.start - b.start);
     }
 
-    // Calcula opacidad según la distancia de la nota a la línea de presente
-    function computeOpacity(xStart, xEnd) {
-      const center = canvas.width / 2;
-      if (xStart <= center && xEnd >= center) return 1;
-      const noteCenter = (xStart + xEnd) / 2;
-      const dist = Math.abs(noteCenter - center);
-      const maxDist = canvas.width / 2;
-      const progress = 1 - Math.min(dist / maxDist, 1);
-      return 0.05 + 0.65 * progress;
-    }
-
     function renderFrame(currentSec) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#222';
@@ -358,17 +366,13 @@ if (typeof document !== 'undefined') {
         const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
 
         // Altura con efecto "bump" cuando la nota cruza la línea de presente
-        let height = noteHeight;
-        if (currentSec >= n.start && currentSec <= n.end) {
-          const progress = (currentSec - n.start) / (n.end - n.start);
-          height = noteHeight * (1.5 - 0.5 * Math.min(Math.max(progress, 0), 1));
-        }
+        const height = computeBumpHeight(noteHeight, currentSec, n.start, n.end);
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
 
         // Opacidad variable según distancia al centro
-        const alpha = computeOpacity(xStart, xEnd);
+        const alpha = computeOpacity(xStart, xEnd, canvas.width);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = n.color;
@@ -664,5 +668,7 @@ if (typeof module !== 'undefined') {
     assignTrackInfo,
     FAMILY_PRESETS,
     INSTRUMENT_FAMILIES,
+    computeOpacity,
+    computeBumpHeight,
   };
 }
