@@ -713,23 +713,27 @@ if (typeof document !== 'undefined') {
 
         // Opacidad variable según distancia al centro
         const alpha = computeOpacity(xStart, xEnd, canvas.width);
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = alpha;
+        if (alpha < 1) {
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = alpha;
+        }
         offscreenCtx.fillStyle = n.color;
         drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
-        offscreenCtx.restore();
+        if (alpha < 1) offscreenCtx.restore();
 
         // Brillo blanco corto en el NOTE ON presente
         const glowAlpha = computeGlowAlpha(currentSec, n.start);
-        applyGlowEffect(
-          offscreenCtx,
-          n.shape,
-          xStart,
-          y,
-          width,
-          height,
-          glowAlpha
-        );
+        if (glowAlpha > 0) {
+          applyGlowEffect(
+            offscreenCtx,
+            n.shape,
+            xStart,
+            y,
+            width,
+            height,
+            glowAlpha
+          );
+        }
       });
       // Línea de presente omitida para mantenerla invisible
 

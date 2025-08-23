@@ -150,6 +150,7 @@ getBumpControl();
 function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
   const amount = bump * bumpControl;
   const duration = (end - start) * bumpControl;
+  if (amount <= 0 || duration <= 0) return baseHeight;
   if (currentSec < start || currentSec > start + duration) return baseHeight;
   const progress = (currentSec - start) / duration;
   const clamped = Math.min(Math.max(progress, 0), 1);
@@ -206,14 +207,14 @@ getGlowStrength();
 // Calcula la intensidad del brillo en el NOTE ON
 function computeGlowAlpha(currentSec, start, baseDuration = 0.2) {
   const duration = baseDuration * glowStrength;
-  if (currentSec < start || currentSec > start + duration) return 0;
+  if (duration <= 0 || currentSec < start || currentSec > start + duration) return 0;
   const progress = (currentSec - start) / duration;
   return 1 - progress;
 }
 
 // Aplica un efecto de brillo con desenfoque alrededor de la figura
 function applyGlowEffect(ctx, shape, x, y, width, height, alpha) {
-  if (alpha <= 0) return;
+  if (alpha <= 0 || glowStrength <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.shadowBlur = 20 * glowStrength;
