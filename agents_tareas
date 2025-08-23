@@ -25,4 +25,5 @@
 25. [x] Crear pruebas unitarias para los modificadores de familia.
 26. [x] Crear pruebas unitarias para la lógica de cambio de aspecto y pantalla completa.
 27. [x] Permitir restablecer los colores y figuras personalizados de las familias a los valores predeterminados.
-28. Permitir exportar e importar la configuración de familias e instrumentos en archivos JSON.
+28. [x] Permitir exportar e importar la configuración de familias e instrumentos en archivos JSON.
+29. [x] Crear pruebas unitarias para la exportación e importación de configuraciones.

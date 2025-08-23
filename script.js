@@ -315,6 +315,44 @@ if (typeof document !== 'undefined') {
         buildFamilyPanel();
       });
       familyPanel.appendChild(resetBtn);
+
+      const exportBtn = document.createElement('button');
+      exportBtn.id = 'export-config';
+      exportBtn.textContent = 'Exportar configuración';
+      exportBtn.addEventListener('click', () => {
+        const data = exportConfiguration();
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'configuracion.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      const importBtn = document.createElement('button');
+      importBtn.id = 'import-config';
+      importBtn.textContent = 'Importar configuración';
+      const importInput = document.createElement('input');
+      importInput.type = 'file';
+      importInput.accept = 'application/json';
+      importInput.style.display = 'none';
+      importInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          importConfiguration(ev.target.result, currentTracks);
+          populateInstrumentDropdown(currentTracks);
+          buildFamilyPanel();
+        };
+        reader.readAsText(file);
+      });
+      importBtn.addEventListener('click', () => importInput.click());
+
+      familyPanel.appendChild(exportBtn);
+      familyPanel.appendChild(importBtn);
+      familyPanel.appendChild(importInput);
     }
 
     function populateInstrumentDropdown(tracks) {
@@ -842,6 +880,38 @@ function resetFamilyCustomizations(tracks = []) {
   });
 }
 
+function exportConfiguration() {
+  return JSON.stringify({ assignedFamilies, familyCustomizations });
+}
+
+function importConfiguration(json, tracks = []) {
+  const data = typeof json === 'string' ? JSON.parse(json) : json;
+  assignedFamilies = data.assignedFamilies || {};
+  familyCustomizations = data.familyCustomizations || {};
+
+  Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
+    FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
+  });
+  Object.entries(familyCustomizations).forEach(([fam, cfg]) => {
+    if (FAMILY_PRESETS[fam]) {
+      if (cfg.color) FAMILY_PRESETS[fam].color = cfg.color;
+      if (cfg.shape) FAMILY_PRESETS[fam].shape = cfg.shape;
+    }
+  });
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
+    localStorage.setItem('familyCustomizations', JSON.stringify(familyCustomizations));
+  }
+  tracks.forEach((t) => {
+    const fam = assignedFamilies[t.instrument] || t.family;
+    t.family = fam;
+    const preset = FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+    t.shape = preset.shape;
+    const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
+    t.color = adjustColorBrightness(preset.color, shift);
+  });
+}
+
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
@@ -1056,5 +1126,7 @@ if (typeof module !== 'undefined') {
     NON_STRETCHED_SHAPES,
     setFamilyCustomization,
     resetFamilyCustomizations,
+    exportConfiguration,
+    importConfiguration,
   };
 }
