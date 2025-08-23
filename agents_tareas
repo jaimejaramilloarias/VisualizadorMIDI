@@ -41,7 +41,7 @@
 41. [ ] La velocidad del midi debe salir del tempo map, y NO ser una velocidad constante.
 42. [ ] El brillo de las figuras al pasar por la línea de presente debe ser de tipo glow/blur, y parecer una sombra más que una línea definida.
 43. [x] Los triángulos deben ser equiláteros con el ángulo superior al medio de la figura.
-44. [ ] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
+44. [x] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
 45. [x] Crear pruebas unitarias para la personalización del color del canvas.
 46. [x] Corregir el bug que impedía aplicar el color de fondo seleccionado al canvas en cada frame.
 47. [x] Crear pruebas unitarias para el botón Play funcionando con solo MIDI/XML o solo WAV.
@@ -50,5 +50,6 @@
 49. [ ] Crear pruebas unitarias para la reproducción basada en el tempo map.
 50. [ ] Crear pruebas unitarias para el efecto de brillo tipo glow/blur.
 51. [x] Verificar mediante pruebas la geometría equilátera de los triángulos.
-52. [ ] Crear pruebas unitarias para la activación y desactivación de instrumentos en la animación.
+52. [x] Crear pruebas unitarias para la activación y desactivación de instrumentos en la animación.
 53. [x] Eliminar pruebas unitarias redundantes para simplificar la suite.
+54. [ ] Persistir el estado de activación de instrumentos en la configuración local.
