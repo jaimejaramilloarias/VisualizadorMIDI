@@ -30,7 +30,7 @@
 30. [x] Refactorizar la lógica de la interfaz en módulos separados y crear pruebas de integración básicas.
 31. [x] Optimizar el renderizado de notas utilizando técnicas de canvas offscreen.
 32. [x] Modularizar la lógica de carga de archivos MIDI y WAV en componentes separados.
-33. Crear pruebas unitarias para el renderizado mediante canvas offscreen.
+33. [x] Crear pruebas unitarias para el renderizado mediante canvas offscreen.
 34. [x] Modularizar la lógica de reproducción de audio en un componente separado.
 35. [x] Crear pruebas unitarias para la lógica modular de reproducción de audio.
 36. [x] El color de fondo del canvas debe ser negro absoluto, pero en el panel inferior debe existir la posibilidad de cambiar el color del canvas.
@@ -45,3 +45,9 @@
 45. [x] Crear pruebas unitarias para la personalización del color del canvas.
 46. [x] Corregir el bug que impedía aplicar el color de fondo seleccionado al canvas en cada frame.
 47. [x] Crear pruebas unitarias para el botón Play funcionando con solo MIDI/XML o solo WAV.
+
+48. [ ] Crear pruebas unitarias para mantener la animación a 60 fps constantes.
+49. [ ] Crear pruebas unitarias para la reproducción basada en el tempo map.
+50. [ ] Crear pruebas unitarias para el efecto de brillo tipo glow/blur.
+51. [ ] Verificar mediante pruebas la geometría equilátera de los triángulos.
+52. [ ] Crear pruebas unitarias para la activación y desactivación de instrumentos en la animación.

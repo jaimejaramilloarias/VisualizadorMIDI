@@ -530,6 +530,9 @@ if (typeof document !== 'undefined') {
     // Exponer la función para pruebas unitarias
     if (typeof window !== 'undefined') {
       window.__renderFrame = renderFrame;
+      window.__setTestNotes = (n) => {
+        notes = n;
+      };
     }
 
     function startAnimation() {
