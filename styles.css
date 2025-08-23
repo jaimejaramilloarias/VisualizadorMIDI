@@ -37,6 +37,27 @@ body {
   display: flex;
 }
 
+#developer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.dev-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #333;
+  padding: 5px;
+}
+
+.dev-control label {
+  min-width: 120px;
+}
+
 .family-config-item {
   display: flex;
   align-items: center;
