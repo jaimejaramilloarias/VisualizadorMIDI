@@ -45,6 +45,11 @@ body {
   min-width: 150px;
 }
 
+#bottom-menu #font-size {
+  flex: 0 0 60px;
+  min-width: 60px;
+}
+
 #bottom-menu #toggle-family-panel {
   flex: 0 0 40px;
   text-align: center;
@@ -52,13 +57,15 @@ body {
 }
 
 #bottom-menu select,
-#bottom-menu button {
+#bottom-menu button,
+#bottom-menu input {
   width: 100%;
   text-align: center;
 }
 
 button,
-select {
+select,
+input {
   background: #333;
   border: 1px solid #555;
   color: #fff;
@@ -69,7 +76,8 @@ select {
 }
 
 button:hover,
-select:hover {
+select:hover,
+input:hover {
   background: #444;
   cursor: pointer;
 }
