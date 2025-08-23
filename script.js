@@ -20,6 +20,17 @@ function computeBumpHeight(baseHeight, currentSec, start, end) {
   return baseHeight * (1.5 - 0.5 * clamped);
 }
 
+// Calcula un nuevo offset al buscar hacia adelante o atrás
+function computeSeekOffset(startOffset, delta, duration, trimOffset = 0) {
+  const maxOffset = Math.max(0, duration - trimOffset);
+  return Math.min(Math.max(0, startOffset + delta), maxOffset);
+}
+
+// Reinicia el offset de reproducción al inicio
+function resetStartOffset() {
+  return 0;
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('visualizer');
@@ -235,8 +246,7 @@ if (typeof document !== 'undefined') {
       if (!audioBuffer) return;
       const wasPlaying = isPlaying;
       stopPlayback(true);
-      const maxOffset = Math.max(0, audioBuffer.duration - trimOffset);
-      startOffset = Math.min(Math.max(0, startOffset + delta), maxOffset);
+      startOffset = computeSeekOffset(startOffset, delta, audioBuffer.duration, trimOffset);
       renderFrame(startOffset);
       if (wasPlaying) startPlayback();
     }
@@ -323,8 +333,8 @@ if (typeof document !== 'undefined') {
     restartBtn.addEventListener('click', () => {
       const wasPlaying = isPlaying;
       stopPlayback(false);
-      startOffset = 0;
-      renderFrame(0);
+      startOffset = resetStartOffset();
+      renderFrame(startOffset);
       if (wasPlaying) startPlayback();
     });
     document.addEventListener('keydown', (e) => {
@@ -670,5 +680,7 @@ if (typeof module !== 'undefined') {
     INSTRUMENT_FAMILIES,
     computeOpacity,
     computeBumpHeight,
+    computeSeekOffset,
+    resetStartOffset,
   };
 }
