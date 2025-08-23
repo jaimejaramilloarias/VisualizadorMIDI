@@ -35,11 +35,11 @@ const {
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
 // al importar estas funciones, renombramos las referencias locales.
-const {
-  initializeUI: initializeUIControls,
-  initializeDeveloperMode: initDeveloperMode,
-  initializeFontLoader: initFontLoader,
-} = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+  const {
+    initializeUI: initializeUIControls,
+    initializeDeveloperMode: initDeveloperMode,
+    initializeFontSelector: initFontSelector,
+  } = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
 const { loadWavFile } =
@@ -106,10 +106,9 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    const loadFontBtn = document.getElementById('load-font');
-    const fontFileInput = document.getElementById('font-file-input');
-    if (loadFontBtn && fontFileInput) {
-      initFontLoader({ button: loadFontBtn, input: fontFileInput, target: document.documentElement });
+    const fontSelect = document.getElementById('font-select');
+    if (fontSelect) {
+      initFontSelector({ select: fontSelect, target: document.documentElement });
     }
     
     let velocityBase = getVelocityBase();
