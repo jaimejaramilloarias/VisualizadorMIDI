@@ -502,7 +502,8 @@ if (typeof document !== 'undefined') {
 
     function renderFrame(currentSec) {
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
-      offscreenCtx.fillStyle = '#222';
+      // Usa el color de fondo asignado al canvas para rellenar cada frame
+      offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
       notes.forEach((n) => {
@@ -553,6 +554,11 @@ if (typeof document !== 'undefined') {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(offscreenCanvas, 0, 0);
+    }
+
+    // Exponer la función para pruebas unitarias
+    if (typeof window !== 'undefined') {
+      window.__renderFrame = renderFrame;
     }
 
     function startAnimation() {
