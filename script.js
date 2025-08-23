@@ -29,6 +29,17 @@ const { loadWavFile } =
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
 
+// Estado de activación de instrumentos
+const enabledInstruments = {};
+
+function setInstrumentEnabled(inst, enabled) {
+  enabledInstruments[inst] = enabled;
+}
+
+function getVisibleNotes(allNotes) {
+  return allNotes.filter((n) => enabledInstruments[n.instrument] !== false);
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('visualizer');
@@ -124,6 +135,27 @@ if (typeof document !== 'undefined') {
       bgItem.appendChild(bgLabel);
       bgItem.appendChild(bgInput);
       familyPanel.appendChild(bgItem);
+
+      const instSection = document.createElement('div');
+      const instTitle = document.createElement('h4');
+      instTitle.textContent = 'Instrumentos activos';
+      instSection.appendChild(instTitle);
+      currentTracks.forEach((t) => {
+        const item = document.createElement('div');
+        item.className = 'family-config-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = enabledInstruments[t.instrument] !== false;
+        checkbox.addEventListener('change', () =>
+          setInstrumentEnabled(t.instrument, checkbox.checked)
+        );
+        const label = document.createElement('label');
+        label.textContent = t.instrument;
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        instSection.appendChild(item);
+      });
+      familyPanel.appendChild(instSection);
 
       FAMILY_LIST.forEach((family) => {
         const item = document.createElement('div');
@@ -385,10 +417,16 @@ if (typeof document !== 'undefined') {
           parseMusicXML,
         });
         currentTracks = tracks;
+        currentTracks.forEach((t) => {
+          if (!(t.instrument in enabledInstruments)) {
+            setInstrumentEnabled(t.instrument, true);
+          }
+        });
         applyStoredAssignments();
         populateInstrumentDropdown(currentTracks);
         showAssignmentModal(currentTracks);
         prepareNotesFromTracks(currentTracks, secondsPerUnit);
+        buildFamilyPanel();
         audioPlayer.resetStartOffset();
         renderFrame(0);
       } catch (err) {
@@ -464,6 +502,7 @@ if (typeof document !== 'undefined') {
               color: track.color || '#ffffff',
               shape: track.shape || 'square',
               family: track.family,
+              instrument: track.instrument,
             });
           }
         });
@@ -477,7 +516,7 @@ if (typeof document !== 'undefined') {
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
-      notes.forEach((n) => {
+      getVisibleNotes(notes).forEach((n) => {
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
         const baseHeight = noteHeight * sizeFactor;
         let xStart;
@@ -927,5 +966,7 @@ if (typeof module !== 'undefined') {
     resetFamilyCustomizations,
     exportConfiguration,
     importConfiguration,
+    setInstrumentEnabled,
+    getVisibleNotes,
   };
 }
