@@ -1115,11 +1115,11 @@ function parseMIDI(arrayBuffer) {
   let offset = 0;
 
   const readString = (len) => {
-    let s = '';
+    const bytes = new Uint8Array(len);
     for (let i = 0; i < len; i++) {
-      s += String.fromCharCode(data.getUint8(offset++));
+      bytes[i] = data.getUint8(offset++);
     }
-    return s;
+    return new TextDecoder('utf-8').decode(bytes);
   };
 
   const readUint32 = () => {
