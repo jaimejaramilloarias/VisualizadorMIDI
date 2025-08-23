@@ -33,12 +33,13 @@
 33. Crear pruebas unitarias para el renderizado mediante canvas offscreen.
 34. Modularizar la lógica de reproducción de audio en un componente separado.
 35. Crear pruebas unitarias para la lógica modular de reproducción de audio.
-36. [ ] El color de fondo del canvas debe ser negro absoluto, pero en el panel inferior debe existir la posibilidad de cambiar el color del canvas.
+36. [x] El color de fondo del canvas debe ser negro absoluto, pero en el panel inferior debe existir la posibilidad de cambiar el color del canvas.
 37. [x] La línea de presente debe ser invisible.
-38. [ ] Las cápsulas deben ser rectángulos con esquinas redondeadas.
+38. [x] Las cápsulas deben ser rectángulos con esquinas redondeadas.
 39. [ ] El botón de play debe funcionar así esté cargado solo el MIDI/XML sin audio, o el audio sin MIDI/XML.
 40. [ ] La animación debe estar en 60 fps fijos SIEMPRE, y no depender de la frecuencia de la pantalla.
 41. [ ] La velocidad del midi debe salir del tempo map, y NO ser una velocidad constante.
 42. [ ] El brillo de las figuras al pasar por la línea de presente debe ser de tipo glow/blur, y parecer una sombra más que una línea definida.
 43. [ ] Los triángulos deben ser equiláteros con el ángulo superior al medio de la figura.
 44. [ ] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
+45. [x] Crear pruebas unitarias para la personalización del color del canvas.
