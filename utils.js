@@ -27,6 +27,24 @@ function adjustColorBrightness(color, factor) {
   return result;
 }
 
+// Interpola entre dos colores hexadecimales según un factor [0,1]
+function interpolateColor(color1, color2, factor) {
+  const c1 = parseInt(color1.slice(1), 16);
+  const c2 = parseInt(color2.slice(1), 16);
+  const r1 = (c1 >> 16) & 0xff;
+  const g1 = (c1 >> 8) & 0xff;
+  const b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff;
+  const g2 = (c2 >> 8) & 0xff;
+  const b2 = c2 & 0xff;
+  const r = Math.round(r1 + (r2 - r1) * factor);
+  const g = Math.round(g1 + (g2 - g1) * factor);
+  const b = Math.round(b1 + (b2 - b1) * factor);
+  return `#${r.toString(16).padStart(2, '0')}${g
+    .toString(16)
+    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 // Parámetros configurables de opacidad
 let opacityScale = { edge: 0.05, mid: 0.7 };
 
@@ -386,6 +404,7 @@ const utils = {
   applyGlowEffect,
   drawNoteShape,
   adjustColorBrightness,
+  interpolateColor,
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,

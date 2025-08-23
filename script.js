@@ -8,6 +8,7 @@ const {
   computeGlowAlpha,
   drawNoteShape,
   adjustColorBrightness,
+  interpolateColor,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
@@ -207,10 +208,10 @@ if (typeof document !== 'undefined') {
       const track = currentTracks.find((t) => t.instrument === inst);
       if (track) {
         track.family = fam;
-        const preset = FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+        const preset =
+          FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
         track.shape = preset.shape;
-        const shift = INSTRUMENT_COLOR_SHIFT[track.instrument] || 0;
-        track.color = adjustColorBrightness(preset.color, shift);
+        track.color = getInstrumentColor(preset, track.instrument);
       }
     }
 
@@ -284,9 +285,18 @@ if (typeof document !== 'undefined') {
 
         const label = document.createElement('label');
         label.textContent = family;
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value = FAMILY_PRESETS[family]?.color || '#ffffff';
+        const brightInput = document.createElement('input');
+        brightInput.type = 'color';
+        brightInput.value =
+          FAMILY_PRESETS[family]?.colorBright ||
+          FAMILY_PRESETS[family]?.color ||
+          '#ffffff';
+        const darkInput = document.createElement('input');
+        darkInput.type = 'color';
+        darkInput.value =
+          FAMILY_PRESETS[family]?.colorDark ||
+          FAMILY_PRESETS[family]?.color ||
+          '#000000';
         const shapeSelect = document.createElement('select');
         SHAPE_OPTIONS.forEach((opt) => {
           const o = document.createElement('option');
@@ -296,15 +306,27 @@ if (typeof document !== 'undefined') {
           shapeSelect.appendChild(o);
         });
 
-        colorInput.addEventListener('change', () => {
-          setFamilyCustomization(family, { color: colorInput.value }, currentTracks);
+        brightInput.addEventListener('change', () => {
+          setFamilyCustomization(
+            family,
+            { colorBright: brightInput.value },
+            currentTracks,
+          );
+        });
+        darkInput.addEventListener('change', () => {
+          setFamilyCustomization(
+            family,
+            { colorDark: darkInput.value },
+            currentTracks,
+          );
         });
         shapeSelect.addEventListener('change', () => {
           setFamilyCustomization(family, { shape: shapeSelect.value }, currentTracks);
         });
 
         item.appendChild(label);
-        item.appendChild(colorInput);
+        item.appendChild(brightInput);
+        item.appendChild(darkInput);
         item.appendChild(shapeSelect);
         familyPanel.appendChild(item);
       });
@@ -784,6 +806,15 @@ const INSTRUMENT_COLOR_SHIFT = {
   Voz: 0,
 };
 
+function getInstrumentColor(preset, instrument) {
+  const shift = INSTRUMENT_COLOR_SHIFT[instrument] || 0;
+  if (preset.colorBright && preset.colorDark) {
+    const t = (shift + 1) / 2; // normaliza -1..1 a 0..1
+    return interpolateColor(preset.colorDark, preset.colorBright, t);
+  }
+  return adjustColorBrightness(preset.color, shift);
+}
+
 const FAMILY_LIST = [
   'Maderas de timbre "redondo"',
   'Dobles cañas',
@@ -811,6 +842,15 @@ if (typeof localStorage !== 'undefined') {
     if (FAMILY_PRESETS[fam]) {
       if (cfg.color) FAMILY_PRESETS[fam].color = cfg.color;
       if (cfg.shape) FAMILY_PRESETS[fam].shape = cfg.shape;
+      if (cfg.colorBright) FAMILY_PRESETS[fam].colorBright = cfg.colorBright;
+      if (cfg.colorDark) FAMILY_PRESETS[fam].colorDark = cfg.colorDark;
+      if (cfg.colorBright && cfg.colorDark && !cfg.color) {
+        FAMILY_PRESETS[fam].color = interpolateColor(
+          cfg.colorDark,
+          cfg.colorBright,
+          0.5,
+        );
+      }
     }
   });
 }
@@ -821,18 +861,34 @@ function saveFamilyCustomizations() {
   }
 }
 
-function setFamilyCustomization(family, { color, shape }, tracks = []) {
+function setFamilyCustomization(
+  family,
+  { color, shape, colorBright, colorDark },
+  tracks = []
+) {
   const preset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
-  if (color) preset.color = color;
+  if (color) {
+    preset.color = color;
+  }
+  if (colorBright) {
+    preset.colorBright = colorBright;
+  }
+  if (colorDark) {
+    preset.colorDark = colorDark;
+  }
+  if (preset.colorBright && preset.colorDark) {
+    preset.color = interpolateColor(preset.colorDark, preset.colorBright, 0.5);
+  }
   if (shape) preset.shape = shape;
   FAMILY_PRESETS[family] = preset;
   familyCustomizations[family] = { color: preset.color, shape: preset.shape };
+  if (preset.colorBright) familyCustomizations[family].colorBright = preset.colorBright;
+  if (preset.colorDark) familyCustomizations[family].colorDark = preset.colorDark;
   saveFamilyCustomizations();
   tracks.forEach((t) => {
     if (t.family === family) {
       t.shape = preset.shape;
-      const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
-      t.color = adjustColorBrightness(preset.color, shift);
+      t.color = getInstrumentColor(preset, t.instrument);
     }
   });
 }
@@ -848,8 +904,7 @@ function resetFamilyCustomizations(tracks = []) {
   tracks.forEach((t) => {
     const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
     t.shape = preset.shape;
-    const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
-    t.color = adjustColorBrightness(preset.color, shift);
+    t.color = getInstrumentColor(preset, t.instrument);
   });
 }
 
@@ -868,7 +923,8 @@ function exportConfiguration() {
 function importConfiguration(json, tracks = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
   assignedFamilies = data.assignedFamilies || {};
-  familyCustomizations = data.familyCustomizations || {};
+  const famCustoms = data.familyCustomizations || {};
+  familyCustomizations = famCustoms;
   Object.assign(enabledInstruments, data.enabledInstruments || {});
   if (typeof data.velocityBase === 'number') {
     setVelocityBase(data.velocityBase);
@@ -890,10 +946,16 @@ function importConfiguration(json, tracks = []) {
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
   });
-  Object.entries(familyCustomizations).forEach(([fam, cfg]) => {
+  Object.entries(famCustoms).forEach(([fam, cfg]) => {
     if (FAMILY_PRESETS[fam]) {
-      if (cfg.color) FAMILY_PRESETS[fam].color = cfg.color;
-      if (cfg.shape) FAMILY_PRESETS[fam].shape = cfg.shape;
+      FAMILY_PRESETS[fam] = { ...FAMILY_PRESETS[fam], ...cfg };
+      if (cfg.colorBright && cfg.colorDark && !cfg.color) {
+        FAMILY_PRESETS[fam].color = interpolateColor(
+          cfg.colorDark,
+          cfg.colorBright,
+          0.5,
+        );
+      }
     }
   });
   if (typeof localStorage !== 'undefined') {
@@ -904,10 +966,10 @@ function importConfiguration(json, tracks = []) {
   tracks.forEach((t) => {
     const fam = assignedFamilies[t.instrument] || t.family;
     t.family = fam;
-    const preset = FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+    const preset =
+      FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
     t.shape = preset.shape;
-    const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
-    t.color = adjustColorBrightness(preset.color, shift);
+    t.color = getInstrumentColor(preset, t.instrument);
   });
 }
 
@@ -918,8 +980,7 @@ function assignTrackInfo(tracks) {
     const instrument = NORMALIZED_INSTRUMENT_MAP[key] || t.name;
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
-    const shift = INSTRUMENT_COLOR_SHIFT[instrument] || 0;
-    const color = adjustColorBrightness(preset.color, shift);
+    const color = getInstrumentColor(preset, instrument);
     return { ...t, instrument, family, shape: preset.shape, color };
   });
 }
