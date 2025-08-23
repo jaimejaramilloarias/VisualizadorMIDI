@@ -60,14 +60,14 @@
 59. [x] Corregir el reconocimiento de tildes en los nombres de los instrumentos.
 60. [x] Corregir la figura triángulo y triángulo alargado para que tengan su punto de alineación en su esquina izquierda.
 61. [x] Crear el botón "Modo desarrollador" que habilite opciones avanzadas en el panel inferior.
-62. [ ] Permitir definir rangos de tono de color para las familias, eligiendo el color más brillante y el más oscuro para calcular matices intermedios.
+62. [x] Permitir definir rangos de tono de color para las familias, eligiendo el color más brillante y el más oscuro para calcular matices intermedios.
 63. [x] Agregar controles con porcentajes que modifiquen la escala de opacidad en los diferentes puntos del canvas.
 64. [x] Agregar un control porcentual para manejar el tamaño, la difuminación y la duración del glow.
 65. [x] Agregar un control porcentual para manejar la cantidad de bump y el tiempo de regreso al tamaño normal.
 66. [x] Agregar un control para definir la velocidad base donde 67 (número editable) represente el 100%.
 67. [x] Crear pruebas unitarias para la variación de altura basada en velocidad MIDI.
 68. [x] Crear pruebas unitarias para el reconocimiento de tildes en los nombres de los instrumentos.
-69. [ ] Crear pruebas unitarias para los rangos de tono de color por familia.
+69. [x] Crear pruebas unitarias para los rangos de tono de color por familia.
 70. [x] Crear pruebas unitarias para la escala de opacidad configurable.
 71. [x] Crear pruebas unitarias para el control de tamaño, difuminación y duración del glow.
 72. [x] Crear pruebas unitarias para el control de cantidad y duración del bump.
@@ -79,5 +79,6 @@
 78. [x] Asegurar que los controles del modo desarrollador permanezcan visibles tras reconstruir el panel de familias.
 79. [x] Incluir los parámetros de opacidad, glow y bump en la exportación e importación de configuraciones.
 80. [x] Crear pruebas unitarias para la exportación e importación de los parámetros de opacidad, glow y bump.
-81. [ ] Incluir los rangos de tono de color por familia en la exportación e importación de configuraciones.
-82. [ ] Crear pruebas unitarias para la exportación e importación de los rangos de tono de color por familia.
+81. [x] Incluir los rangos de tono de color por familia en la exportación e importación de configuraciones.
+82. [x] Crear pruebas unitarias para la exportación e importación de los rangos de tono de color por familia.
+83. [ ] Validar que los rangos de tono de color tengan contraste adecuado y que el color brillante sea más claro que el oscuro.
