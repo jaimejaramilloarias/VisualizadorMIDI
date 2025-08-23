@@ -20,6 +20,12 @@ const {
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,
+  setOpacityScale,
+  getOpacityScale,
+  setGlowStrength,
+  getGlowStrength,
+  setBumpControl,
+  getBumpControl,
   preprocessTempoMap,
   ticksToSeconds,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
@@ -117,6 +123,66 @@ if (typeof document !== 'undefined') {
       });
       developerControls.appendChild(velLabel);
       developerControls.appendChild(velInput);
+
+      // Control para la escala de opacidad
+      const { edge, mid } = getOpacityScale();
+      const edgeLabel = document.createElement('label');
+      edgeLabel.textContent = 'Opacidad extremos (%):';
+      const edgeInput = document.createElement('input');
+      edgeInput.type = 'number';
+      edgeInput.min = '0';
+      edgeInput.max = '100';
+      edgeInput.value = Math.round(edge * 100);
+      const midLabel = document.createElement('label');
+      midLabel.textContent = 'Opacidad centro (%):';
+      const midInput = document.createElement('input');
+      midInput.type = 'number';
+      midInput.min = '0';
+      midInput.max = '100';
+      midInput.value = Math.round(mid * 100);
+      const updateOpacityScale = () => {
+        const e = parseFloat(edgeInput.value) / 100;
+        const m = parseFloat(midInput.value) / 100;
+        if (!isNaN(e) && !isNaN(m) && m >= e && m <= 1) {
+          setOpacityScale(e, m);
+        }
+      };
+      edgeInput.addEventListener('change', updateOpacityScale);
+      midInput.addEventListener('change', updateOpacityScale);
+      developerControls.appendChild(edgeLabel);
+      developerControls.appendChild(edgeInput);
+      developerControls.appendChild(midLabel);
+      developerControls.appendChild(midInput);
+
+      // Control para el glow
+      const glowLabel = document.createElement('label');
+      glowLabel.textContent = 'Glow (%):';
+      const glowInput = document.createElement('input');
+      glowInput.type = 'number';
+      glowInput.min = '0';
+      glowInput.max = '300';
+      glowInput.value = Math.round(getGlowStrength() * 100);
+      glowInput.addEventListener('change', () => {
+        const val = parseInt(glowInput.value, 10);
+        if (!isNaN(val)) setGlowStrength(Math.max(0, val) / 100);
+      });
+      developerControls.appendChild(glowLabel);
+      developerControls.appendChild(glowInput);
+
+      // Control para el bump
+      const bumpLabel = document.createElement('label');
+      bumpLabel.textContent = 'Bump (%):';
+      const bumpInput = document.createElement('input');
+      bumpInput.type = 'number';
+      bumpInput.min = '0';
+      bumpInput.max = '300';
+      bumpInput.value = Math.round(getBumpControl() * 100);
+      bumpInput.addEventListener('change', () => {
+        const val = parseInt(bumpInput.value, 10);
+        if (!isNaN(val)) setBumpControl(Math.max(0, val) / 100);
+      });
+      developerControls.appendChild(bumpLabel);
+      developerControls.appendChild(bumpInput);
     }
 
     let currentTracks = [];
@@ -1054,6 +1120,12 @@ if (typeof module !== 'undefined') {
       computeVelocityHeight,
       setVelocityBase,
       getVelocityBase,
+      setOpacityScale,
+      getOpacityScale,
+      setGlowStrength,
+      getGlowStrength,
+      setBumpControl,
+      getBumpControl,
       preprocessTempoMap,
       ticksToSeconds,
       setFamilyCustomization,
