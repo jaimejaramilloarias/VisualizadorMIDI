@@ -1,5 +1,10 @@
 const assert = require('assert');
-const { computeOpacity, computeBumpHeight, computeGlowAlpha } = require('./script');
+const {
+  computeOpacity,
+  computeBumpHeight,
+  computeGlowAlpha,
+  applyGlowEffect,
+} = require('./script');
 
 function approx(actual, expected, eps = 1e-6) {
   assert(Math.abs(actual - expected) < eps, `${actual} != ${expected}`);
@@ -22,5 +27,24 @@ approx(computeBumpHeight(base, 0, 0, 1, 0.8), 18); // Bump +30%
 approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
 approx(computeGlowAlpha(0.1, 0), 0.5); // Mitad del efecto
 approx(computeGlowAlpha(0.25, 0), 0); // Efecto terminado
+
+// Prueba para applyGlowEffect con desenfoque
+const glowCtx = {
+  shadowBlur: 0,
+  shadowColor: null,
+  fillStyle: null,
+  save() {},
+  restore() {},
+  beginPath() {},
+  rect() {},
+  fillCalled: false,
+  fill() {
+    this.fillCalled = true;
+  },
+};
+applyGlowEffect(glowCtx, 'square', 0, 0, 10, 10, 0.5);
+assert(glowCtx.shadowBlur > 0, 'shadowBlur no aplicado');
+assert.strictEqual(glowCtx.fillStyle, '#ffffff');
+assert(glowCtx.fillCalled, 'fill no llamado en glow');
 
 console.log('Pruebas de efectos visuales completadas');

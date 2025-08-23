@@ -37,19 +37,21 @@
 37. [x] La línea de presente debe ser invisible.
 38. [x] Las cápsulas deben ser rectángulos con esquinas redondeadas.
 39. [x] El botón de play debe funcionar así esté cargado solo el MIDI/XML sin audio, o el audio sin MIDI/XML.
-40. [ ] La animación debe estar en 60 fps fijos SIEMPRE, y no depender de la frecuencia de la pantalla.
-41. [ ] La velocidad del midi debe salir del tempo map, y NO ser una velocidad constante.
-42. [ ] El brillo de las figuras al pasar por la línea de presente debe ser de tipo glow/blur, y parecer una sombra más que una línea definida.
+40. [x] La animación debe estar en 60 fps fijos SIEMPRE, y no depender de la frecuencia de la pantalla.
+41. [x] La velocidad del midi debe salir del tempo map, y NO ser una velocidad constante.
+42. [x] El brillo de las figuras al pasar por la línea de presente debe ser de tipo glow/blur, y parecer una sombra más que una línea definida.
 43. [x] Los triángulos deben ser equiláteros con el ángulo superior al medio de la figura.
 44. [x] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
 45. [x] Crear pruebas unitarias para la personalización del color del canvas.
 46. [x] Corregir el bug que impedía aplicar el color de fondo seleccionado al canvas en cada frame.
 47. [x] Crear pruebas unitarias para el botón Play funcionando con solo MIDI/XML o solo WAV.
 
-48. [ ] Crear pruebas unitarias para mantener la animación a 60 fps constantes.
-49. [ ] Crear pruebas unitarias para la reproducción basada en el tempo map.
-50. [ ] Crear pruebas unitarias para el efecto de brillo tipo glow/blur.
+48. [x] Crear pruebas unitarias para mantener la animación a 60 fps constantes.
+49. [x] Crear pruebas unitarias para la reproducción basada en el tempo map.
+50. [x] Crear pruebas unitarias para el efecto de brillo tipo glow/blur.
 51. [x] Verificar mediante pruebas la geometría equilátera de los triángulos.
 52. [x] Crear pruebas unitarias para la activación y desactivación de instrumentos en la animación.
 53. [x] Eliminar pruebas unitarias redundantes para simplificar la suite.
-54. [ ] Persistir el estado de activación de instrumentos en la configuración local.
+54. [x] Persistir el estado de activación de instrumentos en la configuración local.
+55. [ ] Crear pruebas unitarias para la persistencia del estado de activación de instrumentos.
+56. [ ] Optimizar la conversión de ticks a segundos utilizando un mapa de tempo preprocesado.

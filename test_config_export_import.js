@@ -12,6 +12,7 @@ const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
 const config = {
   assignedFamilies: { Flauta: 'Metales' },
   familyCustomizations: { Metales: { color: '#123456', shape: 'triangle' } },
+  enabledInstruments: { Flauta: true },
 };
 
 importConfiguration(config, tracks);
