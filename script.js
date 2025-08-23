@@ -17,6 +17,8 @@ const {
   resetStartOffset,
   applyGlowEffect,
   startFixedFPSLoop,
+  computeVelocityHeight,
+  preprocessTempoMap,
   ticksToSeconds,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
@@ -501,17 +503,14 @@ if (typeof document !== 'undefined') {
       }
     });
 
-    function prepareNotesFromTracks(tracks, tempoMap, timeDivision) {
+    function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
+      tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
           if (ev.type === 'note') {
             const start = ticksToSeconds(ev.start, tempoMap, timeDivision);
-            const end = ticksToSeconds(
-              ev.start + ev.duration,
-              tempoMap,
-              timeDivision
-            );
+            const end = ticksToSeconds(ev.start + ev.duration, tempoMap, timeDivision);
             notes.push({
               start,
               end,
@@ -535,7 +534,8 @@ if (typeof document !== 'undefined') {
       const noteHeight = canvas.height / 88;
       getVisibleNotes(notes).forEach((n) => {
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
-        const baseHeight = noteHeight * sizeFactor;
+        let baseHeight = noteHeight * sizeFactor;
+        baseHeight = computeVelocityHeight(baseHeight, n.velocity || 67);
         let xStart;
         let xEnd;
         let width;
@@ -646,6 +646,17 @@ const INSTRUMENT_FAMILIES = {
   Contrabajo: 'Cuerdas frotadas',
   Voz: 'Voces',
 };
+
+const normalizeInstrumentName = (name) =>
+  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
+  (acc, inst) => {
+    acc[normalizeInstrumentName(inst)] = inst;
+    return acc;
+  },
+  {}
+);
 
 // Variación de tono por instrumento según su registro
 const INSTRUMENT_COLOR_SHIFT = {
@@ -776,7 +787,8 @@ function importConfiguration(json, tracks = []) {
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
-    const instrument = t.name;
+    const key = normalizeInstrumentName(t.name);
+    const instrument = NORMALIZED_INSTRUMENT_MAP[key] || t.name;
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
     const shift = INSTRUMENT_COLOR_SHIFT[instrument] || 0;
@@ -994,6 +1006,8 @@ if (typeof module !== 'undefined') {
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
     startFixedFPSLoop,
+    computeVelocityHeight,
+    preprocessTempoMap,
     ticksToSeconds,
     setFamilyCustomization,
     resetFamilyCustomizations,
