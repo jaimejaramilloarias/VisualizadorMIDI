@@ -38,7 +38,7 @@ const {
 const {
   initializeUI: initializeUIControls,
   initializeDeveloperMode: initDeveloperMode,
-  initializeFontSizeControl,
+  initializeFontSizeControl: initFontSizeControl,
 } = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
@@ -108,7 +108,7 @@ if (typeof document !== 'undefined') {
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
     const fontSizeControl = document.getElementById('font-size-control');
     if (fontSizeControl) {
-      initializeFontSizeControl({ slider: fontSizeControl, target: document.documentElement });
+      initFontSizeControl({ slider: fontSizeControl, target: document.documentElement });
     }
     
     let velocityBase = getVelocityBase();
