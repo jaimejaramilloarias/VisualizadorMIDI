@@ -35,9 +35,16 @@ class MockAudioContext {
 }
 
 const player = createAudioPlayer({ createContext: () => new MockAudioContext() });
-const ctx = player.getAudioContext();
+// sin audio ni notas
+assert.strictEqual(player.canStart([]), false);
+// solo audio
 player.loadBuffer({ duration: 10 }, 0.5);
-assert.strictEqual(player.canStart([{ start: 0, end: 1 }]), true);
+assert.strictEqual(player.canStart([]), true);
+// solo notas
+const playerOnlyNotes = createAudioPlayer({ createContext: () => new MockAudioContext() });
+assert.strictEqual(playerOnlyNotes.canStart([{ start: 0, end: 1 }]), true);
+
+const ctx = player.getAudioContext();
 player.start([{ start: 0, end: 1 }]);
 assert.strictEqual(player.isPlaying(), true);
 ctx.currentTime = 2;
