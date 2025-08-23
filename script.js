@@ -18,6 +18,8 @@ const {
   applyGlowEffect,
   startFixedFPSLoop,
   computeVelocityHeight,
+  setVelocityBase,
+  getVelocityBase,
   preprocessTempoMap,
   ticksToSeconds,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
@@ -84,7 +86,29 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    initDeveloperMode({ button: developerBtn, panel: developerControls });
+    let velocityBase = getVelocityBase();
+
+    if (developerBtn && developerControls) {
+      initDeveloperMode({ button: developerBtn, panel: developerControls });
+
+      // Control para ajustar la velocidad base de referencia
+      const velLabel = document.createElement('label');
+      velLabel.textContent = 'Velocidad base:';
+      const velInput = document.createElement('input');
+      velInput.type = 'number';
+      velInput.min = '1';
+      velInput.max = '127';
+      velInput.value = velocityBase;
+      velInput.addEventListener('change', () => {
+        const val = parseInt(velInput.value, 10);
+        if (!isNaN(val)) {
+          velocityBase = Math.max(1, Math.min(127, val));
+          setVelocityBase(velocityBase);
+        }
+      });
+      developerControls.appendChild(velLabel);
+      developerControls.appendChild(velInput);
+    }
 
     let currentTracks = [];
     let notes = [];
@@ -541,7 +565,7 @@ if (typeof document !== 'undefined') {
       getVisibleNotes(notes).forEach((n) => {
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
         let baseHeight = noteHeight * sizeFactor;
-        baseHeight = computeVelocityHeight(baseHeight, n.velocity || 67);
+          baseHeight = computeVelocityHeight(baseHeight, n.velocity || velocityBase);
         let xStart;
         let xEnd;
         let width;
@@ -1011,11 +1035,13 @@ if (typeof module !== 'undefined') {
     computeNoteWidth,
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
-    startFixedFPSLoop,
-    computeVelocityHeight,
-    preprocessTempoMap,
-    ticksToSeconds,
-    setFamilyCustomization,
+      startFixedFPSLoop,
+      computeVelocityHeight,
+      setVelocityBase,
+      getVelocityBase,
+      preprocessTempoMap,
+      ticksToSeconds,
+      setFamilyCustomization,
     resetFamilyCustomizations,
     exportConfiguration,
     importConfiguration,

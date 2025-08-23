@@ -47,8 +47,21 @@ function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
   return baseHeight * (1 + bump * (1 - clamped));
 }
 
+// Referencia de velocidad MIDI para altura 100%
+let velocityBase = 67;
+
+// Permite definir una nueva velocidad base
+function setVelocityBase(value) {
+  velocityBase = value;
+}
+
+// Devuelve la velocidad base actual
+function getVelocityBase() {
+  return velocityBase;
+}
+
 // Escala la altura base de la nota según la velocidad MIDI
-function computeVelocityHeight(baseHeight, velocity, reference = 67) {
+function computeVelocityHeight(baseHeight, velocity, reference = velocityBase) {
   return baseHeight * (velocity / reference);
 }
 
@@ -288,6 +301,8 @@ const utils = {
   drawNoteShape,
   adjustColorBrightness,
   computeVelocityHeight,
+  setVelocityBase,
+  getVelocityBase,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
