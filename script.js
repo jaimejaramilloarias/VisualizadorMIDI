@@ -15,6 +15,25 @@ if (typeof document !== 'undefined') {
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
     const playBtn = document.getElementById('play-stop');
+    const instrumentSelect = document.getElementById('instrument-select');
+    const familySelect = document.getElementById('family-select');
+    let currentTracks = [];
+
+    function populateInstrumentDropdown(tracks) {
+      instrumentSelect.innerHTML = '<option>Instrumento</option>';
+      tracks.forEach((t) => {
+        const opt = document.createElement('option');
+        opt.value = t.instrument;
+        opt.textContent = t.instrument;
+        instrumentSelect.appendChild(opt);
+      });
+    }
+
+    instrumentSelect.addEventListener('change', () => {
+      const selected = instrumentSelect.value;
+      const track = currentTracks.find((t) => t.instrument === selected);
+      familySelect.value = track ? track.family : '';
+    });
 
     // ----- Configuración de Audio -----
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -36,12 +55,16 @@ if (typeof document !== 'undefined') {
       if (ext === 'mid' || ext === 'midi') {
         reader.onload = (ev) => {
           const midi = parseMIDI(ev.target.result);
+          currentTracks = midi.tracks;
+          populateInstrumentDropdown(currentTracks);
           console.log('MIDI parsed', midi);
         };
         reader.readAsArrayBuffer(file);
       } else if (ext === 'xml') {
         reader.onload = (ev) => {
           const xml = parseMusicXML(ev.target.result);
+          currentTracks = xml.tracks;
+          populateInstrumentDropdown(currentTracks);
           console.log('MusicXML parsed', xml);
         };
         reader.readAsText(file);
