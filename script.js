@@ -20,6 +20,13 @@ function computeBumpHeight(baseHeight, currentSec, start, end) {
   return baseHeight * (1.5 - 0.5 * clamped);
 }
 
+// Calcula la intensidad del brillo en el NOTE ON
+function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
+  if (currentSec < start || currentSec > start + glowDuration) return 0;
+  const progress = (currentSec - start) / glowDuration;
+  return 1 - progress;
+}
+
 // Calcula un nuevo offset al buscar hacia adelante o atrás
 function computeSeekOffset(startOffset, delta, duration, trimOffset = 0) {
   const maxOffset = Math.max(0, duration - trimOffset);
@@ -390,10 +397,10 @@ if (typeof document !== 'undefined') {
         ctx.restore();
 
         // Brillo blanco corto en el NOTE ON presente
-        if (currentSec >= n.start && currentSec <= n.start + 0.2) {
-          const glowProgress = 1 - (currentSec - n.start) / 0.2;
+        const glowAlpha = computeGlowAlpha(currentSec, n.start);
+        if (glowAlpha > 0) {
           ctx.save();
-          ctx.globalAlpha = glowProgress;
+          ctx.globalAlpha = glowAlpha;
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
           ctx.strokeRect(xStart, y, width, height);
@@ -680,6 +687,7 @@ if (typeof module !== 'undefined') {
     INSTRUMENT_FAMILIES,
     computeOpacity,
     computeBumpHeight,
+    computeGlowAlpha,
     computeSeekOffset,
     resetStartOffset,
   };

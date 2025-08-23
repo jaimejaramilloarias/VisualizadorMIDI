@@ -16,6 +16,8 @@
 16. [x] Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.
 17. [x] Crear pruebas unitarias para la lógica de opacidad y efectos visuales.
 18. [x] Crear pruebas unitarias para los controles de reproducción.
-19. Crear pruebas unitarias para el efecto de brillo en el NOTE ON.
+19. [x] Crear pruebas unitarias para el efecto de brillo en el NOTE ON.
 20. Implementar figuras geométricas alargadas para cada familia.
 21. Aplicar variaciones de tono de color por instrumento dentro de cada familia.
+22. Crear pruebas unitarias para las figuras geométricas alargadas.
+23. Crear pruebas unitarias para las variaciones de tono de color por instrumento.
