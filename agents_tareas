@@ -31,8 +31,8 @@
 31. [x] Optimizar el renderizado de notas utilizando técnicas de canvas offscreen.
 32. [x] Modularizar la lógica de carga de archivos MIDI y WAV en componentes separados.
 33. Crear pruebas unitarias para el renderizado mediante canvas offscreen.
-34. Modularizar la lógica de reproducción de audio en un componente separado.
-35. Crear pruebas unitarias para la lógica modular de reproducción de audio.
+34. [x] Modularizar la lógica de reproducción de audio en un componente separado.
+35. [x] Crear pruebas unitarias para la lógica modular de reproducción de audio.
 36. [x] El color de fondo del canvas debe ser negro absoluto, pero en el panel inferior debe existir la posibilidad de cambiar el color del canvas.
 37. [x] La línea de presente debe ser invisible.
 38. [x] Las cápsulas deben ser rectángulos con esquinas redondeadas.
