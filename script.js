@@ -60,7 +60,9 @@ function setInstrumentEnabled(inst, enabled) {
 }
 
 function getVisibleNotes(allNotes) {
-  return allNotes.filter((n) => enabledInstruments[n.instrument] !== false);
+  return allNotes.filter(
+    (n) => enabledInstruments[n.trackName ?? n.instrument] !== false,
+  );
 }
 
 if (typeof document !== 'undefined') {
@@ -232,22 +234,29 @@ if (typeof document !== 'undefined') {
       }
     }
 
-    function updateTrackFamily(inst, fam) {
-      const track = currentTracks.find((t) => t.instrument === inst);
+    function updateTrackFamily(trackName, fam) {
+      const track = currentTracks.find((t) => t.name === trackName);
+      const preset =
+        FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
       if (track) {
         track.family = fam;
-        const preset =
-          FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
         track.shape = preset.shape;
         track.color = getInstrumentColor(preset, track.instrument);
       }
+      notes.forEach((n) => {
+        if ((n.trackName ?? n.instrument) === trackName) {
+          n.family = fam;
+          n.shape = preset.shape;
+          n.color = getInstrumentColor(preset, n.instrument);
+        }
+      });
     }
 
     function applyStoredAssignments() {
       currentTracks.forEach((t) => {
-        const fam = assignedFamilies[t.instrument];
+        const fam = assignedFamilies[t.name];
         if (fam) {
-          updateTrackFamily(t.instrument, fam);
+          updateTrackFamily(t.name, fam);
         }
       });
     }
@@ -302,12 +311,12 @@ if (typeof document !== 'undefined') {
         item.className = 'family-config-item';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = enabledInstruments[t.instrument] !== false;
+        checkbox.checked = enabledInstruments[t.name] !== false;
         checkbox.addEventListener('change', () =>
-          setInstrumentEnabled(t.instrument, checkbox.checked)
+          setInstrumentEnabled(t.name, checkbox.checked)
         );
         const label = document.createElement('label');
-        label.textContent = t.instrument;
+        label.textContent = t.name;
         item.appendChild(checkbox);
         item.appendChild(label);
         instSection.appendChild(item);
@@ -434,8 +443,8 @@ if (typeof document !== 'undefined') {
       instrumentSelect.innerHTML = '<option>Instrumento</option>';
       tracks.forEach((t) => {
         const opt = document.createElement('option');
-        opt.value = t.instrument;
-        opt.textContent = t.instrument;
+        opt.value = t.name;
+        opt.textContent = t.name;
         instrumentSelect.appendChild(opt);
       });
     }
@@ -490,8 +499,8 @@ if (typeof document !== 'undefined') {
         modalFamilyZones.appendChild(zone);
       });
 
-      const instrumentNames = [...new Set(tracks.map((t) => t.instrument))];
-      instrumentNames.forEach((name) => {
+      tracks.forEach((t) => {
+        const name = t.name;
         const li = document.createElement('li');
         li.textContent = name;
         li.dataset.instrument = name;
@@ -622,8 +631,8 @@ if (typeof document !== 'undefined') {
         tempoMap = tMap || [];
         timeDivision = tDiv || 1;
         currentTracks.forEach((t) => {
-          if (!(t.instrument in enabledInstruments)) {
-            setInstrumentEnabled(t.instrument, true);
+          if (!(t.name in enabledInstruments)) {
+            setInstrumentEnabled(t.name, true);
           }
         });
         applyStoredAssignments();
@@ -711,6 +720,7 @@ if (typeof document !== 'undefined') {
               shape: track.shape || 'square',
               family: track.family,
               instrument: track.instrument,
+              trackName: track.name,
             });
           }
         });
@@ -1040,11 +1050,7 @@ function exportConfiguration() {
 
 function importConfiguration(json, tracks = [], notes = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
-  assignedFamilies = {};
-  Object.entries(data.assignedFamilies || {}).forEach(([name, fam]) => {
-    const inst = resolveInstrumentName(name);
-    assignedFamilies[inst] = fam;
-  });
+  assignedFamilies = { ...((data.assignedFamilies || {})) };
   const famCustoms = data.familyCustomizations || {};
   familyCustomizations = famCustoms;
   Object.assign(enabledInstruments, data.enabledInstruments || {});
@@ -1086,7 +1092,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     localStorage.setItem('enabledInstruments', JSON.stringify(enabledInstruments));
   }
   tracks.forEach((t) => {
-    const fam = assignedFamilies[t.instrument] || t.family;
+    const fam = assignedFamilies[t.name] || t.family;
     t.family = fam;
     const preset =
       FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
@@ -1094,7 +1100,8 @@ function importConfiguration(json, tracks = [], notes = []) {
     t.color = getInstrumentColor(preset, t.instrument);
   });
   notes.forEach((n) => {
-    const fam = assignedFamilies[n.instrument] || n.family;
+    const key = n.trackName ?? n.instrument;
+    const fam = assignedFamilies[key] || n.family;
     n.family = fam;
     const preset =
       FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
@@ -1205,7 +1212,7 @@ function parseMIDI(arrayBuffer) {
         const meta = [];
         for (let i = 0; i < length; i++) meta.push(data.getUint8(offset++));
         if (metaType === 0x03) {
-          trackName = String.fromCharCode(...meta);
+          trackName = new TextDecoder('utf-8').decode(new Uint8Array(meta));
         } else if (metaType === 0x51 && length === 3) {
           const microsecondsPerBeat = (meta[0] << 16) | (meta[1] << 8) | meta[2];
           events.push({ type: 'tempo', time: currentTime, microsecondsPerBeat });
