@@ -38,6 +38,7 @@ const {
 const {
   initializeUI: initializeUIControls,
   initializeDeveloperMode: initDeveloperMode,
+  initializeFontSizeControl,
 } = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
@@ -105,6 +106,11 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
+    const fontSizeControl = document.getElementById('font-size-control');
+    if (fontSizeControl) {
+      initializeFontSizeControl({ slider: fontSizeControl, target: document.documentElement });
+    }
+    
     let velocityBase = getVelocityBase();
 
     if (developerBtn && developerControls) {

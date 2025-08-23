@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Visualizador MIDI - Jaime Jaramillo Arias</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap&subset=latin-ext" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -19,6 +19,8 @@
     <button id="aspect-16-9">16:9</button>
     <button id="aspect-9-16">9:16</button>
     <button id="full-screen">Pantalla completa</button>
+    <label for="font-size-control">Tamaño texto</label>
+    <input type="range" id="font-size-control" min="0.8" max="1.5" step="0.1" value="1" />
   </nav>
 
   <canvas id="visualizer" width="1280" height="720"></canvas>
