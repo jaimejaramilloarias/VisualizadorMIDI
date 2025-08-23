@@ -53,9 +53,24 @@
       <option>Cuerdas frotadas</option>
       <option>Cuerdas pulsadas</option>
       <option>Voces</option>
-      <option>Desconocida</option>
     </select>
   </nav>
+
+  <div id="assignment-modal" class="hidden">
+    <div class="modal-content">
+      <div class="modal-columns">
+        <div class="instruments-column">
+          <h3>Instrumentos</h3>
+          <ul id="modal-instrument-list"></ul>
+        </div>
+        <div class="families-column">
+          <h3>Familias</h3>
+          <div id="modal-family-zones"></div>
+        </div>
+      </div>
+      <button id="apply-assignments">Aplicar</button>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
