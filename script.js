@@ -27,6 +27,87 @@ function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
   return 1 - progress;
 }
 
+// Dibuja una figura en el contexto del canvas según el tipo especificado
+function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
+  ctx.beginPath();
+  switch (shape) {
+    case 'oval':
+      ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+      break;
+    case 'capsule': {
+      const r = height / 2;
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.arc(x + width - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(x + r, y + height);
+      ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2, true);
+      break;
+    }
+    case 'star': {
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const w = width / 2;
+      const h = height / 2;
+      ctx.moveTo(cx, y);
+      ctx.lineTo(cx + w * 0.2, cy - h * 0.2);
+      ctx.lineTo(x + width, cy);
+      ctx.lineTo(cx + w * 0.2, cy + h * 0.2);
+      ctx.lineTo(cx, y + height);
+      ctx.lineTo(cx - w * 0.2, cy + h * 0.2);
+      ctx.lineTo(x, cy);
+      ctx.lineTo(cx - w * 0.2, cy - h * 0.2);
+      ctx.closePath();
+      break;
+    }
+    case 'triangle':
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + width, y + height / 2);
+      ctx.lineTo(x, y + height);
+      ctx.closePath();
+      break;
+    case 'circle':
+      ctx.arc(x + width / 2, y + height / 2, height / 2, 0, Math.PI * 2);
+      break;
+    case 'square':
+      ctx.rect(x, y, width, height);
+      break;
+    case 'star4': {
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const w = width / 2;
+      const h = height / 2;
+      ctx.moveTo(cx, y);
+      ctx.lineTo(cx + w * 0.3, cy);
+      ctx.lineTo(x + width, cy);
+      ctx.lineTo(cx, cy + h * 0.3);
+      ctx.lineTo(cx, y + height);
+      ctx.lineTo(cx - w * 0.3, cy);
+      ctx.lineTo(x, cy);
+      ctx.lineTo(cx, cy - h * 0.3);
+      ctx.closePath();
+      break;
+    }
+    case 'pentagon': {
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const r = Math.min(width, height) / 2;
+      for (let i = 0; i < 5; i++) {
+        const angle = (-Math.PI / 2) + (i * (2 * Math.PI) / 5);
+        const px = cx + r * Math.cos(angle);
+        const py = cy + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    }
+    default:
+      ctx.rect(x, y, width, height);
+  }
+  if (stroke) ctx.stroke();
+  else ctx.fill();
+}
+
 // Ajusta el brillo de un color hex según un factor (-1 a 1)
 function adjustColorBrightness(color, factor) {
   const r = parseInt(color.slice(1, 3), 16);
@@ -383,6 +464,7 @@ if (typeof document !== 'undefined') {
               end: start + duration,
               noteNumber: ev.noteNumber,
               color: track.color || '#ffffff',
+              shape: track.shape || 'square',
             });
           }
         });
@@ -413,7 +495,7 @@ if (typeof document !== 'undefined') {
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = n.color;
-        ctx.fillRect(xStart, y, width, height);
+        drawNoteShape(ctx, n.shape, xStart, y, width, height);
         ctx.restore();
 
         // Brillo blanco corto en el NOTE ON presente
@@ -423,7 +505,7 @@ if (typeof document !== 'undefined') {
           ctx.globalAlpha = glowAlpha;
           ctx.strokeStyle = '#fff';
           ctx.lineWidth = 2;
-          ctx.strokeRect(xStart, y, width, height);
+          drawNoteShape(ctx, n.shape, xStart, y, width, height, true);
           ctx.restore();
         }
       });
@@ -733,5 +815,6 @@ if (typeof module !== 'undefined') {
     computeGlowAlpha,
     computeSeekOffset,
     resetStartOffset,
+    drawNoteShape,
   };
 }
