@@ -45,6 +45,45 @@ function interpolateColor(color1, color2, factor) {
     .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+// Luminancia relativa de un color hex
+function getLuminance(color) {
+  const num = parseInt(color.slice(1), 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  const srgb = [r, g, b].map((c) => {
+    const chan = c / 255;
+    return chan <= 0.03928
+      ? chan / 12.92
+      : Math.pow((chan + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+}
+
+// Ajusta colores brillantes y oscuros para garantizar contraste
+const MIN_COLOR_CONTRAST = 0.2;
+
+function validateColorRange(bright, dark) {
+  let lumBright = getLuminance(bright);
+  let lumDark = getLuminance(dark);
+  if (lumBright < lumDark) {
+    [bright, dark] = [dark, bright];
+    [lumBright, lumDark] = [lumDark, lumBright];
+  }
+  let diff = lumBright - lumDark;
+  let iterations = 0;
+  while (diff < MIN_COLOR_CONTRAST && iterations < 20) {
+    bright = adjustColorBrightness(bright, 0.05);
+    dark = adjustColorBrightness(dark, -0.05);
+    lumBright = getLuminance(bright);
+    lumDark = getLuminance(dark);
+    diff = lumBright - lumDark;
+    iterations++;
+    if (bright === '#ffffff' && dark === '#000000') break;
+  }
+  return { bright, dark };
+}
+
 // Parámetros configurables de opacidad
 let opacityScale = { edge: 0.05, mid: 0.7 };
 
@@ -402,6 +441,8 @@ const utils = {
   drawNoteShape,
   adjustColorBrightness,
   interpolateColor,
+  getLuminance,
+  validateColorRange,
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,
