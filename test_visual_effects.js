@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { computeOpacity, computeBumpHeight } = require('./script');
+const { computeOpacity, computeBumpHeight, computeGlowAlpha } = require('./script');
 
 function approx(actual, expected, eps = 1e-6) {
   assert(Math.abs(actual - expected) < eps, `${actual} != ${expected}`);
@@ -16,5 +16,10 @@ approx(computeBumpHeight(base, -0.1, 0, 1), base); // Antes de la nota
 approx(computeBumpHeight(base, 0, 0, 1), 15); // En el NOTE ON
 approx(computeBumpHeight(base, 0.5, 0, 1), 12.5); // Mitad del intervalo
 approx(computeBumpHeight(base, 1, 0, 1), base); // En el NOTE OFF
+
+// Pruebas para computeGlowAlpha
+approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
+approx(computeGlowAlpha(0.1, 0), 0.5); // Mitad del efecto
+approx(computeGlowAlpha(0.25, 0), 0); // Efecto terminado
 
 console.log('Pruebas de efectos visuales completadas');
