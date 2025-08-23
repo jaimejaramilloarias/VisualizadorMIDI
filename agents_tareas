@@ -74,5 +74,6 @@
 73. [x] Crear pruebas unitarias para la definición de la velocidad base.
 74. [x] Persistir la velocidad base en la configuración local.
 75. [x] Crear pruebas unitarias para la persistencia de la velocidad base.
-76. [ ] Incluir la velocidad base en la exportación e importación de configuraciones.
-77. [ ] Crear pruebas unitarias para la exportación e importación de la velocidad base.
+76. [x] Incluir la velocidad base en la exportación e importación de configuraciones.
+77. [x] Crear pruebas unitarias para la exportación e importación de la velocidad base.
+78. [x] Asegurar que los controles del modo desarrollador permanezcan visibles tras reconstruir el panel de familias.

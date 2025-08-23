@@ -89,7 +89,16 @@ if (typeof document !== 'undefined') {
     let velocityBase = getVelocityBase();
 
     if (developerBtn && developerControls) {
-      initDeveloperMode({ button: developerBtn, panel: developerControls });
+      const devMode = initDeveloperMode({
+        button: developerBtn,
+        panel: developerControls,
+      });
+
+      developerBtn.addEventListener('click', () => {
+        if (devMode.isActive()) {
+          familyPanel.classList.add('active');
+        }
+      });
 
       // Control para ajustar la velocidad base de referencia
       const velLabel = document.createElement('label');
@@ -149,7 +158,9 @@ if (typeof document !== 'undefined') {
     }
 
     function buildFamilyPanel() {
+      const devControls = document.getElementById('developer-controls');
       familyPanel.innerHTML = '';
+      if (devControls) familyPanel.appendChild(devControls);
 
       const bgItem = document.createElement('div');
       bgItem.className = 'family-config-item';
@@ -781,6 +792,7 @@ function exportConfiguration() {
     assignedFamilies,
     familyCustomizations,
     enabledInstruments,
+    velocityBase: getVelocityBase(),
   });
 }
 
@@ -789,6 +801,9 @@ function importConfiguration(json, tracks = []) {
   assignedFamilies = data.assignedFamilies || {};
   familyCustomizations = data.familyCustomizations || {};
   Object.assign(enabledInstruments, data.enabledInstruments || {});
+  if (typeof data.velocityBase === 'number') {
+    setVelocityBase(data.velocityBase);
+  }
 
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
