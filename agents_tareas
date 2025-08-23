@@ -5,7 +5,7 @@
 5. [x] Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
 6. [x] Incorporar opacidad variable en los extremos, cambio brusco al 100% en la línea de presente y retorno progresivo al 5%.
 7. [x] Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
-8. Implementar figuras geométricas correspondientes a cada familia y variaciones de tono por instrumento.
+8. [x] Implementar figuras geométricas correspondientes a cada familia.
 9. [x] Agregar controles de reproducción: Play/Stop (barra espaciadora), Adelantar, Atrasar e Inicio.
 10. Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
 11. Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
@@ -17,7 +17,8 @@
 17. [x] Crear pruebas unitarias para la lógica de opacidad y efectos visuales.
 18. [x] Crear pruebas unitarias para los controles de reproducción.
 19. [x] Crear pruebas unitarias para el efecto de brillo en el NOTE ON.
-20. Implementar figuras geométricas alargadas para cada familia.
+20. [x] Implementar figuras geométricas alargadas para cada familia.
 21. [x] Aplicar variaciones de tono de color por instrumento dentro de cada familia.
-22. Crear pruebas unitarias para las figuras geométricas alargadas.
+22. [x] Crear pruebas unitarias para las figuras geométricas alargadas.
 23. [x] Crear pruebas unitarias para las variaciones de tono de color por instrumento.
+24. Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
