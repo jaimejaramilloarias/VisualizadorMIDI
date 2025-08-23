@@ -7,7 +7,7 @@
 7. [x] Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
 8. [x] Implementar figuras geométricas correspondientes a cada familia.
 9. [x] Agregar controles de reproducción: Play/Stop (barra espaciadora), Adelantar, Atrasar e Inicio.
-10. Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
+10. [x] Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
 11. Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
 12. Optimizar rendimiento y modularizar el código con comentarios claros para facilitar el desarrollo incremental.
 13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI y MusicXML.
@@ -23,3 +23,4 @@
 23. [x] Crear pruebas unitarias para las variaciones de tono de color por instrumento.
 24. [x] Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
 25. [x] Crear pruebas unitarias para los modificadores de familia.
+26. [x] Crear pruebas unitarias para la lógica de cambio de aspecto y pantalla completa.

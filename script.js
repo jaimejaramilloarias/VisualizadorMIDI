@@ -151,6 +151,41 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
   return (note.end - note.start) * pixelsPerSecond;
 }
 
+// Calcula dimensiones del canvas según relación de aspecto y modo de pantalla
+function calculateCanvasSize(
+  aspect = '16:9',
+  baseHeight = 720,
+  fullScreen = false,
+  viewportWidth = 0,
+  viewportHeight = 0,
+  dpr = 1
+) {
+  const ratio = aspect === '9:16' ? 9 / 16 : 16 / 9;
+  let styleWidth;
+  let styleHeight;
+
+  if (!fullScreen) {
+    styleHeight = baseHeight;
+    styleWidth = Math.round(baseHeight * ratio);
+  } else {
+    let width = viewportWidth;
+    let height = width / ratio;
+    if (height > viewportHeight) {
+      height = viewportHeight;
+      width = height * ratio;
+    }
+    styleWidth = Math.round(width);
+    styleHeight = Math.round(height);
+  }
+
+  return {
+    width: Math.round(styleWidth * dpr),
+    height: Math.round(styleHeight * dpr),
+    styleWidth,
+    styleHeight,
+  };
+}
+
 // Calcula un nuevo offset al buscar hacia adelante o atrás
 function computeSeekOffset(startOffset, delta, duration, trimOffset = 0) {
   const maxOffset = Math.max(0, duration - trimOffset);
@@ -179,6 +214,9 @@ if (typeof document !== 'undefined') {
     const forwardBtn = document.getElementById('seek-forward');
     const backwardBtn = document.getElementById('seek-backward');
     const restartBtn = document.getElementById('restart');
+    const aspect169Btn = document.getElementById('aspect-16-9');
+    const aspect916Btn = document.getElementById('aspect-9-16');
+    const fullScreenBtn = document.getElementById('full-screen');
     const instrumentSelect = document.getElementById('instrument-select');
     const familySelect = document.getElementById('family-select');
     const assignmentModal = document.getElementById('assignment-modal');
@@ -189,7 +227,9 @@ if (typeof document !== 'undefined') {
     let notes = [];
     const NOTE_MIN = 21;
     const NOTE_MAX = 108;
-    const pixelsPerSecond = canvas.width / 6;
+    const BASE_HEIGHT = 720;
+    let currentAspect = '16:9';
+    let pixelsPerSecond = canvas.width / 6;
     let animationId = null;
     let playStartTime = 0;
     let startOffset = 0;
@@ -338,6 +378,46 @@ if (typeof document !== 'undefined') {
     let trimOffset = 0; // Tiempo inicial ignorando silencio
     let source = null; // Fuente de audio en reproducción
     let isPlaying = false;
+
+    function applyCanvasSize(fullscreen = !!document.fullscreenElement) {
+      const { width, height, styleWidth, styleHeight } = calculateCanvasSize(
+        currentAspect,
+        BASE_HEIGHT,
+        fullscreen,
+        window.innerWidth,
+        window.innerHeight,
+        window.devicePixelRatio || 1
+      );
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = `${styleWidth}px`;
+      canvas.style.height = `${styleHeight}px`;
+      pixelsPerSecond = canvas.width / 6;
+    }
+
+    applyCanvasSize(false);
+
+    aspect169Btn.addEventListener('click', () => {
+      currentAspect = '16:9';
+      applyCanvasSize();
+    });
+
+    aspect916Btn.addEventListener('click', () => {
+      currentAspect = '9:16';
+      applyCanvasSize();
+    });
+
+    fullScreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        canvas.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      applyCanvasSize();
+    });
 
     function startPlayback() {
       if (!audioBuffer) return;
@@ -855,6 +935,7 @@ if (typeof module !== 'undefined') {
     drawNoteShape,
     getFamilyModifiers,
     computeNoteWidth,
+    calculateCanvasSize,
     NON_STRETCHED_SHAPES,
   };
 }
