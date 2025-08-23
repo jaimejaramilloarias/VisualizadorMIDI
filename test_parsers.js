@@ -1,5 +1,9 @@
 const assert = require('assert');
-const { parseMIDI, parseMusicXML } = require('./script.js');
+const {
+  parseMIDI,
+  parseMusicXML,
+  assignTrackInfo,
+} = require('./script.js');
 
 // Prueba para parseMIDI con un archivo mínimo en memoria
 function testParseMIDI() {
@@ -66,5 +70,21 @@ function testParseMusicXML() {
   console.log('parseMusicXML OK');
 }
 
+// Prueba para asignación de familia e instrumentación
+function testAssignTrackInfo() {
+  const tracks = [
+    { name: 'Flauta', events: [] },
+    { name: 'Desconocido', events: [] },
+  ];
+  const enriched = assignTrackInfo(tracks);
+  const flute = enriched.find((t) => t.name === 'Flauta');
+  assert.strictEqual(flute.family, 'Maderas de timbre "redondo"');
+  assert.strictEqual(flute.shape, 'oval');
+  const unknown = enriched.find((t) => t.name === 'Desconocido');
+  assert.strictEqual(unknown.family, 'Desconocida');
+  console.log('assignTrackInfo OK');
+}
+
 testParseMIDI();
 testParseMusicXML();
+testAssignTrackInfo();
