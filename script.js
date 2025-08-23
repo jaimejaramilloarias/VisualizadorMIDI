@@ -859,6 +859,9 @@ function exportConfiguration() {
     familyCustomizations,
     enabledInstruments,
     velocityBase: getVelocityBase(),
+    opacityScale: getOpacityScale(),
+    glowStrength: getGlowStrength(),
+    bumpControl: getBumpControl(),
   });
 }
 
@@ -869,6 +872,19 @@ function importConfiguration(json, tracks = []) {
   Object.assign(enabledInstruments, data.enabledInstruments || {});
   if (typeof data.velocityBase === 'number') {
     setVelocityBase(data.velocityBase);
+  }
+  if (
+    data.opacityScale &&
+    typeof data.opacityScale.edge === 'number' &&
+    typeof data.opacityScale.mid === 'number'
+  ) {
+    setOpacityScale(data.opacityScale.edge, data.opacityScale.mid);
+  }
+  if (typeof data.glowStrength === 'number') {
+    setGlowStrength(data.glowStrength);
+  }
+  if (typeof data.bumpControl === 'number') {
+    setBumpControl(data.bumpControl);
   }
 
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {

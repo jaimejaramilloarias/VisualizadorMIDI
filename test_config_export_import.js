@@ -6,6 +6,9 @@ const {
   INSTRUMENT_COLOR_SHIFT,
   adjustColorBrightness,
   getVelocityBase,
+  getOpacityScale,
+  getGlowStrength,
+  getBumpControl,
 } = require('./script.js');
 
 const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
@@ -15,6 +18,9 @@ const config = {
   familyCustomizations: { Metales: { color: '#123456', shape: 'triangle' } },
   enabledInstruments: { Flauta: true },
   velocityBase: 80,
+  opacityScale: { edge: 0.1, mid: 0.8 },
+  glowStrength: 1.5,
+  bumpControl: 1.2,
 };
 
 importConfiguration(config, tracks);
@@ -28,6 +34,9 @@ const expectedColor = adjustColorBrightness(
 assert.strictEqual(tracks[0].color, expectedColor);
 
 assert.strictEqual(getVelocityBase(), 80);
+assert.deepStrictEqual(getOpacityScale(), { edge: 0.1, mid: 0.8 });
+assert.strictEqual(getGlowStrength(), 1.5);
+assert.strictEqual(getBumpControl(), 1.2);
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);
