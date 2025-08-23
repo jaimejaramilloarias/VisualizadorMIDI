@@ -9,8 +9,8 @@
 <body>
   <nav id="top-menu">
     <button id="load-midi">Cargar MIDI/XML</button>
-    <button>Cargar WAV</button>
-    <button>Play/Stop</button>
+    <button id="load-wav">Cargar WAV</button>
+    <button id="play-stop">Play/Stop</button>
     <button>Adelantar</button>
     <button>Atrasar</button>
     <button>Inicio</button>
@@ -25,6 +25,13 @@
     type="file"
     id="midi-file-input"
     accept=".mid,.midi,.xml"
+    style="display: none"
+  />
+
+  <input
+    type="file"
+    id="wav-file-input"
+    accept=".wav,audio/wav"
     style="display: none"
   />
 
