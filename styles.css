@@ -16,6 +16,33 @@ body {
   margin: 10px;
 }
 
+#family-config-panel {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 10px 10px;
+  background: #222;
+  padding: 10px;
+  width: calc(100% - 20px);
+  justify-content: center;
+}
+
+#family-config-panel.active {
+  display: flex;
+}
+
+.family-config-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #333;
+  padding: 5px;
+}
+
+.family-config-item label {
+  min-width: 150px;
+}
+
 #visualizer {
   border: 1px solid #444;
   height: 720px;

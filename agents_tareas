@@ -8,7 +8,7 @@
 8. [x] Implementar figuras geométricas correspondientes a cada familia.
 9. [x] Agregar controles de reproducción: Play/Stop (barra espaciadora), Adelantar, Atrasar e Inicio.
 10. [x] Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
-11. Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
+11. [x] Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
 12. Optimizar rendimiento y modularizar el código con comentarios claros para facilitar el desarrollo incremental.
 13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI y MusicXML.
 14. [x] Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
@@ -24,3 +24,4 @@
 24. [x] Ajustar representación de figuras no alargadas y tamaños especiales por familia (platillos +30%, auxiliares +30% bump, etc.).
 25. [x] Crear pruebas unitarias para los modificadores de familia.
 26. [x] Crear pruebas unitarias para la lógica de cambio de aspecto y pantalla completa.
+27. Permitir restablecer los colores y figuras personalizados de las familias a los valores predeterminados.

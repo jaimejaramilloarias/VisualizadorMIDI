@@ -130,6 +130,17 @@ function adjustColorBrightness(color, factor) {
 
 const NON_STRETCHED_SHAPES = new Set(['circle', 'square', 'star4', 'pentagon']);
 
+const SHAPE_OPTIONS = [
+  { value: 'oval', label: 'Óvalo alargado' },
+  { value: 'capsule', label: 'Cápsula alargada' },
+  { value: 'star', label: 'Estrella alargada' },
+  { value: 'triangle', label: 'Triángulo alargado' },
+  { value: 'circle', label: 'Círculo' },
+  { value: 'square', label: 'Cuadrado' },
+  { value: 'star4', label: 'Estrella 4 puntas' },
+  { value: 'pentagon', label: 'Pentágono' },
+];
+
 function getFamilyModifiers(family) {
   switch (family) {
     case 'Platillos':
@@ -219,6 +230,8 @@ if (typeof document !== 'undefined') {
     const fullScreenBtn = document.getElementById('full-screen');
     const instrumentSelect = document.getElementById('instrument-select');
     const familySelect = document.getElementById('family-select');
+    const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
+    const familyPanel = document.getElementById('family-config-panel');
     const assignmentModal = document.getElementById('assignment-modal');
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
@@ -257,6 +270,41 @@ if (typeof document !== 'undefined') {
         if (fam) {
           updateTrackFamily(t.instrument, fam);
         }
+      });
+    }
+
+    function buildFamilyPanel() {
+      familyPanel.innerHTML = '';
+      FAMILY_LIST.forEach((family) => {
+        const item = document.createElement('div');
+        item.className = 'family-config-item';
+        item.dataset.family = family;
+
+        const label = document.createElement('label');
+        label.textContent = family;
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = FAMILY_PRESETS[family]?.color || '#ffffff';
+        const shapeSelect = document.createElement('select');
+        SHAPE_OPTIONS.forEach((opt) => {
+          const o = document.createElement('option');
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (opt.value === (FAMILY_PRESETS[family]?.shape || '')) o.selected = true;
+          shapeSelect.appendChild(o);
+        });
+
+        colorInput.addEventListener('change', () => {
+          setFamilyCustomization(family, { color: colorInput.value }, currentTracks);
+        });
+        shapeSelect.addEventListener('change', () => {
+          setFamilyCustomization(family, { shape: shapeSelect.value }, currentTracks);
+        });
+
+        item.appendChild(label);
+        item.appendChild(colorInput);
+        item.appendChild(shapeSelect);
+        familyPanel.appendChild(item);
       });
     }
 
@@ -361,6 +409,13 @@ if (typeof document !== 'undefined') {
       familySelect.value = '';
       assignmentModal.style.display = 'none';
     });
+
+    toggleFamilyPanelBtn.addEventListener('click', () => {
+      const open = familyPanel.classList.toggle('active');
+      toggleFamilyPanelBtn.textContent = open ? '▲' : '▼';
+    });
+
+    buildFamilyPanel();
 
     // ----- Configuración de Audio -----
     let audioCtx;
@@ -726,6 +781,39 @@ if (typeof localStorage !== 'undefined') {
   assignedFamilies = JSON.parse(localStorage.getItem('instrumentFamilies') || '{}');
 }
 
+let familyCustomizations = {};
+if (typeof localStorage !== 'undefined') {
+  familyCustomizations = JSON.parse(localStorage.getItem('familyCustomizations') || '{}');
+  Object.entries(familyCustomizations).forEach(([fam, cfg]) => {
+    if (FAMILY_PRESETS[fam]) {
+      if (cfg.color) FAMILY_PRESETS[fam].color = cfg.color;
+      if (cfg.shape) FAMILY_PRESETS[fam].shape = cfg.shape;
+    }
+  });
+}
+
+function saveFamilyCustomizations() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('familyCustomizations', JSON.stringify(familyCustomizations));
+  }
+}
+
+function setFamilyCustomization(family, { color, shape }, tracks = []) {
+  const preset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
+  if (color) preset.color = color;
+  if (shape) preset.shape = shape;
+  FAMILY_PRESETS[family] = preset;
+  familyCustomizations[family] = { color: preset.color, shape: preset.shape };
+  saveFamilyCustomizations();
+  tracks.forEach((t) => {
+    if (t.family === family) {
+      t.shape = preset.shape;
+      const shift = INSTRUMENT_COLOR_SHIFT[t.instrument] || 0;
+      t.color = adjustColorBrightness(preset.color, shift);
+    }
+  });
+}
+
 // Asigna instrumento, familia, forma y color a cada pista
 function assignTrackInfo(tracks) {
   return tracks.map((t) => {
@@ -937,5 +1025,6 @@ if (typeof module !== 'undefined') {
     computeNoteWidth,
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
+    setFamilyCustomization,
   };
 }
