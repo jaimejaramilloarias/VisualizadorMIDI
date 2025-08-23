@@ -127,7 +127,8 @@ if (typeof document !== 'undefined') {
 
         const assigned = assignedFamilies[name];
         if (assigned) {
-          const zone = modalFamilyZones.querySelector(`.family-zone[data-family="${assigned}"] ul`);
+          const selector = `.family-zone[data-family='${CSS.escape(assigned)}'] ul`;
+          const zone = modalFamilyZones.querySelector(selector);
           if (zone) zone.appendChild(li);
           else modalInstrumentList.appendChild(li);
         } else {
@@ -156,7 +157,17 @@ if (typeof document !== 'undefined') {
     });
 
     // ----- Configuración de Audio -----
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let audioCtx;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
     let audioBuffer = null; // Buffer de audio cargado
     let trimOffset = 0; // Tiempo inicial ignorando silencio
     let source = null; // Fuente de audio en reproducción
@@ -212,7 +223,7 @@ if (typeof document !== 'undefined') {
       const file = e.target.files[0];
       if (!file) return;
       const arrayBuffer = await file.arrayBuffer();
-      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+      audioBuffer = await getAudioContext().decodeAudioData(arrayBuffer);
 
       // Detectar primer sample significativo para ignorar silencio
       const channel = audioBuffer.getChannelData(0);
@@ -229,15 +240,16 @@ if (typeof document !== 'undefined') {
     playBtn.addEventListener('click', async () => {
       if (!audioBuffer) return;
       if (!isPlaying) {
-        await audioCtx.resume();
-        source = audioCtx.createBufferSource();
+        const ctx = getAudioContext();
+        await ctx.resume();
+        source = ctx.createBufferSource();
         source.buffer = audioBuffer;
-        source.connect(audioCtx.destination);
+        source.connect(ctx.destination);
         source.onended = () => {
           isPlaying = false;
           stopAnimation();
         };
-        playStartTime = audioCtx.currentTime;
+        playStartTime = ctx.currentTime;
         source.start(0, trimOffset);
         isPlaying = true;
         startAnimation();
@@ -291,7 +303,7 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       const step = () => {
-        const currentSec = audioCtx.currentTime - playStartTime;
+        const currentSec = getAudioContext().currentTime - playStartTime;
         renderFrame(currentSec);
         if (isPlaying) animationId = requestAnimationFrame(step);
       };
