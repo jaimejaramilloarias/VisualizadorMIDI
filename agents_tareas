@@ -43,3 +43,4 @@
 43. [ ] Los triángulos deben ser equiláteros con el ángulo superior al medio de la figura.
 44. [ ] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
 45. [x] Crear pruebas unitarias para la personalización del color del canvas.
+46. [x] Corregir el bug que impedía aplicar el color de fondo seleccionado al canvas en cada frame.

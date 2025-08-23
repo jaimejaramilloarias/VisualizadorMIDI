@@ -27,10 +27,14 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 global.document = dom.window.document;
 global.window = dom.window;
 
+const contexts = [];
 dom.window.HTMLCanvasElement.prototype.getContext = function() {
-  return {
+  const ctx = {
     fillStyle: '#000',
-    fillRect: function() {},
+    lastFillStyle: null,
+    fillRect: function() {
+      this.lastFillStyle = this.fillStyle;
+    },
     drawImage: function() {},
     clearRect: function() {},
     beginPath: function() {},
@@ -43,16 +47,13 @@ dom.window.HTMLCanvasElement.prototype.getContext = function() {
     fill: function() {},
     stroke: function() {},
   };
+  contexts.push(ctx);
+  return ctx;
 };
 
 global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 global.cancelAnimationFrame = (id) => clearTimeout(id);
 
-require('./script.js');
-
-dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
-
-const canvas = dom.window.document.getElementById('visualizer');
 const toHex = (val) => {
   if (val.startsWith('#')) return val.toLowerCase();
   const m = val.match(/\d+/g);
@@ -65,11 +66,24 @@ const toHex = (val) => {
   );
 };
 
+require('./script.js');
+
+dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+
+// Render inicial para capturar color de fondo
+dom.window.__renderFrame(0);
+assert.strictEqual(toHex(contexts[1].lastFillStyle), '#000000');
+
+const canvas = dom.window.document.getElementById('visualizer');
+
 assert.strictEqual(toHex(canvas.style.backgroundColor), '#000000');
 
 const colorInput = dom.window.document.getElementById('canvas-color-input');
 colorInput.value = '#123456';
 colorInput.dispatchEvent(new dom.window.Event('change'));
+
+dom.window.__renderFrame(0);
+assert.strictEqual(toHex(contexts[1].lastFillStyle), '#123456');
 
 assert.strictEqual(toHex(canvas.style.backgroundColor), '#123456');
 
