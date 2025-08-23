@@ -12,7 +12,7 @@ let { setInstrumentEnabled, getVisibleNotes } = require('./script');
 
 const notes = [
   { instrument: 'Flauta', start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'oval', family: 'Maderas de timbre "redondo"', velocity: 67 },
-  { instrument: 'Violin', start: 0, end: 1, noteNumber: 65, color: '#fff', shape: 'triangle', family: 'Cuerdas frotadas', velocity: 67 },
+  { instrument: 'Violin', start: 0, end: 1, noteNumber: 65, color: '#fff', shape: 'diamond', family: 'Cuerdas frotadas', velocity: 67 },
 ];
 
 setInstrumentEnabled('Flauta', false);

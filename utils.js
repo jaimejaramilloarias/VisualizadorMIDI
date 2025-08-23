@@ -264,10 +264,13 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.closePath();
       break;
     }
-    case 'triangle': {
-      ctx.moveTo(x + width / 2, y);
-      ctx.lineTo(x + width, y + height);
-      ctx.lineTo(x, y + height);
+    case 'diamond': {
+      const midX = x + width / 2;
+      const midY = y + height / 2;
+      ctx.moveTo(x, midY);
+      ctx.lineTo(midX, y);
+      ctx.lineTo(x + width, midY);
+      ctx.lineTo(midX, y + height);
       ctx.closePath();
       break;
     }
@@ -320,7 +323,7 @@ const SHAPE_OPTIONS = [
   { value: 'oval', label: 'Óvalo alargado' },
   { value: 'capsule', label: 'Cápsula alargada' },
   { value: 'star', label: 'Estrella alargada' },
-  { value: 'triangle', label: 'Triángulo alargado' },
+  { value: 'diamond', label: 'Diamante alargado' },
   { value: 'circle', label: 'Círculo' },
   { value: 'square', label: 'Cuadrado' },
   { value: 'star4', label: 'Estrella 4 puntas' },
@@ -398,10 +401,16 @@ function canStartPlayback(audioBuffer, notes) {
   return !!(audioBuffer || (Array.isArray(notes) && notes.length > 0));
 }
 
-// Inicia un bucle de animación a fps constantes utilizando setInterval
+// Inicia un bucle de animación a fps constantes utilizando setInterval y rAF
 function startFixedFPSLoop(callback, fps = 60) {
   const interval = 1000 / fps;
-  const id = setInterval(callback, interval);
+  const id = setInterval(() => {
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(callback);
+    } else {
+      callback();
+    }
+  }, interval);
   return () => clearInterval(id);
 }
 
