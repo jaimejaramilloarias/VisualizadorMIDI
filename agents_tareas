@@ -81,7 +81,7 @@
 80. [x] Crear pruebas unitarias para la exportación e importación de los parámetros de opacidad, glow y bump.
 81. [x] Incluir los rangos de tono de color por familia en la exportación e importación de configuraciones.
 82. [x] Crear pruebas unitarias para la exportación e importación de los rangos de tono de color por familia.
-83. [ ] Validar que los rangos de tono de color tengan contraste adecuado y que el color brillante sea más claro que el oscuro.
+83. [x] Validar que los rangos de tono de color tengan contraste adecuado y que el color brillante sea más claro que el oscuro.
 84. [x] Corregir la aplicación del rango de colores del modo desarrollador a las familias de instrumentos.
 85. [x] Corregir el triángulo alargado para que su base se alinee con NOTE ON y NOTE OFF.
 86. [x] Asegurar que la velocidad base escale proporcionalmente la altura y el bump de las figuras.

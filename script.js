@@ -29,6 +29,7 @@ const {
   getBumpControl,
   preprocessTempoMap,
   ticksToSeconds,
+  validateColorRange,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
@@ -885,7 +886,13 @@ function setFamilyCustomization(
     preset.colorDark = colorDark;
   }
   if (preset.colorBright && preset.colorDark) {
-    preset.color = interpolateColor(preset.colorDark, preset.colorBright, 0.5);
+    const { bright, dark } = validateColorRange(
+      preset.colorBright,
+      preset.colorDark,
+    );
+    preset.colorBright = bright;
+    preset.colorDark = dark;
+    preset.color = interpolateColor(dark, bright, 0.5);
   }
   if (shape) preset.shape = shape;
   FAMILY_PRESETS[family] = preset;

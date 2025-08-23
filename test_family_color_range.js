@@ -5,7 +5,7 @@ const {
   INSTRUMENT_COLOR_SHIFT,
   resetFamilyCustomizations,
 } = require('./script.js');
-const { interpolateColor } = require('./utils.js');
+const { interpolateColor, validateColorRange } = require('./utils.js');
 
 resetFamilyCustomizations();
 
@@ -27,8 +27,7 @@ setFamilyCustomization(
   notes,
 );
 
-const bright = '#0000ff';
-const dark = '#000044';
+const { bright, dark } = validateColorRange('#0000ff', '#000044');
 
 const oboe = tracks.find((t) => t.instrument === 'Oboe');
 const clarinete = tracks.find((t) => t.instrument === 'Clarinete');
