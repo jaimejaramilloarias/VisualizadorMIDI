@@ -35,11 +35,10 @@ const {
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
 // al importar estas funciones, renombramos las referencias locales.
-  const {
-    initializeUI: initializeUIControls,
-    initializeDeveloperMode: initDeveloperMode,
-    initializeFontSelector: initFontSelector,
-  } = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+const {
+  initializeUI: initializeUIControls,
+  initializeDeveloperMode: initDeveloperMode,
+} = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
 const { loadWavFile } =
@@ -106,15 +105,6 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    const fontSelect = document.getElementById('font-select');
-    const fontSizeInput = document.getElementById('font-size');
-    if (fontSelect) {
-      initFontSelector({
-        select: fontSelect,
-        sizeInput: fontSizeInput,
-        target: document.documentElement,
-      });
-    }
     
     let velocityBase = getVelocityBase();
 
@@ -864,8 +854,19 @@ const normalizeAccents = (name) => {
   return decoded.normalize('NFC');
 };
 
+// Normaliza el nombre del instrumento eliminando números,
+// contenido entre paréntesis y numerales romanos para
+// que "Flauta 1" o "Clarinete (Si Bemol) II" se asignen
+// correctamente a su familia.
 const normalizeInstrumentName = (name) =>
-  normalizeAccents(name).toLowerCase();
+  normalizeAccents(name)
+    .toLowerCase()
+    .replace(/\(.*?\)/g, '') // elimina texto entre paréntesis
+    .replace(/\b[ivx]+\b/g, '') // elimina numerales romanos
+    .replace(/\d+/g, '') // elimina dígitos
+    .replace(/[^a-záéíóúüñ\s]/g, '') // remueve otros caracteres
+    .replace(/\s+/g, ' ') // colapsa espacios múltiples
+    .trim();
 
 const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
   (acc, inst) => {
@@ -1028,7 +1029,12 @@ function exportConfiguration() {
 
 function importConfiguration(json, tracks = [], notes = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
-  assignedFamilies = data.assignedFamilies || {};
+  assignedFamilies = {};
+  Object.entries(data.assignedFamilies || {}).forEach(([name, fam]) => {
+    const key = normalizeInstrumentName(name);
+    const inst = NORMALIZED_INSTRUMENT_MAP[key] || normalizeAccents(name);
+    assignedFamilies[inst] = fam;
+  });
   const famCustoms = data.familyCustomizations || {};
   familyCustomizations = famCustoms;
   Object.assign(enabledInstruments, data.enabledInstruments || {});

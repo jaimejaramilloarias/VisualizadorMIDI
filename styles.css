@@ -2,7 +2,7 @@
 /* Estilos básicos para la estructura inicial */
 :root {
   --global-font-size: 0.8rem;
-  font-family: 'Roboto', Arial, Helvetica, sans-serif;
+  font-family: 'Verdana', sans-serif;
 }
 body {
   margin: 0;
@@ -40,15 +40,9 @@ body {
 
 #bottom-menu #instrument-select,
 #bottom-menu #family-select,
-#bottom-menu #font-select,
 #bottom-menu #developer-mode {
   flex: 1;
   min-width: 150px;
-}
-
-#bottom-menu #font-size {
-  flex: 0 0 60px;
-  min-width: 60px;
 }
 
 #bottom-menu #toggle-family-panel {
@@ -58,8 +52,7 @@ body {
 }
 
 #bottom-menu select,
-#bottom-menu button,
-#bottom-menu input {
+#bottom-menu button {
   width: 100%;
   text-align: center;
 }
@@ -73,6 +66,7 @@ input {
   padding: 6px 12px;
   border-radius: 4px;
   font-size: inherit;
+  font-family: inherit;
   transition: background 0.2s;
 }
 
