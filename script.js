@@ -123,8 +123,11 @@ if (typeof document !== 'undefined') {
           setVelocityBase(velocityBase);
         }
       });
-      developerControls.appendChild(velLabel);
-      developerControls.appendChild(velInput);
+      const velItem = document.createElement('div');
+      velItem.className = 'dev-control';
+      velItem.appendChild(velLabel);
+      velItem.appendChild(velInput);
+      developerControls.appendChild(velItem);
 
       // Control para la escala de opacidad
       const { edge, mid } = getOpacityScale();
@@ -151,10 +154,16 @@ if (typeof document !== 'undefined') {
       };
       edgeInput.addEventListener('change', updateOpacityScale);
       midInput.addEventListener('change', updateOpacityScale);
-      developerControls.appendChild(edgeLabel);
-      developerControls.appendChild(edgeInput);
-      developerControls.appendChild(midLabel);
-      developerControls.appendChild(midInput);
+      const edgeItem = document.createElement('div');
+      edgeItem.className = 'dev-control';
+      edgeItem.appendChild(edgeLabel);
+      edgeItem.appendChild(edgeInput);
+      developerControls.appendChild(edgeItem);
+      const midItem = document.createElement('div');
+      midItem.className = 'dev-control';
+      midItem.appendChild(midLabel);
+      midItem.appendChild(midInput);
+      developerControls.appendChild(midItem);
 
       // Control para el glow
       const glowLabel = document.createElement('label');
@@ -168,8 +177,11 @@ if (typeof document !== 'undefined') {
         const val = parseInt(glowInput.value, 10);
         if (!isNaN(val)) setGlowStrength(Math.max(0, val) / 100);
       });
-      developerControls.appendChild(glowLabel);
-      developerControls.appendChild(glowInput);
+      const glowItem = document.createElement('div');
+      glowItem.className = 'dev-control';
+      glowItem.appendChild(glowLabel);
+      glowItem.appendChild(glowInput);
+      developerControls.appendChild(glowItem);
 
       // Control para el bump
       const bumpLabel = document.createElement('label');
@@ -183,8 +195,11 @@ if (typeof document !== 'undefined') {
         const val = parseInt(bumpInput.value, 10);
         if (!isNaN(val)) setBumpControl(Math.max(0, val) / 100);
       });
-      developerControls.appendChild(bumpLabel);
-      developerControls.appendChild(bumpInput);
+      const bumpItem = document.createElement('div');
+      bumpItem.className = 'dev-control';
+      bumpItem.appendChild(bumpLabel);
+      bumpItem.appendChild(bumpInput);
+      developerControls.appendChild(bumpItem);
     }
 
     let currentTracks = [];
@@ -652,6 +667,7 @@ if (typeof document !== 'undefined') {
               start,
               end,
               noteNumber: ev.noteNumber,
+              velocity: ev.velocity,
               color: track.color || '#ffffff',
               shape: track.shape || 'square',
               family: track.family,
