@@ -107,8 +107,13 @@ if (typeof document !== 'undefined') {
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
     const fontSelect = document.getElementById('font-select');
+    const fontSizeInput = document.getElementById('font-size');
     if (fontSelect) {
-      initFontSelector({ select: fontSelect, target: document.documentElement });
+      initFontSelector({
+        select: fontSelect,
+        sizeInput: fontSizeInput,
+        target: document.documentElement,
+      });
     }
     
     let velocityBase = getVelocityBase();

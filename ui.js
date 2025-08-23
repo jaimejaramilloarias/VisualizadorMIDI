@@ -46,14 +46,75 @@ function initializeUI({
   };
 }
 
-function initializeFontSelector({ select, target }) {
+async function initializeFontSelector({ select, sizeInput, target }) {
+  // Load available fonts using the Local Font Access API when possible
+  let fonts = [];
+  if (typeof navigator !== 'undefined' && navigator.fonts && navigator.fonts.query) {
+    try {
+      const fontData = await navigator.fonts.query();
+      const families = new Set(fontData.map((f) => f.family));
+      fonts = Array.from(families).sort();
+    } catch (e) {
+      // Ignore errors and fall back to default fonts
+    }
+  }
+  if (fonts.length === 0) {
+    fonts = ['Arial', 'Verdana', 'Times New Roman', 'Georgia', 'Courier New'];
+  }
+  fonts.forEach((font) => {
+    const option = document.createElement('option');
+    option.value = font;
+    option.textContent = font;
+    select.appendChild(option);
+  });
+
+  // Apply the font immediately when the selection changes
   select.addEventListener('change', () => {
     const font = select.value;
     if (font) {
       target.style.fontFamily = `'${font}', sans-serif`;
     }
   });
-  return { select };
+
+  // Handle font size changes with input and mouse drag
+  if (sizeInput) {
+    const applySize = () => {
+      const size = parseInt(sizeInput.value, 10);
+      if (!isNaN(size)) {
+        target.style.setProperty('--global-font-size', `${size}px`);
+      }
+    };
+
+    sizeInput.addEventListener('input', applySize);
+
+    let dragging = false;
+    let startY = 0;
+    let startSize = 0;
+
+    sizeInput.addEventListener('mousedown', (e) => {
+      dragging = true;
+      startY = e.clientY;
+      startSize = parseInt(sizeInput.value, 10) || 16;
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (dragging) {
+        const delta = startY - e.clientY;
+        const newSize = Math.max(8, Math.min(72, startSize + delta));
+        sizeInput.value = newSize;
+        applySize();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+
+    applySize();
+  }
+
+  return { select, sizeInput };
 }
 
 function initializeDeveloperMode({ button, panel }) {
