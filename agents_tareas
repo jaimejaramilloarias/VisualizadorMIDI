@@ -2,7 +2,7 @@
 2. [x] Implementar botón “Cargar MIDI/XML” y lógica básica para leer archivos MIDI/XML extrayendo note ON/OFF, duración, velocidad, tempo y nombres de pista.
 3. [x] Implementar botón “Cargar WAV” y reproducción de audio, eliminando silencios iniciales y sincronizando el playhead con la animación.
 4. [x] Crear estructura de datos que relacione cada pista con su instrumento y familia, asignando formas y colores predeterminados.
-5. Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
+5. [x] Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
 6. Incorporar opacidad variable en los extremos, cambio brusco al 100% en la línea de presente y retorno progresivo al 5%.
 7. Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
 8. Implementar figuras geométricas correspondientes a cada familia y variaciones de tono por instrumento.
@@ -12,5 +12,5 @@
 12. Optimizar rendimiento y modularizar el código con comentarios claros para facilitar el desarrollo incremental.
 13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI y MusicXML.
 14. [x] Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
-15. Renderizar rectángulos estáticos en el canvas representando notas basadas en eventos (subtarea de la 5).
-16. Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.
+15. [x] Renderizar rectángulos estáticos en el canvas representando notas basadas en eventos (subtarea de la 5).
+16. [x] Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.

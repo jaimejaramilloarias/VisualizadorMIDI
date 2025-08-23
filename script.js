@@ -22,6 +22,12 @@ if (typeof document !== 'undefined') {
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
     let currentTracks = [];
+    let notes = [];
+    const NOTE_MIN = 21;
+    const NOTE_MAX = 108;
+    const pixelsPerSecond = canvas.width / 6;
+    let animationId = null;
+    let playStartTime = 0;
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -173,6 +179,13 @@ if (typeof document !== 'undefined') {
           applyStoredAssignments();
           populateInstrumentDropdown(currentTracks);
           showAssignmentModal(currentTracks);
+          const tempoEvent = midi.tracks
+            .flatMap((t) => t.events)
+            .find((e) => e.type === 'tempo');
+          const microPerBeat = tempoEvent ? tempoEvent.microsecondsPerBeat : 500000;
+          const secondsPerTick = microPerBeat / 1e6 / midi.timeDivision;
+          prepareNotesFromTracks(currentTracks, secondsPerTick);
+          renderFrame(0);
           console.log('MIDI parsed', midi);
         };
         reader.readAsArrayBuffer(file);
@@ -183,6 +196,9 @@ if (typeof document !== 'undefined') {
           applyStoredAssignments();
           populateInstrumentDropdown(currentTracks);
           showAssignmentModal(currentTracks);
+          const secondsPerDiv = (60 / xml.tempo) / xml.divisions;
+          prepareNotesFromTracks(currentTracks, secondsPerDiv);
+          renderFrame(0);
           console.log('MusicXML parsed', xml);
         };
         reader.readAsText(file);
@@ -209,7 +225,7 @@ if (typeof document !== 'undefined') {
       console.log('WAV cargado, trimOffset =', trimOffset);
     });
 
-    // Reproducción básica Play/Stop
+    // Reproducción básica Play/Stop con animación
     playBtn.addEventListener('click', async () => {
       if (!audioBuffer) return;
       if (!isPlaying) {
@@ -219,14 +235,73 @@ if (typeof document !== 'undefined') {
         source.connect(audioCtx.destination);
         source.onended = () => {
           isPlaying = false;
+          stopAnimation();
         };
+        playStartTime = audioCtx.currentTime;
         source.start(0, trimOffset);
         isPlaying = true;
+        startAnimation();
       } else {
         source.stop();
         isPlaying = false;
+        stopAnimation();
       }
     });
+
+    function prepareNotesFromTracks(tracks, secPerUnit) {
+      notes = [];
+      tracks.forEach((track) => {
+        track.events.forEach((ev) => {
+          if (ev.type === 'note') {
+            const start = ev.start * secPerUnit;
+            const duration = ev.duration * secPerUnit;
+            notes.push({
+              start,
+              end: start + duration,
+              noteNumber: ev.noteNumber,
+              color: track.color || '#ffffff',
+            });
+          }
+        });
+      });
+      notes.sort((a, b) => a.start - b.start);
+    }
+
+    function renderFrame(currentSec) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const noteHeight = canvas.height / 88;
+      notes.forEach((n) => {
+        const xStart = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+        const xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
+        if (xEnd < 0 || xStart > canvas.width) return;
+        const width = xEnd - xStart;
+        const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
+        const y = canvas.height - (clamped - NOTE_MIN + 1) * noteHeight;
+        ctx.fillStyle = n.color;
+        ctx.fillRect(xStart, y, width, noteHeight);
+      });
+      ctx.strokeStyle = '#fff';
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+    }
+
+    function startAnimation() {
+      const step = () => {
+        const currentSec = audioCtx.currentTime - playStartTime;
+        renderFrame(currentSec);
+        if (isPlaying) animationId = requestAnimationFrame(step);
+      };
+      animationId = requestAnimationFrame(step);
+    }
+
+    function stopAnimation() {
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = null;
+    }
   });
 }
 
