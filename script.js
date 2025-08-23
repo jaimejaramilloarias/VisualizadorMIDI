@@ -414,7 +414,7 @@ if (typeof document !== 'undefined') {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-          importConfiguration(ev.target.result, currentTracks);
+          importConfiguration(ev.target.result, currentTracks, notes);
           populateInstrumentDropdown(currentTracks);
           buildFamilyPanel();
         };
@@ -538,7 +538,7 @@ if (typeof document !== 'undefined') {
 
     buildFamilyPanel();
 
-    loadDefaultConfiguration(currentTracks)
+    loadDefaultConfiguration(currentTracks, notes)
       .catch(() => {})
       .then(() => {
         populateInstrumentDropdown(currentTracks);
@@ -1016,7 +1016,7 @@ function exportConfiguration() {
   });
 }
 
-function importConfiguration(json, tracks = []) {
+function importConfiguration(json, tracks = [], notes = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
   assignedFamilies = data.assignedFamilies || {};
   const famCustoms = data.familyCustomizations || {};
@@ -1067,9 +1067,17 @@ function importConfiguration(json, tracks = []) {
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset, t.instrument);
   });
+  notes.forEach((n) => {
+    const fam = assignedFamilies[n.instrument] || n.family;
+    n.family = fam;
+    const preset =
+      FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+    n.shape = preset.shape;
+    n.color = getInstrumentColor(preset, n.instrument);
+  });
 }
 
-async function loadDefaultConfiguration(tracks = []) {
+async function loadDefaultConfiguration(tracks = [], notes = []) {
   try {
     let data;
     if (typeof window === 'undefined' && typeof require === 'function') {
@@ -1084,7 +1092,7 @@ async function loadDefaultConfiguration(tracks = []) {
     } else {
       return;
     }
-    importConfiguration(data, tracks);
+    importConfiguration(data, tracks, notes);
   } catch (err) {
     /* Silent failure loading default configuration */
   }

@@ -12,6 +12,18 @@ const {
 } = require('./script.js');
 
 const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
+const notes = [
+  {
+    start: 0,
+    end: 1,
+    noteNumber: 60,
+    velocity: 64,
+    color: tracks[0].color,
+    shape: tracks[0].shape,
+    family: tracks[0].family,
+    instrument: tracks[0].instrument,
+  },
+];
 
 const config = {
   assignedFamilies: { Flauta: 'Metales' },
@@ -23,7 +35,7 @@ const config = {
   bumpControl: 1.2,
 };
 
-importConfiguration(config, tracks);
+importConfiguration(config, tracks, notes);
 
 assert.strictEqual(tracks[0].family, 'Metales');
 assert.strictEqual(tracks[0].shape, 'diamond');
@@ -32,6 +44,9 @@ const expectedColor = adjustColorBrightness(
   INSTRUMENT_COLOR_SHIFT['Flauta']
 );
 assert.strictEqual(tracks[0].color, expectedColor);
+assert.strictEqual(notes[0].family, 'Metales');
+assert.strictEqual(notes[0].shape, 'diamond');
+assert.strictEqual(notes[0].color, expectedColor);
 
 assert.strictEqual(getVelocityBase(), 80);
 assert.deepStrictEqual(getOpacityScale(), { edge: 0.1, mid: 0.8 });
