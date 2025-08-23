@@ -19,7 +19,6 @@
     <button id="aspect-16-9">16:9</button>
     <button id="aspect-9-16">9:16</button>
     <button id="full-screen">Pantalla completa</button>
-    <button id="load-font">Cargar fuente</button>
   </nav>
 
   <canvas id="visualizer" width="1280" height="720"></canvas>
@@ -35,13 +34,6 @@
     type="file"
     id="wav-file-input"
     accept=".wav,audio/wav"
-    style="display: none"
-  />
-
-  <input
-    type="file"
-    id="font-file-input"
-    accept=".ttf,.otf,.woff,.woff2"
     style="display: none"
   />
 
@@ -63,6 +55,14 @@
       <option>Cuerdas frotadas</option>
       <option>Cuerdas pulsadas</option>
       <option>Voces</option>
+    </select>
+    <select id="font-select">
+      <option value="">Fuente</option>
+      <option value="Arial">Arial</option>
+      <option value="Verdana">Verdana</option>
+      <option value="Times New Roman">Times New Roman</option>
+      <option value="Georgia">Georgia</option>
+      <option value="Courier New">Courier New</option>
     </select>
     <button id="toggle-family-panel">▼</button>
     <button id="developer-mode">Modo desarrollador</button>

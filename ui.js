@@ -46,28 +46,14 @@ function initializeUI({
   };
 }
 
-function initializeFontLoader({ button, input, target }) {
-  button.addEventListener('click', () => input.click());
-  input.addEventListener('change', () => {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const fontName = file.name.replace(/\.[^/.]+$/, '');
-      target.style.fontFamily = `'${fontName}', sans-serif`;
-      if (typeof FontFace !== 'undefined' && document.fonts) {
-        const font = new FontFace(fontName, e.target.result);
-        font
-          .load()
-          .then((loaded) => {
-            document.fonts.add(loaded);
-          })
-          .catch(() => {});
-      }
-    };
-    reader.readAsArrayBuffer(file);
+function initializeFontSelector({ select, target }) {
+  select.addEventListener('change', () => {
+    const font = select.value;
+    if (font) {
+      target.style.fontFamily = `'${font}', sans-serif`;
+    }
   });
-  return { button, input };
+  return { select };
 }
 
 function initializeDeveloperMode({ button, panel }) {
@@ -84,7 +70,7 @@ function initializeDeveloperMode({ button, panel }) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { initializeUI, initializeDeveloperMode, initializeFontLoader };
+  module.exports = { initializeUI, initializeDeveloperMode, initializeFontSelector };
 } else {
-  window.ui = { initializeUI, initializeDeveloperMode, initializeFontLoader };
+  window.ui = { initializeUI, initializeDeveloperMode, initializeFontSelector };
 }
