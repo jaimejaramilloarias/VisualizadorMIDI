@@ -1095,7 +1095,12 @@ async function loadDefaultConfiguration(tracks = [], notes = []) {
       const path = require('path');
       const filePath = path.join(__dirname || '.', 'configuracion.json');
       data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } else if (typeof fetch === 'function') {
+    } else if (typeof window !== 'undefined' && window.DEFAULT_CONFIG) {
+      data = window.DEFAULT_CONFIG;
+    } else if (
+      typeof fetch === 'function' &&
+      !(typeof window !== 'undefined' && window.location.protocol === 'file:')
+    ) {
       const response = await fetch('configuracion.json');
       if (!response.ok) return;
       data = await response.json();
