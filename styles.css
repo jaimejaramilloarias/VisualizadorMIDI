@@ -1,4 +1,8 @@
+@charset "UTF-8";
 /* Estilos básicos para la estructura inicial */
+:root {
+  --global-font-size: 1rem;
+}
 body {
   margin: 0;
   display: flex;
@@ -7,6 +11,7 @@ body {
   background-color: #111;
   color: #fff;
   font-family: 'Roboto', Arial, Helvetica, sans-serif;
+  font-size: var(--global-font-size);
 }
 
 #app-title {
@@ -58,7 +63,7 @@ select {
   color: #fff;
   padding: 6px 12px;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: inherit;
   transition: background 0.2s;
 }
 
@@ -76,7 +81,7 @@ select:hover {
   padding: 10px;
   width: calc(100% - 20px);
   justify-content: center;
-  font-size: 1rem;
+  font-size: inherit;
   grid-template-columns: 1fr 1fr;
 }
 
@@ -91,7 +96,7 @@ select:hover {
   width: 100%;
   margin-bottom: 10px;
   justify-content: center;
-  font-size: 1rem;
+  font-size: inherit;
   grid-column: 1 / -1;
 }
 

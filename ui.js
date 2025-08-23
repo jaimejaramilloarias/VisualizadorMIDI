@@ -46,6 +46,15 @@ function initializeUI({
   };
 }
 
+function initializeFontSizeControl({ slider, target }) {
+  const update = () => {
+    target.style.setProperty('--global-font-size', slider.value + 'rem');
+  };
+  slider.addEventListener('input', update);
+  update();
+  return { slider };
+}
+
 function initializeDeveloperMode({ button, panel }) {
   let active = false;
   button.addEventListener('click', () => {
@@ -60,7 +69,7 @@ function initializeDeveloperMode({ button, panel }) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { initializeUI, initializeDeveloperMode };
+  module.exports = { initializeUI, initializeDeveloperMode, initializeFontSizeControl };
 } else {
-  window.ui = { initializeUI, initializeDeveloperMode };
+  window.ui = { initializeUI, initializeDeveloperMode, initializeFontSizeControl };
 }
