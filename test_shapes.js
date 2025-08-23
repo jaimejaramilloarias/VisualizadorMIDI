@@ -59,7 +59,7 @@ shapes.forEach(([shape, expected]) => {
   assert(ctx.fillCalled, 'fill no llamado');
 });
 
-// Verificación de triángulo equilátero con vértice superior centrado
+// Verificación de vértice centrado y extremos alineados con NOTE ON/OFF
 const triCtx = {
   path: [],
   beginPath() {},
@@ -75,15 +75,12 @@ const triCtx = {
 drawNoteShape(triCtx, 'triangle', 0, 0, 10, 10);
 assert.strictEqual(triCtx.path.length, 3, 'triángulo con puntos incorrectos');
 const [top, right, left] = triCtx.path;
-const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-const a = dist(top, right);
-const b = dist(right, left);
-const c = dist(left, top);
 const tol = 1e-6;
-assert(Math.abs(a - b) < tol && Math.abs(b - c) < tol, 'lados no iguales');
-assert(Math.abs(top[0] - 5) < tol, 'vértice superior no centrado');
+assert(Math.abs(top[0] - 5) < tol && Math.abs(top[1]) < tol, 'vértice superior no centrado');
+assert(Math.abs(right[0] - 10) < tol && Math.abs(right[1] - 10) < tol, 'extremo derecho mal posicionado');
+assert(Math.abs(left[0]) < tol && Math.abs(left[1] - 10) < tol, 'extremo izquierdo mal posicionado');
 
-// Verificación de alineación a la izquierda para triángulo alargado
+// Verificación de alineación izquierda/derecha para triángulo alargado
 const triCtxWide = {
   path: [],
   beginPath() {},
@@ -97,7 +94,10 @@ const triCtxWide = {
   fill() {},
 };
 drawNoteShape(triCtxWide, 'triangle', 0, 0, 20, 10);
-const minX = Math.min(...triCtxWide.path.map((p) => p[0]));
+const xs = triCtxWide.path.map((p) => p[0]);
+const minX = Math.min(...xs);
+const maxX = Math.max(...xs);
 assert.strictEqual(minX, 0, 'triángulo alargado no alineado a la izquierda');
+assert.strictEqual(maxX, 20, 'triángulo alargado no alineado a la derecha');
 
 console.log('Pruebas de figuras geométricas completadas');

@@ -225,12 +225,9 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       break;
     }
     case 'triangle': {
-      const side = Math.min(width, (2 / Math.sqrt(3)) * height);
-      const h = (Math.sqrt(3) / 2) * side;
-      const offsetY = y + (height - h);
-      ctx.moveTo(x + side / 2, offsetY);
-      ctx.lineTo(x + side, offsetY + h);
-      ctx.lineTo(x, offsetY + h);
+      ctx.moveTo(x + width / 2, y);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
       ctx.closePath();
       break;
     }
