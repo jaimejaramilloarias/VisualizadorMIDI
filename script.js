@@ -279,6 +279,17 @@ if (typeof document !== 'undefined') {
       notes.sort((a, b) => a.start - b.start);
     }
 
+    // Calcula opacidad según la distancia de la nota a la línea de presente
+    function computeOpacity(xStart, xEnd) {
+      const center = canvas.width / 2;
+      if (xStart <= center && xEnd >= center) return 1;
+      const noteCenter = (xStart + xEnd) / 2;
+      const dist = Math.abs(noteCenter - center);
+      const maxDist = canvas.width / 2;
+      const progress = 1 - Math.min(dist / maxDist, 1);
+      return 0.05 + 0.65 * progress;
+    }
+
     function renderFrame(currentSec) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#222';
@@ -290,9 +301,35 @@ if (typeof document !== 'undefined') {
         if (xEnd < 0 || xStart > canvas.width) return;
         const width = xEnd - xStart;
         const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
-        const y = canvas.height - (clamped - NOTE_MIN + 1) * noteHeight;
+
+        // Altura con efecto "bump" cuando la nota cruza la línea de presente
+        let height = noteHeight;
+        if (currentSec >= n.start && currentSec <= n.end) {
+          const progress = (currentSec - n.start) / (n.end - n.start);
+          height = noteHeight * (1.5 - 0.5 * Math.min(Math.max(progress, 0), 1));
+        }
+        const y =
+          canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
+          (height - noteHeight) / 2;
+
+        // Opacidad variable según distancia al centro
+        const alpha = computeOpacity(xStart, xEnd);
+        ctx.save();
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = n.color;
-        ctx.fillRect(xStart, y, width, noteHeight);
+        ctx.fillRect(xStart, y, width, height);
+        ctx.restore();
+
+        // Brillo blanco corto en el NOTE ON presente
+        if (currentSec >= n.start && currentSec <= n.start + 0.2) {
+          const glowProgress = 1 - (currentSec - n.start) / 0.2;
+          ctx.save();
+          ctx.globalAlpha = glowProgress;
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(xStart, y, width, height);
+          ctx.restore();
+        }
       });
       ctx.strokeStyle = '#fff';
       ctx.beginPath();

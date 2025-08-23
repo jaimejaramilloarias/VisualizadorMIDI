@@ -3,8 +3,8 @@
 3. [x] Implementar botón “Cargar WAV” y reproducción de audio, eliminando silencios iniciales y sincronizando el playhead con la animación.
 4. [x] Crear estructura de datos que relacione cada pista con su instrumento y familia, asignando formas y colores predeterminados.
 5. [x] Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
-6. Incorporar opacidad variable en los extremos, cambio brusco al 100% en la línea de presente y retorno progresivo al 5%.
-7. Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
+6. [x] Incorporar opacidad variable en los extremos, cambio brusco al 100% en la línea de presente y retorno progresivo al 5%.
+7. [x] Añadir efectos de “bump” y “brillo” en el NOTE ON presente.
 8. Implementar figuras geométricas correspondientes a cada familia y variaciones de tono por instrumento.
 9. Agregar controles de reproducción: Play/Stop (barra espaciadora), Adelantar, Atrasar e Inicio.
 10. Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
@@ -14,3 +14,4 @@
 14. [x] Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
 15. [x] Renderizar rectángulos estáticos en el canvas representando notas basadas en eventos (subtarea de la 5).
 16. [x] Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.
+17. Crear pruebas unitarias para la lógica de opacidad y efectos visuales.
