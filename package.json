@@ -4,7 +4,7 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-    "test": "node test_parsers.js && node test_visual_effects.js && node test_playback_controls.js"
+    "test": "node test_parsers.js && node test_visual_effects.js && node test_playback_controls.js && node test_color_variations.js"
   },
   "keywords": [],
   "author": "",

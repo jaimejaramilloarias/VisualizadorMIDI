@@ -27,6 +27,25 @@ function computeGlowAlpha(currentSec, start, glowDuration = 0.2) {
   return 1 - progress;
 }
 
+// Ajusta el brillo de un color hex según un factor (-1 a 1)
+function adjustColorBrightness(color, factor) {
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  const adj = (c) => {
+    if (factor >= 0) {
+      return Math.round(c + (255 - c) * factor);
+    }
+    return Math.round(c * (1 + factor));
+  };
+  const nr = Math.min(255, Math.max(0, adj(r)));
+  const ng = Math.min(255, Math.max(0, adj(g)));
+  const nb = Math.min(255, Math.max(0, adj(b)));
+  return `#${nr.toString(16).padStart(2, '0')}${ng
+    .toString(16)
+    .padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+}
+
 // Calcula un nuevo offset al buscar hacia adelante o atrás
 function computeSeekOffset(startOffset, delta, duration, trimOffset = 0) {
   const maxOffset = Math.max(0, duration - trimOffset);
@@ -82,7 +101,8 @@ if (typeof document !== 'undefined') {
         track.family = fam;
         const preset = FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
         track.shape = preset.shape;
-        track.color = preset.color;
+        const shift = INSTRUMENT_COLOR_SHIFT[track.instrument] || 0;
+        track.color = adjustColorBrightness(preset.color, shift);
       }
     }
 
@@ -468,6 +488,25 @@ const INSTRUMENT_FAMILIES = {
   Voz: 'Voces',
 };
 
+// Variación de tono por instrumento según su registro
+const INSTRUMENT_COLOR_SHIFT = {
+  Flauta: 0,
+  Clarinete: -0.2,
+  Oboe: 0,
+  Fagot: -0.3,
+  Saxofón: -0.1,
+  Trompeta: 0.1,
+  Trombón: -0.1,
+  Tuba: -0.2,
+  'Corno francés': 0,
+  Piano: 0,
+  Violín: 0.1,
+  Viola: 0,
+  Violonchelo: -0.1,
+  Contrabajo: -0.2,
+  Voz: 0,
+};
+
 const FAMILY_LIST = [
   'Maderas de timbre "redondo"',
   'Dobles cañas',
@@ -494,7 +533,9 @@ function assignTrackInfo(tracks) {
     const instrument = t.name;
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
-    return { ...t, instrument, family, shape: preset.shape, color: preset.color };
+    const shift = INSTRUMENT_COLOR_SHIFT[instrument] || 0;
+    const color = adjustColorBrightness(preset.color, shift);
+    return { ...t, instrument, family, shape: preset.shape, color };
   });
 }
 
@@ -685,6 +726,8 @@ if (typeof module !== 'undefined') {
     assignTrackInfo,
     FAMILY_PRESETS,
     INSTRUMENT_FAMILIES,
+    INSTRUMENT_COLOR_SHIFT,
+    adjustColorBrightness,
     computeOpacity,
     computeBumpHeight,
     computeGlowAlpha,
