@@ -123,16 +123,20 @@ if (typeof document !== 'undefined') {
     let ctx;
     if (typeof WebGL2RenderingContext !== 'undefined') {
       const gl = canvas.getContext('webgl2', { antialias: true });
-      // Si no hay WebGL2 o MSAA, usamos Canvas2D
-      if (!gl || !(gl.getContextAttributes && gl.getContextAttributes().antialias)) {
-        ctx = canvas.getContext('2d');
-      } else {
-        // Placeholder: la ruta WebGL no está implementada aún
-        ctx = canvas.getContext('2d');
+      // Si WebGL2 no está disponible o no cuenta con MSAA, liberamos cualquier
+      // contexto obtenido y continuamos con Canvas2D.
+      if (gl) {
+        const attrs = gl.getContextAttributes && gl.getContextAttributes();
+        if (!attrs || !attrs.antialias) {
+          gl.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+        } else {
+          // Placeholder: la ruta WebGL no está implementada aún, por lo que
+          // liberamos el contexto antes de usar Canvas2D.
+          gl.getExtension?.('WEBGL_lose_context')?.loseContext?.();
+        }
       }
-    } else {
-      ctx = canvas.getContext('2d');
     }
+    ctx = canvas.getContext('2d');
 
     if (!ctx) {
       console.warn('2D context not available.');
