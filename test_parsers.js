@@ -4,6 +4,7 @@ const {
   parseMusicXML,
   assignTrackInfo,
 } = require('./script.js');
+const { loadMusicFile } = require('./midiLoader.js');
 
 // Prueba para parseMIDI con un archivo mínimo en memoria
 function testParseMIDI() {
@@ -85,6 +86,52 @@ function testAssignTrackInfo() {
   console.log('assignTrackInfo OK');
 }
 
+// Prueba de carga de archivo con extensión .musicxml
+function testLoadMusicFileMusicXML() {
+  const xml = `
+    <score-partwise version="3.1">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Piano</part-name>
+        </score-part>
+      </part-list>
+      <part id="P1">
+        <measure number="1">
+          <attributes>
+            <divisions>1</divisions>
+          </attributes>
+          <note>
+            <pitch>
+              <step>C</step>
+              <octave>4</octave>
+            </pitch>
+            <duration>1</duration>
+          </note>
+        </measure>
+      </part>
+    </score-partwise>`;
+
+  global.FileReader = class {
+    constructor() {
+      this.onload = null;
+    }
+    readAsText(file) {
+      if (this.onload) this.onload({ target: { result: file.content } });
+    }
+    readAsArrayBuffer() {}
+  };
+
+  const file = { name: 'test.musicxml', content: xml };
+  return loadMusicFile(file, { parseMIDI: () => {}, parseMusicXML }).then((res) => {
+    assert.strictEqual(res.tracks.length, 1);
+    console.log('loadMusicFile .musicxml OK');
+  });
+}
+
 testParseMIDI();
 testParseMusicXML();
 testAssignTrackInfo();
+testLoadMusicFileMusicXML().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
