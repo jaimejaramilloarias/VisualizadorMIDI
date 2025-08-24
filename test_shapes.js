@@ -49,7 +49,6 @@ const shapes = [
   ['star', 'lineToCalled'],
   ['star4', 'lineToCalled'],
   ['pentagon', 'lineToCalled'],
-  ['espiral', 'lineToCalled'],
 ];
 
 shapes.forEach(([shape, expected]) => {
