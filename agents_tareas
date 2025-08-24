@@ -97,3 +97,15 @@
 96. [x] Cambiar la figura triángulo alargado por un diamante alargado con lados rectos.
 97. [x] Ocultar el puntero del mouse al activar el modo de pantalla completa.
 98. [x] Actualizar las pruebas unitarias para el diamante alargado.
+99. [ ] Reestructurar eventos MIDI para que solo actualicen estado interno y encolen operaciones.
+100. [ ] Crear único bucle `requestAnimationFrame` con cálculo de `dt` (8-32 ms) y renderizado basado en tiempo.
+101. [ ] Procesar la cola de eventos en batch, limitando el número de operaciones por frame.
+102. [ ] Implementar supersampling dinámico basado en `devicePixelRatio` y un factor ajustable.
+103. [ ] Integrar la Fullscreen API, recalculando resoluciones y ocultando el cursor.
+104. [ ] Detectar cambios de tamaño y DPR con `ResizeObserver` y actualizar las dimensiones una vez por frame.
+105. [ ] Soportar `prefers-reduced-motion` desactivando interpolaciones continuas.
+106. [ ] Ajustar automáticamente el factor de supersampling u operaciones según el tiempo de frame (12–18 ms).
+107. [ ] Optimizar animaciones utilizando solo `transform` y `opacity`, aplicando `will-change` y `contain`.
+108. [ ] Reutilizar objetos y arrays para minimizar pausas de GC.
+109. [ ] Coalescer ráfagas de eventos MIDI para evitar saturar la cola.
+110. [ ] Proveer fallback de renderizado a Canvas2D cuando WebGL/MSAA no esté disponible.
