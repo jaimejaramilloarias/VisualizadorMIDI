@@ -114,37 +114,33 @@ if (typeof document !== 'undefined') {
     let modalSelectMode = null;
     let checkboxDrag = null;
     let lastModalIndex = null;
-    assignmentModal.addEventListener('mousedown', (e) => {
+    modalInstrumentList.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // solo botón izquierdo
       const item = e.target.closest('.instrument-item');
-      if (item) {
-        const items = Array.from(
-          modalInstrumentList.querySelectorAll('.instrument-item')
-        );
-        const idx = items.indexOf(item);
-        if (e.shiftKey && lastModalIndex !== null) {
-          const [start, end] = [lastModalIndex, idx].sort((a, b) => a - b);
-          for (let i = start; i <= end; i++) {
-            items[i].classList.add('selected');
-          }
-          modalSelectMode = null;
-        } else {
-          modalSelectMode = item.classList.contains('selected')
-            ? 'deselect'
-            : 'select';
-          if (modalSelectMode === 'select') item.classList.add('selected');
-          else item.classList.remove('selected');
+      if (!item) return;
+      const items = Array.from(
+        modalInstrumentList.querySelectorAll('.instrument-item')
+      );
+      const idx = items.indexOf(item);
+      if (e.shiftKey && lastModalIndex !== null) {
+        const [start, end] = [lastModalIndex, idx].sort((a, b) => a - b);
+        for (let i = start; i <= end; i++) {
+          items[i].classList.add('selected');
         }
-        lastModalIndex = idx;
-        e.preventDefault();
+        modalSelectMode = null;
+      } else {
+        modalSelectMode = item.classList.contains('selected')
+          ? 'deselect'
+          : 'select';
+        item.classList.toggle('selected', modalSelectMode === 'select');
       }
+      lastModalIndex = idx;
     });
-    assignmentModal.addEventListener('mouseover', (e) => {
-      if (!modalSelectMode) return;
+    modalInstrumentList.addEventListener('mousemove', (e) => {
+      if (!modalSelectMode || e.buttons !== 1) return;
       const item = e.target.closest('.instrument-item');
-      if (item) {
-        if (modalSelectMode === 'select') item.classList.add('selected');
-        else item.classList.remove('selected');
-      }
+      if (item)
+        item.classList.toggle('selected', modalSelectMode === 'select');
     });
     document.addEventListener('mouseup', () => {
       modalSelectMode = null;
@@ -602,14 +598,15 @@ if (typeof document !== 'undefined') {
         li.dataset.instrument = name;
         li.className = 'instrument-item';
         li.draggable = true;
-        li.addEventListener('dragstart', (e) => {
-          const selected = Array.from(
-            assignmentModal.querySelectorAll('.instrument-item.selected')
-          );
-          const items = selected.includes(li) ? selected : [li];
-          const payload = items.map((el) => el.dataset.instrument);
-          e.dataTransfer.setData('text/plain', JSON.stringify(payload));
-        });
+          li.addEventListener('dragstart', (e) => {
+            modalSelectMode = null; // detener selección al iniciar arrastre
+            const selected = Array.from(
+              assignmentModal.querySelectorAll('.instrument-item.selected')
+            );
+            const items = selected.includes(li) ? selected : [li];
+            const payload = items.map((el) => el.dataset.instrument);
+            e.dataTransfer.setData('text/plain', JSON.stringify(payload));
+          });
 
         const assigned = assignedFamilies[name];
         if (assigned) {

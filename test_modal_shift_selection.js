@@ -87,4 +87,15 @@ dom.window.document.dispatchEvent(new dom.window.Event('mouseup', { bubbles: tru
 
 assert(Array.from(items).slice(0, 4).every((it) => it.classList.contains('selected')));
 
+// Reinicia la selección para probar arrastre
+Array.from(items).forEach((it) => it.classList.remove('selected'));
+items[0].classList.add('selected');
+const dragEvent = new dom.window.Event('dragstart', { bubbles: true });
+dragEvent.dataTransfer = { setData() {}, getData() { return ''; } };
+items[0].dispatchEvent(dragEvent);
+items[1].dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true }));
+dom.window.document.dispatchEvent(new dom.window.Event('mouseup', { bubbles: true }));
+assert(!items[1].classList.contains('selected'));
+
 console.log('Pruebas de selección múltiple con shift en modal completadas');
+console.log('Pruebas de arrastre sin selección adicional completadas');
