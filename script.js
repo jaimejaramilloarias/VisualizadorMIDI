@@ -18,6 +18,7 @@ const {
   resetStartOffset,
   applyGlowEffect,
   startFixedFPSLoop,
+  startAutoFPSLoop,
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,
@@ -61,6 +62,7 @@ let fixedFPS = 60;
 let minFrameMs = 8;
 let maxFrameMs = 32;
 let superSampling = 1.25;
+let useFixedFPS = true;
 
 function setFixedFPS(fps) {
   if (typeof fps === 'number' && fps > 0) fixedFPS = fps;
@@ -79,6 +81,14 @@ function setFrameWindow(min, max) {
 
 function getFrameWindow() {
   return { min: minFrameMs, max: maxFrameMs };
+}
+
+function setFPSMode(fixed) {
+  useFixedFPS = !!fixed;
+}
+
+function getFPSMode() {
+  return useFixedFPS;
 }
 
 function setSuperSampling(val) {
@@ -1071,7 +1081,22 @@ if (typeof document !== 'undefined') {
           canvas.style.cursor = 'default';
         }
       },
+      onToggleFPS: () => {
+        setFPSMode(!getFPSMode());
+        if (stopLoop) {
+          stopAnimation();
+          startAnimation();
+        }
+        if (uiControls.toggleFPSBtn) {
+          uiControls.toggleFPSBtn.textContent = getFPSMode()
+            ? 'FPS Auto'
+            : 'FPS Fijo';
+        }
+      },
     });
+    if (uiControls.toggleFPSBtn) {
+      uiControls.toggleFPSBtn.textContent = 'FPS Auto';
+    }
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1221,17 +1246,17 @@ if (typeof document !== 'undefined') {
         renderFrame(audioPlayer.getCurrentTime());
         return;
       }
-      stopLoop = startFixedFPSLoop(
-        (dt) => {
-          adjustSupersampling(dt);
-          const currentSec = audioPlayer.getCurrentTime();
-          renderFrame(currentSec);
-          if (!audioPlayer.isPlaying()) stopAnimation();
-        },
-        fixedFPS,
-        minFrameMs,
-        maxFrameMs,
-      );
+      const loopFn = (dt) => {
+        adjustSupersampling(dt);
+        const currentSec = audioPlayer.getCurrentTime();
+        renderFrame(currentSec);
+        if (!audioPlayer.isPlaying()) stopAnimation();
+      };
+      if (useFixedFPS) {
+        stopLoop = startFixedFPSLoop(loopFn, fixedFPS, minFrameMs, maxFrameMs);
+      } else {
+        stopLoop = startAutoFPSLoop(loopFn, minFrameMs, maxFrameMs);
+      }
     }
 
     function stopAnimation() {
@@ -1743,6 +1768,7 @@ if (typeof module !== 'undefined') {
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
       startFixedFPSLoop,
+      startAutoFPSLoop,
       computeVelocityHeight,
       setVelocityBase,
       getVelocityBase,
@@ -1754,6 +1780,8 @@ if (typeof module !== 'undefined') {
       getBumpControl,
       setFixedFPS,
       getFixedFPS,
+      setFPSMode,
+      getFPSMode,
       setFrameWindow,
       getFrameWindow,
       setSuperSampling,
