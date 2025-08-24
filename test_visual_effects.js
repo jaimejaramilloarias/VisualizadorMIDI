@@ -4,6 +4,7 @@ const {
   computeBumpHeight,
   computeGlowAlpha,
   applyGlowEffect,
+  setGlowStrength,
 } = require('./script');
 
 function approx(actual, expected, eps = 1e-6) {
@@ -28,7 +29,8 @@ approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
 approx(computeGlowAlpha(0.1, 0), 0.5); // Mitad del efecto
 approx(computeGlowAlpha(0.25, 0), 0); // Efecto terminado
 
-// Prueba para applyGlowEffect con desenfoque
+// Prueba para applyGlowEffect con desenfoque solo vertical
+setGlowStrength(1.5);
 const glowCtx = {
   shadowBlur: 0,
   shadowColor: null,
@@ -36,13 +38,18 @@ const glowCtx = {
   save() {},
   restore() {},
   beginPath() {},
-  rect() {},
+  rect(x, y, w, h) {
+    this.lastWidth = w;
+    this.lastHeight = h;
+  },
   fillCalled: false,
   fill() {
     this.fillCalled = true;
   },
 };
 applyGlowEffect(glowCtx, 'square', 0, 0, 10, 10, 0.5);
+assert.strictEqual(glowCtx.lastWidth, 10, 'el glow no debe alterar el ancho');
+assert.strictEqual(glowCtx.lastHeight, 15, 'el glow debe escalar solo la altura');
 assert(glowCtx.shadowBlur > 0, 'shadowBlur no aplicado');
 assert.strictEqual(glowCtx.fillStyle, '#ffffff');
 assert(glowCtx.fillCalled, 'fill no llamado en glow');
