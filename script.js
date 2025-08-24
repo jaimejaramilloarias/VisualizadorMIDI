@@ -115,6 +115,11 @@ if (typeof document !== 'undefined') {
     }
 
     const canvas = document.getElementById('visualizer');
+    if (!canvas) {
+      console.warn('Canvas element with id "visualizer" not found.');
+      return;
+    }
+
     let ctx;
     if (typeof WebGL2RenderingContext !== 'undefined') {
       const gl = canvas.getContext('webgl2', { antialias: true });
@@ -128,6 +133,12 @@ if (typeof document !== 'undefined') {
     } else {
       ctx = canvas.getContext('2d');
     }
+
+    if (!ctx) {
+      console.warn('2D context not available.');
+      return;
+    }
+
     ctx.imageSmoothingEnabled = false;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -139,17 +150,19 @@ if (typeof document !== 'undefined') {
     // Canvas offscreen para optimizar el renderizado de notas
     const offscreenCanvas = document.createElement('canvas');
     const offscreenCtx = offscreenCanvas.getContext('2d');
-    offscreenCtx.imageSmoothingEnabled = false;
-    offscreenCtx.lineCap = 'round';
-    offscreenCtx.lineJoin = 'round';
-    offscreenCanvas.width = canvas.width;
-    offscreenCanvas.height = canvas.height;
+    if (offscreenCtx) {
+      offscreenCtx.imageSmoothingEnabled = false;
+      offscreenCtx.lineCap = 'round';
+      offscreenCtx.lineJoin = 'round';
+      offscreenCanvas.width = canvas.width;
+      offscreenCanvas.height = canvas.height;
 
-    // Relleno inicial del canvas en negro absoluto
-    offscreenCtx.fillStyle = '#000000';
-    offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-    canvas.style.backgroundColor = '#000000';
-    ctx.drawImage(offscreenCanvas, 0, 0);
+      // Relleno inicial del canvas en negro absoluto
+      offscreenCtx.fillStyle = '#000000';
+      offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+      canvas.style.backgroundColor = '#000000';
+      ctx.drawImage(offscreenCanvas, 0, 0);
+    }
 
     const loadBtn = document.getElementById('load-midi');
     const fileInput = document.getElementById('midi-file-input');
