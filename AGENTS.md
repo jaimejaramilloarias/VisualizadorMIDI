@@ -2,21 +2,21 @@ PLAN DE DESARROLLO DE APP WEB
 
 App web: Visualizador MIDI - Jaime Jaramillo Arias
 
-Descripción: la app permite cargar archivos MIDI o XML de música para generar una animación y visualizar el contenido del archivo MIDI. Permite también cargar archivos WAV para reproducir al tiempo con la animación.
+Descripción: la app permite cargar archivos MIDI de música para generar una animación y visualizar el contenido del archivo MIDI. Permite también cargar archivos WAV para reproducir al tiempo con la animación.
 
 El objetivo fundamental de la app, es producir animaciones detalladas, fluidas y complejas, de la más alta calidad.
 
 Elementos de la UI:
 
 1.	Titulo.
-2.	Menú superior con los siguientes botones, de izquierda a derecha: “Cargar MIDI/XML”, “Cargar WAV”, “Play/Stop” (atado a la barra espaciadora), “Adelantar” (adelanta 3 segundos), “Atrasar” (atrasa 3 segundos), “Inicio”, “16:9”, “9:16”, “Pantalla completa” (este botón amplía el canvas en la resolución elegida a la pantalla completa, y la app debe hacer super sampleo de los pixeles para no perder claridad).
+2.	Menú superior con los siguientes botones, de izquierda a derecha: “Cargar MIDI”, “Cargar WAV”, “Play/Stop” (atado a la barra espaciadora), “Adelantar” (adelanta 3 segundos), “Atrasar” (atrasa 3 segundos), “Inicio”, “16:9”, “9:16”, “Pantalla completa” (este botón amplía el canvas en la resolución elegida a la pantalla completa, y la app debe hacer super sampleo de los pixeles para no perder claridad).
 3.	Canvas. El Canvas principal debe tener 720px de altura, ya sea en 16:9 o en 9:16. Ya cuando se pase a pantalla completa, la resolución debe aumentar.
 4.	Menú inferior con los siguientes botones, de izquierda a derecha: “Instrumento” (drop down para seleccionar los instrumentos del archivo MIDI cargado), “Familia” (drop down para seleccionar la familia a la que pertenece el instrumento seleccionado en el drop down anterior), la lista de familias siempre debe estar completa así no esté cargado ningún instrumento, las familias son: Maderas de timbre “redondo”, Dobles cañas, Saxofones, Metales, Percusión menor, Tambores, Platillos, Placas, Auxiliares, Cuerdas frotadas, Cuerdas pulsadas, Voces. 
 5.	Panel inferior desplegable mediante un botón tipo “flecha” que muestra una lista de todas las familias, con la posibilidad de elegir el color y la figura geométrica para las animaciones de los instrumentos a los que se les adjudique esa familia.
 
 Lógica de importación de archivos:
 
-1.	El botón de “Cargar MIDI/XML” abre una ventana para cargar localmente un archivo MIDI o XML de música.
+1.	El botón de “Cargar MIDI” abre una ventana para cargar localmente un archivo MIDI de música.
 2.	La app debe extraer la siguiente información: note ON, note OFF, note duration, note velocity, tempo map, track names.
 3.	La app debe adjudicar a cada instrumento una familia según su track name.
 4.	El botón de “Cargar WAV” abre una ventana para cargar localmente un archivo WAV.

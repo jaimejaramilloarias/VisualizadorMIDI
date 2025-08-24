@@ -618,14 +618,14 @@ if (typeof document !== 'undefined') {
     loadBtn.addEventListener('click', () => fileInput.click());
     loadWavBtn.addEventListener('click', () => wavInput.click());
 
-    // Carga y parseo de archivos MIDI/XML mediante módulo dedicado
+    // Carga y parseo de archivos MIDI mediante módulo dedicado
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       try {
         const { tracks, tempoMap: tMap, timeDivision: tDiv } = await loadMusicFile(
           file,
-          { parseMIDI, parseMusicXML }
+          { parseMIDI }
         );
         currentTracks = tracks;
         tempoMap = tMap || [];
@@ -1266,136 +1266,10 @@ function parseMIDI(arrayBuffer) {
   return result;
 }
 
-function parseMusicXML(text) {
-  // Fallback simple parsing for entornos sin DOMParser (ej. pruebas en Node)
-  if (typeof DOMParser === 'undefined') {
-    const tempo = parseFloat((text.match(/<sound[^>]*tempo="([0-9.]+)"/i) || [0, '120'])[1]);
-    const divisions = parseInt((text.match(/<divisions>(\d+)<\/divisions>/i) || [0, '1'])[1], 10);
-    const partName = (text.match(/<part-name>([^<]+)<\/part-name>/i) || [0, 'part'])[1];
-
-    // Extrae nombres de staff si existen
-    const staffNames = {};
-    const staffRegex = /<staff-details[^>]*number="(\d+)"[^>]*>([\s\S]*?)<\/staff-details>/gi;
-    let sm;
-    while ((sm = staffRegex.exec(text))) {
-      const number = sm[1];
-      const inner = sm[2];
-      const nameMatch = inner.match(/<staff-name>([^<]+)<\/staff-name>/i);
-      if (nameMatch) staffNames[number] = nameMatch[1];
-    }
-
-    const stepToMidi = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-    const eventsByStaff = {};
-    const currentTimes = {};
-    const noteRegex = /<note>([\s\S]*?)<\/note>/gi;
-    let m;
-    while ((m = noteRegex.exec(text))) {
-      const block = m[1];
-      const isRest = /<rest\b/i.test(block);
-      const duration = parseInt((block.match(/<duration>(\d+)<\/duration>/i) || [0, '0'])[1], 10);
-      const staff = (block.match(/<staff>(\d+)<\/staff>/i) || [0, '1'])[1];
-      if (!eventsByStaff[staff]) {
-        eventsByStaff[staff] = [];
-        currentTimes[staff] = 0;
-      }
-      if (!isRest) {
-        const step = (block.match(/<step>([A-G])<\/step>/i) || [0, 'C'])[1];
-        const octave = parseInt((block.match(/<octave>(\d+)<\/octave>/i) || [0, '4'])[1], 10);
-        const alter = parseInt((block.match(/<alter>(-?\d+)<\/alter>/i) || [0, '0'])[1], 10);
-        const noteNumber = stepToMidi[step] + alter + (octave + 1) * 12;
-        eventsByStaff[staff].push({
-          type: 'note',
-          noteNumber,
-          velocity: 64,
-          start: currentTimes[staff],
-          duration,
-        });
-      }
-      currentTimes[staff] += duration;
-    }
-
-    const tracks = Object.keys(eventsByStaff).map((staff) => ({
-      name: staffNames[staff] || partName,
-      events: eventsByStaff[staff],
-    }));
-
-    return { tempo, divisions, tracks: assignTrackInfo(tracks) };
-  }
-
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(text, 'application/xml');
-
-  // Utilidad para obtener el primer elemento con nombre de etiqueta dado
-  const first = (parent, tag) => parent.getElementsByTagName(tag)[0];
-
-  const tempoNode = first(xml, 'sound');
-  const tempo = tempoNode
-    ? parseFloat(tempoNode.getAttribute('tempo')) || 120
-    : 120;
-
-  const divisionsNode = first(xml, 'divisions');
-  const divisions = divisionsNode ? parseInt(divisionsNode.textContent, 10) : 1;
-
-  const stepToMidi = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-
-  const tracks = Array.from(xml.getElementsByTagName('part')).flatMap((part) => {
-    const nameNode = first(part, 'part-name');
-    const partName = nameNode ? nameNode.textContent : part.getAttribute('id');
-
-    // Mapa de números de staff a nombres visibles
-    const staffNames = {};
-    Array.from(part.getElementsByTagName('staff-details')).forEach((sd) => {
-      const number = sd.getAttribute('number') || '1';
-      const staffName = first(sd, 'staff-name');
-      if (staffName) staffNames[number] = staffName.textContent;
-    });
-
-    const eventsByStaff = {};
-    const currentTimes = {};
-
-    Array.from(part.getElementsByTagName('measure')).forEach((measure) => {
-      Array.from(measure.getElementsByTagName('note')).forEach((noteEl) => {
-        const durationNode = first(noteEl, 'duration');
-        const duration = durationNode ? parseInt(durationNode.textContent, 10) : 0;
-        const staffNumber = first(noteEl, 'staff')?.textContent || '1';
-        if (!eventsByStaff[staffNumber]) {
-          eventsByStaff[staffNumber] = [];
-          currentTimes[staffNumber] = 0;
-        }
-        const isRest = noteEl.getElementsByTagName('rest').length > 0;
-        if (!isRest) {
-          const pitch = first(noteEl, 'pitch');
-          if (pitch) {
-            const step = first(pitch, 'step')?.textContent || 'C';
-            const octave = parseInt(first(pitch, 'octave')?.textContent || '4', 10);
-            const alter = parseInt(first(pitch, 'alter')?.textContent || '0', 10);
-            const noteNumber = stepToMidi[step] + alter + (octave + 1) * 12;
-            eventsByStaff[staffNumber].push({
-              type: 'note',
-              noteNumber,
-              velocity: 64,
-              start: currentTimes[staffNumber],
-              duration,
-            });
-          }
-        }
-        currentTimes[staffNumber] += duration;
-      });
-    });
-
-    return Object.keys(eventsByStaff).map((staffNo) => ({
-      name: staffNames[staffNo] || partName,
-      events: eventsByStaff[staffNo],
-    }));
-  });
-
-  return { tempo, divisions, tracks: assignTrackInfo(tracks) };
-}
 
 if (typeof module !== 'undefined') {
   module.exports = {
     parseMIDI,
-    parseMusicXML,
     assignTrackInfo,
     FAMILY_PRESETS,
     FAMILY_DEFAULTS,
