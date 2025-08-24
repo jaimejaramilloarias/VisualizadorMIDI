@@ -8,15 +8,54 @@ function createRenderState(maxBatch = 200) {
     eventQueue: [],
     maxBatch,
     _rafId: null,
+    _eventPool: [],
   };
 }
 
+function getPooledEvent(state) {
+  return (
+    state._eventPool.pop() || {
+      type: '',
+      note: 0,
+      velocity: 0,
+      start: 0,
+      end: 0,
+    }
+  );
+}
+
+function releaseEvent(state, ev) {
+  state._eventPool.push(ev);
+}
+
 function enqueueNoteOn(state, note, velocity, start, end) {
-  state.eventQueue.push({ type: 'noteon', note, velocity, start, end });
+  const last = state.eventQueue[state.eventQueue.length - 1];
+  if (last && last.type === 'noteon' && last.note === note) {
+    // Colapsar ráfagas actualizando el último evento
+    last.velocity = velocity;
+    last.start = start;
+    last.end = end;
+    return;
+  }
+  const ev = getPooledEvent(state);
+  ev.type = 'noteon';
+  ev.note = note;
+  ev.velocity = velocity;
+  ev.start = start;
+  ev.end = end;
+  state.eventQueue.push(ev);
 }
 
 function enqueueNoteOff(state, note) {
-  state.eventQueue.push({ type: 'noteoff', note });
+  const last = state.eventQueue[state.eventQueue.length - 1];
+  if (last && last.type === 'noteoff' && last.note === note) {
+    // Evento duplicado, se omite
+    return;
+  }
+  const ev = getPooledEvent(state);
+  ev.type = 'noteoff';
+  ev.note = note;
+  state.eventQueue.push(ev);
 }
 
 function processEventQueue(state, handler) {
@@ -37,6 +76,7 @@ function processEventQueue(state, handler) {
         if (handler) handler({ type: 'noteoff', note: ev.note, data: note });
       }
     }
+    releaseEvent(state, ev);
     processed++;
   }
 }

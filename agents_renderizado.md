@@ -50,8 +50,8 @@ Mantener una visualización fluida de notas MIDI a 60fps o más, incluso en pant
 - [x] Ajustar la lógica de pantalla completa y redimensionamiento con `ResizeObserver`.
 - [x] Añadir autoajuste de supersampling según tiempos de frame.
 - [x] Implementar soporte para `prefers-reduced-motion`.
-- [ ] Establecer mecanismos de pooling para objetos/arrays reutilizables.
-- [ ] Optimizar handlers MIDI para solo encolar eventos y colapsar ráfagas.
-- [ ] Asegurar animaciones basadas en `transform`/`opacity` con `will-change` y `contain`.
-- [x] Detectar cambios de `devicePixelRatio` para recalcular resoluciones.
-- [ ] Implementar fallback a Canvas2D cuando no haya WebGL/MSAA.
+ - [x] Establecer mecanismos de pooling para objetos/arrays reutilizables.
+ - [x] Optimizar handlers MIDI para solo encolar eventos y colapsar ráfagas.
+ - [x] Asegurar animaciones basadas en `transform`/`opacity` con `will-change` y `contain`.
+ - [x] Detectar cambios de `devicePixelRatio` para recalcular resoluciones.
+ - [ ] Implementar fallback a Canvas2D cuando no haya WebGL/MSAA.
