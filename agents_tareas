@@ -108,4 +108,4 @@
 107. [ ] Optimizar animaciones utilizando solo `transform` y `opacity`, aplicando `will-change` y `contain`.
 108. [ ] Reutilizar objetos y arrays para minimizar pausas de GC.
 109. [ ] Coalescer ráfagas de eventos MIDI para evitar saturar la cola.
-110. [ ] Proveer fallback de renderizado a Canvas2D cuando WebGL/MSAA no esté disponible.
+110. [x] Proveer fallback de renderizado a Canvas2D cuando WebGL/MSAA no esté disponible.
