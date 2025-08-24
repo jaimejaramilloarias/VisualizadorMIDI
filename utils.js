@@ -6,7 +6,14 @@
 
 (function (global) {
 // Integración de nuevas figuras
-const { drawSoloEspressivo } = require('./soloEspressivo.js');
+// En navegadores no existe `require`, así que se intenta obtener la
+// función desde el objeto global si no está disponible CommonJS.
+let drawSoloEspressivo;
+if (typeof require !== 'undefined') {
+  ({ drawSoloEspressivo } = require('./soloEspressivo.js'));
+} else {
+  drawSoloEspressivo = global.drawSoloEspressivo;
+}
 
 // Cache simple para evitar recalcular ajustes de color
 const colorCache = new Map();
