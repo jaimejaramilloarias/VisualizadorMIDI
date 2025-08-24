@@ -81,10 +81,17 @@ if (typeof document !== 'undefined') {
 
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    canvas.style.imageRendering = 'pixelated';
 
     // Canvas offscreen para optimizar el renderizado de notas
     const offscreenCanvas = document.createElement('canvas');
     const offscreenCtx = offscreenCanvas.getContext('2d');
+    offscreenCtx.imageSmoothingEnabled = false;
+    offscreenCtx.lineCap = 'round';
+    offscreenCtx.lineJoin = 'round';
     offscreenCanvas.width = canvas.width;
     offscreenCanvas.height = canvas.height;
 
@@ -860,9 +867,10 @@ if (typeof document !== 'undefined') {
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
 
-        // Opacidad variable según distancia al centro
-        const strokeAlpha = computeOpacity(xStart, xEnd, canvas.width);
-        const fillAlpha = computeFillAlpha(xStart, canvas.width) * strokeAlpha;
+        // Opacidad progresiva y relleno solo tras la línea de presente
+        const baseAlpha = computeOpacity(xStart, xEnd, canvas.width);
+        const fillAlpha = computeFillAlpha(xStart, canvas.width) * baseAlpha;
+        const strokeAlpha = fillAlpha;
 
         if (fillAlpha > 0) {
           offscreenCtx.save();
