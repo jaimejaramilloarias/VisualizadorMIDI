@@ -45,8 +45,9 @@ const { loadWavFile } =
   typeof require !== 'undefined' ? require('./wavLoader.js') : window.wavLoader;
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
-const { createSoloEspressivoRenderer } =
-  typeof require !== 'undefined' ? require('./soloEspressivo.js') : window;
+const {
+  createSoloEspressivoRenderer: createSoloEspressivoRendererFn,
+} = typeof require !== 'undefined' ? require('./soloEspressivo.js') : window;
 
 // Estado de activación de instrumentos
 const enabledInstruments =
@@ -238,7 +239,7 @@ if (typeof document !== 'undefined') {
       return yTop + noteHeight / 2;
     };
 
-    let soloEspressivo = createSoloEspressivoRenderer({ pitchToY });
+    let soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -718,7 +719,7 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       nextNoteId = 0;
-      soloEspressivo = createSoloEspressivoRenderer({ pitchToY });
+      soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
@@ -828,7 +829,7 @@ if (typeof document !== 'undefined') {
     if (typeof window !== 'undefined') {
       window.__renderFrame = renderFrame;
       window.__setTestNotes = (n) => {
-        soloEspressivo = createSoloEspressivoRenderer({ pitchToY });
+        soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
         nextNoteId = 0;
         notes = n.map((note) => ({ ...note, id: nextNoteId++ }));
       };
