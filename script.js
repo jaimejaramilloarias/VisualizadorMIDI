@@ -4,7 +4,6 @@
 // Importación de utilidades modulares para efectos visuales y cálculos
 const {
   computeOpacity,
-  computeFillAlpha,
   computeBumpHeight,
   computeGlowAlpha,
   drawNoteShape,
@@ -867,22 +866,18 @@ if (typeof document !== 'undefined') {
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
 
-        // Opacidad progresiva y relleno solo tras la línea de presente
-        const baseAlpha = computeOpacity(xStart, xEnd, canvas.width);
-        const fillAlpha = computeFillAlpha(xStart, canvas.width) * baseAlpha;
-        const strokeAlpha = fillAlpha;
+        // Opacidad progresiva con relleno simétrico alrededor de la línea de presente
+        const alpha = computeOpacity(xStart, xEnd, canvas.width);
 
-        if (fillAlpha > 0) {
+        if (alpha > 0) {
           offscreenCtx.save();
-          offscreenCtx.globalAlpha = fillAlpha;
+          offscreenCtx.globalAlpha = alpha;
           offscreenCtx.fillStyle = n.color;
           drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
           offscreenCtx.restore();
-        }
 
-        if (strokeAlpha > 0) {
           offscreenCtx.save();
-          offscreenCtx.globalAlpha = strokeAlpha;
+          offscreenCtx.globalAlpha = alpha;
           offscreenCtx.strokeStyle = n.color;
           drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height, true);
           offscreenCtx.restore();
@@ -1395,7 +1390,6 @@ if (typeof module !== 'undefined') {
     INSTRUMENT_COLOR_SHIFT,
     adjustColorBrightness,
     computeOpacity,
-    computeFillAlpha,
     computeBumpHeight,
     computeGlowAlpha,
     applyGlowEffect,
