@@ -41,10 +41,10 @@ Mantener una visualización fluida de notas MIDI a 60fps o más, incluso en pant
    - Ajustar el factor de supersampling a valores bajos en dispositivos débiles.
 
 ## Tareas
-- [ ] Crear estructura de estado central y cola de eventos para `noteOn`/`noteOff`.
-- [ ] Implementar bucle `requestAnimationFrame` único con cálculo de `dt` y clamping.
-- [ ] Procesar eventos en batch con límite configurable por frame.
-- [ ] Adaptar el renderizado de notas a un sistema `time-based`.
+ - [x] Crear estructura de estado central y cola de eventos para `noteOn`/`noteOff`.
+ - [x] Implementar bucle `requestAnimationFrame` único con cálculo de `dt` y clamping.
+ - [x] Procesar eventos en batch con límite configurable por frame.
+ - [x] Adaptar el renderizado de notas a un sistema `time-based`.
 - [ ] Convertir ticks a tiempo usando el tempo map del MIDI para evitar asumir un BPM constante.
 - [ ] Incorporar supersampling basado en `devicePixelRatio` y factor dinámico `S`.
 - [ ] Ajustar la lógica de pantalla completa y redimensionamiento con `ResizeObserver`.
