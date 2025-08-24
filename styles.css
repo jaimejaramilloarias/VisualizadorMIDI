@@ -194,6 +194,10 @@ input:hover {
   cursor: grab;
 }
 
+.instrument-item.selected {
+  background: #555;
+}
+
 .family-zone {
   border: 1px dashed #555;
   padding: 5px;

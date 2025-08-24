@@ -107,8 +107,33 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    
+
     let velocityBase = getVelocityBase();
+
+    // ---- Soporte de selección múltiple en el modal de asignación ----
+    let modalSelectMode = null;
+    let checkboxDrag = null;
+    assignmentModal.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('.instrument-item');
+      if (item) {
+        modalSelectMode = item.classList.contains('selected') ? 'deselect' : 'select';
+        if (modalSelectMode === 'select') item.classList.add('selected');
+        else item.classList.remove('selected');
+        e.preventDefault();
+      }
+    });
+    assignmentModal.addEventListener('mouseover', (e) => {
+      if (!modalSelectMode) return;
+      const item = e.target.closest('.instrument-item');
+      if (item) {
+        if (modalSelectMode === 'select') item.classList.add('selected');
+        else item.classList.remove('selected');
+      }
+    });
+    document.addEventListener('mouseup', () => {
+      modalSelectMode = null;
+      checkboxDrag = null;
+    });
 
     if (developerBtn && developerControls) {
       const devMode = initDeveloperMode({
@@ -306,12 +331,37 @@ if (typeof document !== 'undefined') {
       const instTitle = document.createElement('h4');
       instTitle.textContent = 'Instrumentos activos';
       instSection.appendChild(instTitle);
+      const instBtnWrap = document.createElement('div');
+      const activateAllBtn = document.createElement('button');
+      activateAllBtn.textContent = 'Activar todos';
+      activateAllBtn.addEventListener('click', () => {
+        instSection
+          .querySelectorAll('input[type="checkbox"]')
+          .forEach((cb) => {
+            cb.checked = true;
+            setInstrumentEnabled(cb.dataset.instrument, true);
+          });
+      });
+      const deactivateAllBtn = document.createElement('button');
+      deactivateAllBtn.textContent = 'Desactivar todos';
+      deactivateAllBtn.addEventListener('click', () => {
+        instSection
+          .querySelectorAll('input[type="checkbox"]')
+          .forEach((cb) => {
+            cb.checked = false;
+            setInstrumentEnabled(cb.dataset.instrument, false);
+          });
+      });
+      instBtnWrap.appendChild(activateAllBtn);
+      instBtnWrap.appendChild(deactivateAllBtn);
+      instSection.appendChild(instBtnWrap);
       currentTracks.forEach((t) => {
         const item = document.createElement('div');
         item.className = 'family-config-item';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = enabledInstruments[t.name] !== false;
+        checkbox.dataset.instrument = t.name;
         checkbox.addEventListener('change', () =>
           setInstrumentEnabled(t.name, checkbox.checked)
         );
@@ -322,6 +372,22 @@ if (typeof document !== 'undefined') {
         instSection.appendChild(item);
       });
       familyPanel.appendChild(instSection);
+
+      // Selección múltiple de instrumentos con click/drag
+      instSection.addEventListener('mousedown', (e) => {
+        if (e.target.type === 'checkbox') {
+          e.preventDefault();
+          checkboxDrag = !e.target.checked;
+          e.target.checked = checkboxDrag;
+          setInstrumentEnabled(e.target.dataset.instrument, checkboxDrag);
+        }
+      });
+      instSection.addEventListener('mouseover', (e) => {
+        if (checkboxDrag !== null && e.target.type === 'checkbox') {
+          e.target.checked = checkboxDrag;
+          setInstrumentEnabled(e.target.dataset.instrument, checkboxDrag);
+        }
+      });
 
       FAMILY_LIST.forEach((family) => {
         const colorItem = document.createElement('div');
@@ -472,25 +538,39 @@ if (typeof document !== 'undefined') {
       modalFamilyZones.innerHTML = '';
       assignmentModal.style.display = 'flex';
 
-      modalInstrumentList.addEventListener('dragover', (e) => e.preventDefault());
-      modalInstrumentList.addEventListener('drop', (e) => {
+      const handleDrop = (e, target) => {
         e.preventDefault();
-        const inst = e.dataTransfer.getData('text/plain');
-        const li = assignmentModal.querySelector(`li[data-instrument="${inst}"]`);
-        if (li) modalInstrumentList.appendChild(li);
-      });
+        let data = e.dataTransfer.getData('text/plain');
+        let list;
+        try {
+          list = JSON.parse(data);
+        } catch {
+          list = [data];
+        }
+        list.forEach((inst) => {
+          const li = assignmentModal.querySelector(
+            `li[data-instrument="${CSS.escape(inst)}"]`
+          );
+          if (li) {
+            li.classList.remove('selected');
+            target.appendChild(li);
+          }
+        });
+      };
+
+      modalInstrumentList.addEventListener('dragover', (e) => e.preventDefault());
+      modalInstrumentList.addEventListener('drop', (e) =>
+        handleDrop(e, modalInstrumentList)
+      );
 
       FAMILY_LIST.forEach((family) => {
         const zone = document.createElement('div');
         zone.className = 'family-zone';
         zone.dataset.family = family;
         zone.addEventListener('dragover', (e) => e.preventDefault());
-        zone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          const inst = e.dataTransfer.getData('text/plain');
-          const li = assignmentModal.querySelector(`li[data-instrument="${inst}"]`);
-          if (li) zone.querySelector('ul').appendChild(li);
-        });
+        zone.addEventListener('drop', (e) =>
+          handleDrop(e, zone.querySelector('ul'))
+        );
         const h4 = document.createElement('h4');
         h4.textContent = family;
         const ul = document.createElement('ul');
@@ -507,7 +587,12 @@ if (typeof document !== 'undefined') {
         li.className = 'instrument-item';
         li.draggable = true;
         li.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', name);
+          const selected = Array.from(
+            assignmentModal.querySelectorAll('.instrument-item.selected')
+          );
+          const items = selected.includes(li) ? selected : [li];
+          const payload = items.map((el) => el.dataset.instrument);
+          e.dataTransfer.setData('text/plain', JSON.stringify(payload));
         });
 
         const assigned = assignedFamilies[name];
