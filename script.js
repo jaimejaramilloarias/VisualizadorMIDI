@@ -1044,8 +1044,9 @@ if (typeof document !== 'undefined') {
       onRestart: () => {
         const wasPlaying = audioPlayer.isPlaying();
         audioPlayer.stop(false);
+        audioPlayer.resetStartOffset();
         stopAnimation();
-        renderFrame(audioPlayer.getStartOffset());
+        renderFrame(0);
         if (wasPlaying) startPlayback();
       },
       onAspect169: () => {
