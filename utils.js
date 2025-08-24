@@ -8,11 +8,11 @@
 // Integración de nuevas figuras
 // En navegadores no existe `require`, así que se intenta obtener la
 // función desde el objeto global si no está disponible CommonJS.
-let drawSoloEspressivo;
+let drawEspiral;
 if (typeof require !== 'undefined') {
-  ({ drawSoloEspressivo } = require('./soloEspressivo.js'));
+  ({ drawEspiral } = require('./espiral.js'));
 } else {
-  drawSoloEspressivo = global.drawSoloEspressivo;
+  drawEspiral = global.drawEspiral;
 }
 
 // Cache simple para evitar recalcular ajustes de color
@@ -320,8 +320,8 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.closePath();
       break;
     }
-    case 'soloEspressivo':
-      drawSoloEspressivo(ctx, x, y, width, height);
+    case 'espiral':
+      drawEspiral(ctx, x, y, width, height);
       break;
     default:
       ctx.rect(x, y, width, height);
@@ -341,7 +341,7 @@ const SHAPE_OPTIONS = [
   { value: 'square', label: 'Cuadrado' },
   { value: 'star4', label: 'Estrella 4 puntas' },
   { value: 'pentagon', label: 'Pentágono' },
-  { value: 'soloEspressivo', label: 'Solo esspresivo' },
+  { value: 'espiral', label: 'Espiral ondulante' },
 ];
 
 function getFamilyModifiers(family) {

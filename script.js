@@ -46,8 +46,8 @@ const { loadWavFile } =
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
 const {
-  createSoloEspressivoRenderer: createSoloEspressivoRendererFn,
-} = typeof require !== 'undefined' ? require('./soloEspressivo.js') : window;
+  createEspiralRenderer: createEspiralRendererFn,
+} = typeof require !== 'undefined' ? require('./espiral.js') : window;
 
 // Estado de activación de instrumentos
 const enabledInstruments =
@@ -239,7 +239,7 @@ if (typeof document !== 'undefined') {
       return yTop + noteHeight / 2;
     };
 
-    let soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
+    let espiral = createEspiralRendererFn({ pitchToY });
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -719,7 +719,7 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       nextNoteId = 0;
-      soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
+      espiral = createEspiralRendererFn({ pitchToY });
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
@@ -754,7 +754,7 @@ if (typeof document !== 'undefined') {
       const visibleNotes = getVisibleNotes(notes);
       visibleNotes.forEach((n) => {
         if (!n._soloOn && nowMs >= n.start * 1000) {
-          soloEspressivo.noteOn({
+          espiral.noteOn({
             id: n.id,
             pitch: n.noteNumber,
             startMs: n.start * 1000,
@@ -763,7 +763,7 @@ if (typeof document !== 'undefined') {
           n._soloOn = true;
         }
         if (!n._soloOff && nowMs >= n.end * 1000) {
-          soloEspressivo.noteOff({ id: n.id, endMs: n.end * 1000 });
+          espiral.noteOff({ id: n.id, endMs: n.end * 1000 });
           n._soloOff = true;
         }
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
@@ -818,7 +818,7 @@ if (typeof document !== 'undefined') {
       // Línea de presente omitida para mantenerla invisible
 
       if (typeof offscreenCtx.createLinearGradient === 'function') {
-        soloEspressivo.render(offscreenCtx, nowMs);
+        espiral.render(offscreenCtx, nowMs);
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -829,7 +829,7 @@ if (typeof document !== 'undefined') {
     if (typeof window !== 'undefined') {
       window.__renderFrame = renderFrame;
       window.__setTestNotes = (n) => {
-        soloEspressivo = createSoloEspressivoRendererFn({ pitchToY });
+        espiral = createEspiralRendererFn({ pitchToY });
         nextNoteId = 0;
         notes = n.map((note) => ({ ...note, id: nextNoteId++ }));
       };
