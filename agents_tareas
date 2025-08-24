@@ -118,3 +118,4 @@
 117. [ ] Agregar mensajes de ayuda a todos los parámetros y botones de la UI, con explicaciones detalladas en el modo desarrollador.
 118. [x] Crear pruebas unitarias para las categorías personalizadas de familia.
 119. [x] Crear pruebas unitarias para el reinicio de reproducción mediante el botón "Inicio".
+120. [x] Corregir el menú desplegable de familias para incluir las categorías personalizadas.
