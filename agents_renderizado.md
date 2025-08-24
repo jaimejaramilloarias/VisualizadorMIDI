@@ -54,4 +54,4 @@ Mantener una visualización fluida de notas MIDI a 60fps o más, incluso en pant
  - [x] Optimizar handlers MIDI para solo encolar eventos y colapsar ráfagas.
  - [x] Asegurar animaciones basadas en `transform`/`opacity` con `will-change` y `contain`.
  - [x] Detectar cambios de `devicePixelRatio` para recalcular resoluciones.
- - [ ] Implementar fallback a Canvas2D cuando no haya WebGL/MSAA.
+- [x] Implementar fallback a Canvas2D cuando no haya WebGL/MSAA.

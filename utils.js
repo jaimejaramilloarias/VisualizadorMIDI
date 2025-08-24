@@ -413,7 +413,7 @@ function prefersReducedMotion() {
 // Inicia un bucle de animación a fps constantes utilizando setInterval
 // Si el usuario prefiere reducir movimiento, se ejecuta una sola vez
 // evitando animaciones continuas
-function startFixedFPSLoop(callback, fps = 60) {
+function startFixedFPSLoop(callback, fps = 60, minDt = 8, maxDt = 32) {
   if (prefersReducedMotion()) {
     callback(0, performance.now());
     return () => {};
@@ -422,7 +422,7 @@ function startFixedFPSLoop(callback, fps = 60) {
   let last = performance.now();
   const id = setInterval(() => {
     const now = performance.now();
-    const dt = Math.min(Math.max(now - last, 8), 32);
+    const dt = Math.min(Math.max(now - last, minDt), maxDt);
     last = now;
     callback(dt, now);
   }, interval);

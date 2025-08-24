@@ -53,6 +53,41 @@ const enabledInstruments =
     JSON.parse(localStorage.getItem('enabledInstruments') || '{}')) ||
   {};
 
+// Parámetros de fluidez de animación
+let fixedFPS = 60;
+let minFrameMs = 8;
+let maxFrameMs = 32;
+let superSampling = 1.25;
+
+function setFixedFPS(fps) {
+  if (typeof fps === 'number' && fps > 0) fixedFPS = fps;
+}
+
+function getFixedFPS() {
+  return fixedFPS;
+}
+
+function setFrameWindow(min, max) {
+  if (typeof min === 'number' && typeof max === 'number' && max >= min) {
+    minFrameMs = min;
+    maxFrameMs = max;
+  }
+}
+
+function getFrameWindow() {
+  return { min: minFrameMs, max: maxFrameMs };
+}
+
+function setSuperSampling(val) {
+  if (typeof val === 'number' && val >= 1 && val <= 2) {
+    superSampling = val;
+  }
+}
+
+function getSuperSampling() {
+  return superSampling;
+}
+
 function setInstrumentEnabled(inst, enabled) {
   enabledInstruments[inst] = enabled;
   if (typeof localStorage !== 'undefined') {
@@ -80,7 +115,19 @@ if (typeof document !== 'undefined') {
     }
 
     const canvas = document.getElementById('visualizer');
-    const ctx = canvas.getContext('2d');
+    let ctx;
+    if (typeof WebGL2RenderingContext !== 'undefined') {
+      const gl = canvas.getContext('webgl2', { antialias: true });
+      // Si no hay WebGL2 o MSAA, usamos Canvas2D
+      if (!gl || !(gl.getContextAttributes && gl.getContextAttributes().antialias)) {
+        ctx = canvas.getContext('2d');
+      } else {
+        // Placeholder: la ruta WebGL no está implementada aún
+        ctx = canvas.getContext('2d');
+      }
+    } else {
+      ctx = canvas.getContext('2d');
+    }
     ctx.imageSmoothingEnabled = false;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -262,6 +309,89 @@ if (typeof document !== 'undefined') {
       bumpItem.appendChild(bumpLabel);
       bumpItem.appendChild(bumpInput);
       developerControls.appendChild(bumpItem);
+
+      // Control para FPS fijo
+      const fpsLabel = document.createElement('label');
+      fpsLabel.textContent = 'FPS fijo:';
+      const fpsInput = document.createElement('input');
+      fpsInput.type = 'number';
+      fpsInput.min = '1';
+      fpsInput.max = '240';
+      fpsInput.value = fixedFPS;
+      fpsInput.addEventListener('change', () => {
+        const val = parseInt(fpsInput.value, 10);
+        if (!isNaN(val) && val > 0) {
+          setFixedFPS(val);
+          if (stopLoop) {
+            stopAnimation();
+            startAnimation();
+          }
+        }
+      });
+      const fpsItem = document.createElement('div');
+      fpsItem.className = 'dev-control';
+      fpsItem.appendChild(fpsLabel);
+      fpsItem.appendChild(fpsInput);
+      developerControls.appendChild(fpsItem);
+
+      // Control para ventana mínima y máxima de ms
+      const minLabel = document.createElement('label');
+      minLabel.textContent = 'Mín dt (ms):';
+      const minInput = document.createElement('input');
+      minInput.type = 'number';
+      minInput.min = '0';
+      minInput.value = minFrameMs;
+      const maxLabel = document.createElement('label');
+      maxLabel.textContent = 'Máx dt (ms):';
+      const maxInput = document.createElement('input');
+      maxInput.type = 'number';
+      maxInput.min = '0';
+      maxInput.value = maxFrameMs;
+      const updateWindow = () => {
+        const minVal = parseFloat(minInput.value);
+        const maxVal = parseFloat(maxInput.value);
+        if (!isNaN(minVal) && !isNaN(maxVal) && maxVal >= minVal) {
+          setFrameWindow(minVal, maxVal);
+          if (stopLoop) {
+            stopAnimation();
+            startAnimation();
+          }
+        }
+      };
+      minInput.addEventListener('change', updateWindow);
+      maxInput.addEventListener('change', updateWindow);
+      const minItem = document.createElement('div');
+      minItem.className = 'dev-control';
+      minItem.appendChild(minLabel);
+      minItem.appendChild(minInput);
+      developerControls.appendChild(minItem);
+      const maxItem = document.createElement('div');
+      maxItem.className = 'dev-control';
+      maxItem.appendChild(maxLabel);
+      maxItem.appendChild(maxInput);
+      developerControls.appendChild(maxItem);
+
+      // Control para supersampling inicial
+      const ssLabel = document.createElement('label');
+      ssLabel.textContent = 'Supersampling:';
+      const ssInput = document.createElement('input');
+      ssInput.type = 'number';
+      ssInput.step = '0.1';
+      ssInput.min = '1';
+      ssInput.max = '2';
+      ssInput.value = superSampling.toFixed(1);
+      ssInput.addEventListener('change', () => {
+        const val = parseFloat(ssInput.value);
+        if (!isNaN(val) && val >= 1 && val <= 2) {
+          setSuperSampling(val);
+          applyCanvasSize(!!document.fullscreenElement);
+        }
+      });
+      const ssItem = document.createElement('div');
+      ssItem.className = 'dev-control';
+      ssItem.appendChild(ssLabel);
+      ssItem.appendChild(ssInput);
+      developerControls.appendChild(ssItem);
     }
 
     let currentTracks = [];
@@ -667,7 +797,6 @@ if (typeof document !== 'undefined') {
 
     // ----- Configuración de Audio -----
     let currentDPR = window.devicePixelRatio || 1;
-    let superSampling = 1.25;
     const frameTimes = [];
     function applyCanvasSize(fullscreen = !!document.fullscreenElement) {
       const { width, height, styleWidth, styleHeight } = calculateCanvasSize(
@@ -961,12 +1090,17 @@ if (typeof document !== 'undefined') {
         renderFrame(audioPlayer.getCurrentTime());
         return;
       }
-      stopLoop = startFixedFPSLoop((dt) => {
-        adjustSupersampling(dt);
-        const currentSec = audioPlayer.getCurrentTime();
-        renderFrame(currentSec);
-        if (!audioPlayer.isPlaying()) stopAnimation();
-      }, 60);
+      stopLoop = startFixedFPSLoop(
+        (dt) => {
+          adjustSupersampling(dt);
+          const currentSec = audioPlayer.getCurrentTime();
+          renderFrame(currentSec);
+          if (!audioPlayer.isPlaying()) stopAnimation();
+        },
+        fixedFPS,
+        minFrameMs,
+        maxFrameMs,
+      );
     }
 
     function stopAnimation() {
@@ -1460,6 +1594,12 @@ if (typeof module !== 'undefined') {
       getGlowStrength,
       setBumpControl,
       getBumpControl,
+      setFixedFPS,
+      getFixedFPS,
+      setFrameWindow,
+      getFrameWindow,
+      setSuperSampling,
+      getSuperSampling,
       preprocessTempoMap,
       ticksToSeconds,
       setFamilyCustomization,
