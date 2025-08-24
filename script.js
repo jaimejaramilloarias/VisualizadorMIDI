@@ -45,9 +45,6 @@ const { loadWavFile } =
   typeof require !== 'undefined' ? require('./wavLoader.js') : window.wavLoader;
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
-const {
-  createEspiralRenderer: createEspiralRendererFn,
-} = typeof require !== 'undefined' ? require('./espiral.js') : window;
 
 // Estado de activación de instrumentos
 const enabledInstruments =
@@ -87,7 +84,6 @@ if (typeof document !== 'undefined') {
     // Canvas offscreen para optimizar el renderizado de notas
     const offscreenCanvas = document.createElement('canvas');
     const offscreenCtx = offscreenCanvas.getContext('2d');
-    if (!offscreenCtx.canvas) offscreenCtx.canvas = offscreenCanvas;
     offscreenCanvas.width = canvas.width;
     offscreenCanvas.height = canvas.height;
 
@@ -222,7 +218,6 @@ if (typeof document !== 'undefined') {
 
     let currentTracks = [];
     let notes = [];
-    let nextNoteId = 0;
     const NOTE_MIN = 21;
     const NOTE_MAX = 108;
     const BASE_HEIGHT = 720;
@@ -232,14 +227,6 @@ if (typeof document !== 'undefined') {
     let tempoMap = [];
     let timeDivision = 1;
     const audioPlayer = createAudioPlayer();
-    const pitchToY = (pitch, H) => {
-      const noteHeight = H / 88;
-      const clamped = Math.min(Math.max(pitch, NOTE_MIN), NOTE_MAX);
-      const yTop = H - (clamped - NOTE_MIN + 1) * noteHeight;
-      return yTop + noteHeight / 2;
-    };
-
-    let espiral = createEspiralRendererFn({ pitchToY });
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -718,8 +705,6 @@ if (typeof document !== 'undefined') {
 
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
-      nextNoteId = 0;
-      espiral = createEspiralRendererFn({ pitchToY });
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
@@ -727,7 +712,6 @@ if (typeof document !== 'undefined') {
             const start = ticksToSeconds(ev.start, tempoMap, timeDivision);
             const end = ticksToSeconds(ev.start + ev.duration, tempoMap, timeDivision);
             notes.push({
-              id: nextNoteId++,
               start,
               end,
               noteNumber: ev.noteNumber,
@@ -750,22 +734,7 @@ if (typeof document !== 'undefined') {
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
-      const nowMs = currentSec * 1000;
-      const visibleNotes = getVisibleNotes(notes);
-      visibleNotes.forEach((n) => {
-        if (!n._soloOn && nowMs >= n.start * 1000) {
-          espiral.noteOn({
-            id: n.id,
-            pitch: n.noteNumber,
-            startMs: n.start * 1000,
-            durMs: (n.end - n.start) * 1000,
-          });
-          n._soloOn = true;
-        }
-        if (!n._soloOff && nowMs >= n.end * 1000) {
-          espiral.noteOff({ id: n.id, endMs: n.end * 1000 });
-          n._soloOff = true;
-        }
+      getVisibleNotes(notes).forEach((n) => {
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
         let baseHeight = noteHeight * sizeFactor;
           baseHeight = computeVelocityHeight(baseHeight, n.velocity || velocityBase);
@@ -817,10 +786,6 @@ if (typeof document !== 'undefined') {
       });
       // Línea de presente omitida para mantenerla invisible
 
-      if (typeof offscreenCtx.createLinearGradient === 'function') {
-        espiral.render(offscreenCtx, nowMs);
-      }
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(offscreenCanvas, 0, 0);
     }
@@ -829,9 +794,7 @@ if (typeof document !== 'undefined') {
     if (typeof window !== 'undefined') {
       window.__renderFrame = renderFrame;
       window.__setTestNotes = (n) => {
-        espiral = createEspiralRendererFn({ pitchToY });
-        nextNoteId = 0;
-        notes = n.map((note) => ({ ...note, id: nextNoteId++ }));
+        notes = n;
       };
     }
 
