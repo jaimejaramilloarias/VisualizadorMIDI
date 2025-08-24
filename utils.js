@@ -125,6 +125,16 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
 
+// Calcula la opacidad del relleno tras pasar la línea de presente
+function computeFillAlpha(xEnd, canvasWidth) {
+  const center = canvasWidth / 2;
+  if (xEnd >= center) return 1;
+  const fadeWidth = canvasWidth * 0.1;
+  const dist = center - xEnd;
+  if (dist >= fadeWidth) return 0;
+  return 1 - dist / fadeWidth;
+}
+
 // Control global para el efecto "bump"
 let bumpControl = 1;
 
@@ -445,6 +455,7 @@ function ticksToSeconds(tick, tempoMap, timeDivision) {
 
 const utils = {
   computeOpacity,
+  computeFillAlpha,
   computeBumpHeight,
   computeGlowAlpha,
   applyGlowEffect,
