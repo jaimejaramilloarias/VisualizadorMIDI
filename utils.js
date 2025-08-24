@@ -358,7 +358,8 @@ function calculateCanvasSize(
   fullScreen = false,
   viewportWidth = 0,
   viewportHeight = 0,
-  dpr = 1
+  dpr = 1,
+  superSampling = 1
 ) {
   const ratio = aspect === '9:16' ? 9 / 16 : 16 / 9;
   let styleWidth;
@@ -377,8 +378,8 @@ function calculateCanvasSize(
     styleHeight = Math.round(height);
   }
   return {
-    width: Math.round(styleWidth * dpr),
-    height: Math.round(styleHeight * dpr),
+    width: Math.round(styleWidth * dpr * superSampling),
+    height: Math.round(styleHeight * dpr * superSampling),
     styleWidth,
     styleHeight,
   };
@@ -414,11 +415,17 @@ function prefersReducedMotion() {
 // evitando animaciones continuas
 function startFixedFPSLoop(callback, fps = 60) {
   if (prefersReducedMotion()) {
-    callback();
+    callback(0, performance.now());
     return () => {};
   }
   const interval = 1000 / fps;
-  const id = setInterval(callback, interval);
+  let last = performance.now();
+  const id = setInterval(() => {
+    const now = performance.now();
+    const dt = Math.min(Math.max(now - last, 8), 32);
+    last = now;
+    callback(dt, now);
+  }, interval);
   return () => clearInterval(id);
 }
 
