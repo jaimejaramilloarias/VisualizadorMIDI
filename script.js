@@ -600,6 +600,7 @@ if (typeof document !== 'undefined') {
         li.draggable = true;
           li.addEventListener('dragstart', (e) => {
             modalSelectMode = null; // detener selección al iniciar arrastre
+            li.classList.add('selected');
             const selected = Array.from(
               assignmentModal.querySelectorAll('.instrument-item.selected')
             );
