@@ -85,6 +85,9 @@ if (typeof document !== 'undefined') {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     canvas.style.imageRendering = 'pixelated';
+    // Sugerir al navegador que optimice transformaciones/opacidad del canvas
+    canvas.style.willChange = 'transform, opacity';
+    canvas.style.contain = 'paint';
 
     // Canvas offscreen para optimizar el renderizado de notas
     const offscreenCanvas = document.createElement('canvas');
