@@ -1,5 +1,7 @@
 // viz/soloEspressivo.js
-export function createSoloEspressivoRenderer({
+
+// Convertido a CommonJS para integrarlo con el resto de la app
+function createSoloEspressivoRenderer({
   pitchToY = (p, H) => Math.round(H * 0.5 - (p - 69) * 5),
   connectMaxGapMs = 700,
   vib = { f0: 2.5, f1: 3.2, amp0: 12, amp1: 22 },
@@ -21,8 +23,68 @@ export function createSoloEspressivoRenderer({
   function drawConnector(ctx,W,yA,yB,gapMs){ if(gapMs>connectMaxGapMs) return; const x0=W-rightMargin, opp=(yB>yA?-1:1), ratio=1-(gapMs/connectMaxGapMs); const w0=1+1.2*ratio, alpha=0.5+0.5*ratio; const c1={x:x0-45,y:yA+opp*18}, c2={x:x0-160,y:mix(yA,yB,0.6)-opp*10}; ctx.save(); ctx.strokeStyle='#d6ccb3'; ctx.globalAlpha=alpha; let pv={x:x0,y:yA}; const N=90; for(let i=1;i<=N;i++){ const t=i/N; const x=Math.pow(1-t,3)*x0 + 3*Math.pow(1-t,2)*t*c1.x + 3*(1-t)*t*t*c2.x + Math.pow(t,3)*x0; const y=Math.pow(1-t,3)*yA + 3*Math.pow(1-t,2)*t*c1.y + 3*(1-t)*t*t*c2.y + Math.pow(t,3)*yB; const wS=mix(w0,0.7,t); const jx=(rnd(i)-0.5)*0.8, jy=(rnd(i+1)-0.5)*0.8; stroke(ctx,pv,{x:x+jx,y:y+jy},t,'#d6ccb3',wS); pv={x:x+jx,y:y+jy}; } ctx.restore(); }
 
   return {
-    noteOn({ id, pitch, startMs, durMs }){ notes.push({ id, pitch, startMs, durMs, endMs:null, isShort: durMs < 150 }); },
-    noteOff({ id, endMs }){ const n=notes.find(x=>x.id===id); if(n) n.endMs=endMs; },
-    render(ctx, nowMs){ const W=ctx.canvas.width, H=ctx.canvas.height; const list=[...notes].sort((a,b)=>a.startMs-b.startMs); let prev=null; for(const n of list){ n.y ??= pitchToY(n.pitch,H); if(n.isShort){ drawShort(ctx,W,n.y); } else { n.lenPx ??= drawLongStatic(ctx,W,n.y,n.durMs); const on0=n.startMs, on1=n.endMs ?? (n.startMs+n.durMs); if(nowMs>=on0 && nowMs<=on1){ const el=(nowMs-on0)/1000, pr=Math.max(0,Math.min(1,(nowMs-on0)/n.durMs)); drawVibrato(ctx,W,n.y,n.lenPx,el,pr); } } if(prev){ const g = Math.max(0,(n.startMs - (prev.endMs ?? (prev.startMs+prev.durMs)))); drawConnector(ctx,W,prev.y,n.y,g); } prev=n; } },
+    noteOn({ id, pitch, startMs, durMs }){
+      notes.push({ id, pitch, startMs, durMs, endMs: null, isShort: durMs < 150 });
+    },
+    noteOff({ id, endMs }){
+      const n = notes.find((x) => x.id === id);
+      if (n) n.endMs = endMs;
+    },
+    render(ctx, nowMs){
+      const W = ctx.canvas.width;
+      const H = ctx.canvas.height;
+      const list = [...notes].sort((a, b) => a.startMs - b.startMs);
+      let prev = null;
+      for (const n of list) {
+        n.y ??= pitchToY(n.pitch, H);
+        if (n.isShort) {
+          drawShort(ctx, W, n.y);
+        } else {
+          n.lenPx ??= drawLongStatic(ctx, W, n.y, n.durMs);
+          const on0 = n.startMs;
+          const on1 = n.endMs ?? (n.startMs + n.durMs);
+          if (nowMs >= on0 && nowMs <= on1) {
+            const el = (nowMs - on0) / 1000;
+            const pr = Math.max(0, Math.min(1, (nowMs - on0) / n.durMs));
+            drawVibrato(ctx, W, n.y, n.lenPx, el, pr);
+          }
+        }
+        if (prev) {
+          const g = Math.max(0, n.startMs - (prev.endMs ?? (prev.startMs + prev.durMs)));
+          drawConnector(ctx, W, prev.y, n.y, g);
+        }
+        prev = n;
+      }
+    },
   };
 }
+
+// Dibuja una versión simplificada de la figura "Solo espressivo" alineada a la izquierda
+// para ser utilizada como una forma dentro de la app.
+function drawSoloEspressivo(ctx, x, y, width, height) {
+  const mix = (a, b, t) => a + (b - a) * t;
+  const eio = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const spiral = (cx, cy, t) => {
+    const th = t * 4 * Math.PI;
+    const r = mix(height * 0.1, height * 0.5, eio(t));
+    return { x: cx + r * Math.cos(th), y: cy + r * Math.sin(th) };
+  };
+
+  const cx = x + height * 0.3;
+  const cy = y + height / 2;
+  const steps = 40;
+  let p = spiral(cx, cy, 0);
+  ctx.moveTo(p.x, p.y);
+  for (let i = 1; i <= steps; i++) {
+    p = spiral(cx, cy, i / steps);
+    ctx.lineTo(p.x, p.y);
+  }
+  // Cola hacia la derecha
+  ctx.lineTo(x + width, cy);
+  ctx.lineTo(x + width, cy + height * 0.1);
+  ctx.lineTo(x, cy + height * 0.1);
+  ctx.closePath();
+}
+
+module.exports = { createSoloEspressivoRenderer, drawSoloEspressivo };
+

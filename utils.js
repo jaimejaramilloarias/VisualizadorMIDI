@@ -5,6 +5,9 @@
  */
 
 (function (global) {
+// Integración de nuevas figuras
+const { drawSoloEspressivo } = require('./soloEspressivo.js');
+
 // Cache simple para evitar recalcular ajustes de color
 const colorCache = new Map();
 
@@ -310,6 +313,9 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.closePath();
       break;
     }
+    case 'soloEspressivo':
+      drawSoloEspressivo(ctx, x, y, width, height);
+      break;
     default:
       ctx.rect(x, y, width, height);
   }
@@ -328,6 +334,7 @@ const SHAPE_OPTIONS = [
   { value: 'square', label: 'Cuadrado' },
   { value: 'star4', label: 'Estrella 4 puntas' },
   { value: 'pentagon', label: 'Pentágono' },
+  { value: 'soloEspressivo', label: 'Solo esspresivo' },
 ];
 
 function getFamilyModifiers(family) {
