@@ -125,10 +125,10 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
 
-// Devuelve 1 si el NOTE ON aún no cruza la línea de presente y 0 en caso contrario
+// Devuelve 1 si el NOTE ON ya cruzó la línea de presente y 0 si aún no
 function computeFillAlpha(xStart, canvasWidth) {
   const center = canvasWidth / 2;
-  return xStart >= center ? 1 : 0;
+  return xStart > center ? 0 : 1;
 }
 
 // Control global para el efecto "bump"

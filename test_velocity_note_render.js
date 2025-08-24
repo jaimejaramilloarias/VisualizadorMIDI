@@ -72,7 +72,7 @@ const notes = [
 
 dom.window.__setTestNotes(notes);
 
-dom.window.__renderFrame(-1);
+dom.window.__renderFrame(1.1);
 
 const rects = contexts[1].rects;
 assert.strictEqual(rects.length, 4, 'Debe dibujar cuatro rectángulos (relleno y contorno)');
