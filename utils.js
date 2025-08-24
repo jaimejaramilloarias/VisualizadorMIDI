@@ -226,9 +226,9 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha) {
   ctx.shadowBlur = 20 * glowStrength;
   ctx.shadowColor = '#ffffff';
   ctx.fillStyle = '#ffffff';
-  const w = width * glowStrength;
+  const w = width;
   const h = height * glowStrength;
-  const offsetX = x - (w - width) / 2;
+  const offsetX = x;
   const offsetY = y - (h - height) / 2;
   drawNoteShape(ctx, shape, offsetX, offsetY, w, h);
   ctx.restore();

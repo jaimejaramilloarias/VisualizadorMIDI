@@ -24,6 +24,7 @@ const ctx = {
 
 applyGlowEffect(ctx, 'square', 0, 0, 10, 10, 0.5);
 assert(ctx.shadowBlur > 20, 'blur no escalado');
-assert(ctx.w > 10 && ctx.h > 10, 'tamaño no escalado');
+assert.strictEqual(ctx.w, 10, 'el ancho no debe cambiar');
+assert(ctx.h > 10, 'la altura debe escalarse');
 
 console.log('Pruebas de control de glow completadas');
