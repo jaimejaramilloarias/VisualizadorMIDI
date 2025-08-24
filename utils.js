@@ -125,12 +125,6 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
 
-// Devuelve 1 si el NOTE ON ya cruzó la línea de presente y 0 si aún no
-function computeFillAlpha(xStart, canvasWidth) {
-  const center = canvasWidth / 2;
-  return xStart > center ? 0 : 1;
-}
-
 // Control global para el efecto "bump"
 let bumpControl = 1;
 
@@ -446,7 +440,6 @@ function ticksToSeconds(tick, tempoMap, timeDivision) {
 
 const utils = {
   computeOpacity,
-  computeFillAlpha,
   computeBumpHeight,
   computeGlowAlpha,
   applyGlowEffect,
