@@ -1,5 +1,5 @@
 1. [x] Configurar la estructura base del proyecto web (HTML, CSS, JS) y mostrar un canvas de 720px de alto junto a los menús superior e inferior sin funcionalidades.
-2. [x] Implementar botón “Cargar MIDI/XML” y lógica básica para leer archivos MIDI/XML extrayendo note ON/OFF, duración, velocidad, tempo y nombres de pista.
+2. [x] Implementar botón “Cargar MIDI” y lógica básica para leer archivos MIDI extrayendo note ON/OFF, duración, velocidad, tempo y nombres de pista.
 3. [x] Implementar botón “Cargar WAV” y reproducción de audio, eliminando silencios iniciales y sincronizando el playhead con la animación.
 4. [x] Crear estructura de datos que relacione cada pista con su instrumento y familia, asignando formas y colores predeterminados.
 5. [x] Dibujar notas básicas en el canvas desplazándose de derecha a izquierda, alineadas con NOTE ON/OFF y la línea de presente al centro.
@@ -10,7 +10,7 @@
 10. [x] Añadir opciones de aspecto 16:9 y 9:16, con soporte para pantalla completa y supermuestreo.
 11. [x] Implementar menú inferior con dropdowns de Instrumento y Familia siempre visibles, y panel desplegable para personalizar color y figura por familia.
 12. [x] Optimizar rendimiento y modularizar el código con comentarios claros para facilitar el desarrollo incremental.
-13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI y MusicXML.
+13. [x] Implementar pruebas unitarias básicas para las funciones de parseo de archivos MIDI.
 14. [x] Integrar la estructura de pistas con el menú inferior, poblando dinámicamente el dropdown de instrumentos según los archivos cargados.
 15. [x] Renderizar rectángulos estáticos en el canvas representando notas basadas en eventos (subtarea de la 5).
 16. [x] Animar las notas desplazándose de derecha a izquierda sincronizadas con el tiempo.
@@ -36,7 +36,7 @@
 36. [x] El color de fondo del canvas debe ser negro absoluto, pero en el panel inferior debe existir la posibilidad de cambiar el color del canvas.
 37. [x] La línea de presente debe ser invisible.
 38. [x] Las cápsulas deben ser rectángulos con esquinas redondeadas.
-39. [x] El botón de play debe funcionar así esté cargado solo el MIDI/XML sin audio, o el audio sin MIDI/XML.
+39. [x] El botón de play debe funcionar así esté cargado solo el MIDI sin audio, o el audio sin MIDI.
 40. [x] La animación debe estar en 60 fps fijos SIEMPRE, y no depender de la frecuencia de la pantalla.
 41. [x] La velocidad del midi debe salir del tempo map, y NO ser una velocidad constante.
 42. [x] El brillo de las figuras al pasar por la línea de presente debe ser de tipo glow/blur, y parecer una sombra más que una línea definida.
@@ -44,7 +44,7 @@
 44. [x] En algún menú debe existir la posibilidad de activar o desactivar instrumentos para incluirlos o eliminarlos de la animación.
 45. [x] Crear pruebas unitarias para la personalización del color del canvas.
 46. [x] Corregir el bug que impedía aplicar el color de fondo seleccionado al canvas en cada frame.
-47. [x] Crear pruebas unitarias para el botón Play funcionando con solo MIDI/XML o solo WAV.
+47. [x] Crear pruebas unitarias para el botón Play funcionando con solo MIDI o solo WAV.
 
 48. [x] Crear pruebas unitarias para mantener la animación a 60 fps constantes.
 49. [x] Crear pruebas unitarias para la reproducción basada en el tempo map.

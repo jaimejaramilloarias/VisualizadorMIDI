@@ -22,26 +22,6 @@
           }
         };
         reader.readAsArrayBuffer(file);
-      } else if (ext.endsWith('xml')) {
-        reader.onload = (ev) => {
-          try {
-            const xml = parsers.parseMusicXML(ev.target.result);
-            const tempoMap = [
-              {
-                time: 0,
-                microsecondsPerBeat: (60 / xml.tempo) * 1e6,
-              },
-            ];
-            resolve({
-              tracks: xml.tracks,
-              tempoMap,
-              timeDivision: xml.divisions,
-            });
-          } catch (err) {
-            reject(err);
-          }
-        };
-        reader.readAsText(file);
       } else {
         reject(new Error('Formato no soportado'));
       }
