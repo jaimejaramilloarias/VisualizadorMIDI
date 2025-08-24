@@ -1,0 +1,86 @@
+const assert = require('assert');
+const { JSDOM } = require('jsdom');
+
+const dom = new JSDOM(`<!DOCTYPE html><html><body>
+<canvas id="visualizer" width="800" height="720"></canvas>
+<button id="load-midi"></button>
+<input id="midi-file-input" />
+<button id="load-wav"></button>
+<input id="wav-file-input" />
+<select id="instrument-select"></select>
+<select id="family-select"></select>
+<button id="toggle-family-panel"></button>
+<button id="developer-mode"></button>
+<div id="family-config-panel"><div id="developer-controls"></div></div>
+<div id="assignment-modal"></div>
+<div id="modal-instrument-list"></div>
+<div id="modal-family-zones"></div>
+<button id="apply-assignments"></button>
+<button id="play-stop"></button>
+<button id="seek-forward"></button>
+<button id="seek-backward"></button>
+<button id="restart"></button>
+<button id="aspect-16-9"></button>
+<button id="aspect-9-16"></button>
+<button id="full-screen"></button>
+</body></html>`, { runScripts: 'outside-only' });
+
+global.document = dom.window.document;
+global.window = dom.window;
+
+const contexts = [];
+dom.window.HTMLCanvasElement.prototype.getContext = function() {
+  const ctx = {
+    rects: [],
+    rect(x, y, w, h) { this.rects.push({ x, y, w, h }); },
+    fillRect() {},
+    clearRect() {},
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    arc() {},
+    ellipse() {},
+    closePath() {},
+    fill() {},
+    stroke() {},
+    save() {},
+    restore() {},
+    drawImage() {},
+    globalAlpha: 1,
+  };
+  contexts.push(ctx);
+  return ctx;
+};
+
+global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
+
+const script = require('./script.js');
+
+dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+
+const canvas = dom.window.document.getElementById('visualizer');
+const noteHeight = canvas.height / 88;
+const sizeFactor = script.getFamilyModifiers('Metales').sizeFactor;
+const baseHeight = noteHeight * sizeFactor;
+const velBase = script.getVelocityBase();
+
+const notes = [
+  { start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'square', family: 'Metales', velocity: velBase },
+  { start: 0, end: 1, noteNumber: 62, color: '#fff', shape: 'square', family: 'Metales', velocity: velBase * 2 },
+];
+
+dom.window.__setTestNotes(notes);
+
+dom.window.__renderFrame(1.1);
+
+const rects = contexts[1].rects;
+assert.strictEqual(rects.length, 4, 'Debe dibujar cuatro rectángulos (relleno y contorno)');
+
+const h1 = rects[0].h;
+const h2 = rects[2].h;
+
+assert(Math.abs(h1 - baseHeight) < 1e-6);
+assert(Math.abs(h2 - baseHeight * 2) < 1e-6);
+
+console.log('Pruebas de altura de notas por velocidad en renderización completadas');
