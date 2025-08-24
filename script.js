@@ -113,12 +113,28 @@ if (typeof document !== 'undefined') {
     // ---- Soporte de selección múltiple en el modal de asignación ----
     let modalSelectMode = null;
     let checkboxDrag = null;
+    let lastModalIndex = null;
     assignmentModal.addEventListener('mousedown', (e) => {
       const item = e.target.closest('.instrument-item');
       if (item) {
-        modalSelectMode = item.classList.contains('selected') ? 'deselect' : 'select';
-        if (modalSelectMode === 'select') item.classList.add('selected');
-        else item.classList.remove('selected');
+        const items = Array.from(
+          modalInstrumentList.querySelectorAll('.instrument-item')
+        );
+        const idx = items.indexOf(item);
+        if (e.shiftKey && lastModalIndex !== null) {
+          const [start, end] = [lastModalIndex, idx].sort((a, b) => a - b);
+          for (let i = start; i <= end; i++) {
+            items[i].classList.add('selected');
+          }
+          modalSelectMode = null;
+        } else {
+          modalSelectMode = item.classList.contains('selected')
+            ? 'deselect'
+            : 'select';
+          if (modalSelectMode === 'select') item.classList.add('selected');
+          else item.classList.remove('selected');
+        }
+        lastModalIndex = idx;
         e.preventDefault();
       }
     });
