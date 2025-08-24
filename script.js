@@ -1296,33 +1296,46 @@ function parseMusicXML(text) {
 
   const parser = new DOMParser();
   const xml = parser.parseFromString(text, 'application/xml');
-  const tempo = parseFloat(xml.querySelector('sound[tempo]')?.getAttribute('tempo')) || 120;
-  const divisions = parseInt(xml.querySelector('divisions')?.textContent || '1', 10);
+
+  // Utilidad para obtener el primer elemento con nombre de etiqueta dado
+  const first = (parent, tag) => parent.getElementsByTagName(tag)[0];
+
+  const tempoNode = first(xml, 'sound');
+  const tempo = tempoNode
+    ? parseFloat(tempoNode.getAttribute('tempo')) || 120
+    : 120;
+
+  const divisionsNode = first(xml, 'divisions');
+  const divisions = divisionsNode ? parseInt(divisionsNode.textContent, 10) : 1;
 
   const stepToMidi = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
   const tracks = Array.from(xml.getElementsByTagName('part')).map((part) => {
-    const trackName = part.querySelector('part-name')?.textContent || part.getAttribute('id');
+    const nameNode = first(part, 'part-name');
+    const trackName = nameNode ? nameNode.textContent : part.getAttribute('id');
     const events = [];
     let currentTime = 0;
 
     Array.from(part.getElementsByTagName('measure')).forEach((measure) => {
       Array.from(measure.getElementsByTagName('note')).forEach((noteEl) => {
-        const duration = parseInt(noteEl.querySelector('duration')?.textContent || '0', 10);
+        const durationNode = first(noteEl, 'duration');
+        const duration = durationNode ? parseInt(durationNode.textContent, 10) : 0;
         const isRest = noteEl.getElementsByTagName('rest').length > 0;
         if (!isRest) {
-          const pitch = noteEl.querySelector('pitch');
-          const step = pitch.querySelector('step').textContent;
-          const octave = parseInt(pitch.querySelector('octave').textContent, 10);
-          const alter = parseInt(pitch.querySelector('alter')?.textContent || '0', 10);
-          const noteNumber = stepToMidi[step] + alter + (octave + 1) * 12;
-          events.push({
-            type: 'note',
-            noteNumber,
-            velocity: 64,
-            start: currentTime,
-            duration,
-          });
+          const pitch = first(noteEl, 'pitch');
+          if (pitch) {
+            const step = first(pitch, 'step')?.textContent || 'C';
+            const octave = parseInt(first(pitch, 'octave')?.textContent || '4', 10);
+            const alter = parseInt(first(pitch, 'alter')?.textContent || '0', 10);
+            const noteNumber = stepToMidi[step] + alter + (octave + 1) * 12;
+            events.push({
+              type: 'note',
+              noteNumber,
+              velocity: 64,
+              start: currentTime,
+              duration,
+            });
+          }
         }
         currentTime += duration;
       });
