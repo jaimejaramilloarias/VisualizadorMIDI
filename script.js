@@ -121,20 +121,12 @@ if (typeof document !== 'undefined') {
     }
 
     let ctx;
+    // Verificamos WebGL2 en un canvas temporal para no bloquear el principal
     if (typeof WebGL2RenderingContext !== 'undefined') {
-      const gl = canvas.getContext('webgl2', { antialias: true });
-      // Si WebGL2 no está disponible o no cuenta con MSAA, liberamos cualquier
-      // contexto obtenido y continuamos con Canvas2D.
-      if (gl) {
-        const attrs = gl.getContextAttributes && gl.getContextAttributes();
-        if (!attrs || !attrs.antialias) {
-          gl.getExtension?.('WEBGL_lose_context')?.loseContext?.();
-        } else {
-          // Placeholder: la ruta WebGL no está implementada aún, por lo que
-          // liberamos el contexto antes de usar Canvas2D.
-          gl.getExtension?.('WEBGL_lose_context')?.loseContext?.();
-        }
-      }
+      const testCanvas = document.createElement('canvas');
+      const gl = testCanvas.getContext('webgl2', { antialias: true });
+      // La ruta WebGL aún no está implementada; liberamos cualquier contexto
+      gl?.getExtension?.('WEBGL_lose_context')?.loseContext?.();
     }
     ctx = canvas.getContext('2d');
 
