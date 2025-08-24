@@ -9,6 +9,8 @@ const {
   getOpacityScale,
   getGlowStrength,
   getBumpControl,
+  getVisibleSeconds,
+  getHeightScaleConfig,
 } = require('./script.js');
 
 const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
@@ -33,6 +35,8 @@ const config = {
   opacityScale: { edge: 0.1, mid: 0.8 },
   glowStrength: 1.5,
   bumpControl: 1.2,
+  visibleSeconds: 6,
+  heightScale: { global: 1, families: {} },
 };
 
 importConfiguration(config, tracks, notes);
@@ -52,6 +56,8 @@ assert.strictEqual(getVelocityBase(), 80);
 assert.deepStrictEqual(getOpacityScale(), { edge: 0.1, mid: 0.8 });
 assert.strictEqual(getGlowStrength(), 1.5);
 assert.strictEqual(getBumpControl(), 1.2);
+assert.strictEqual(getVisibleSeconds(), 6);
+assert.deepStrictEqual(getHeightScaleConfig(), { global: 1, families: {} });
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);
