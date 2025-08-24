@@ -22,7 +22,7 @@
           }
         };
         reader.readAsArrayBuffer(file);
-      } else if (ext === 'xml') {
+      } else if (ext === 'xml' || ext === 'musicxml') {
         reader.onload = (ev) => {
           try {
             const xml = parsers.parseMusicXML(ev.target.result);
