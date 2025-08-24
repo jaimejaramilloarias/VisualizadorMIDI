@@ -110,9 +110,11 @@
 109. [x] Coalescer ráfagas de eventos MIDI para evitar saturar la cola.
 110. [x] Proveer fallback de renderizado a Canvas2D cuando WebGL/MSAA no esté disponible.
 111. [x] Cargar automáticamente el archivo `configuracion.json` al iniciar la aplicación.
-112. [ ] Incorporar categorías personalizadas "Custom 1" a "Custom 5" en la lista de familias, visibles en todos los menús de la UI.
-113. [ ] Corregir el botón "Inicio" para que restablezca la reproducción incluso cuando esté detenida.
+112. [x] Incorporar categorías personalizadas "Custom 1" a "Custom 5" en la lista de familias, visibles en todos los menús de la UI.
+113. [x] Corregir el botón "Inicio" para que restablezca la reproducción incluso cuando esté detenida.
 114. [x] Incrementar la resolución de las figuras geométricas para eliminar bordes pixelados.
 115. [ ] Ajustar la figura "diamante" para que, al aparecer desde la derecha, mantenga altura y longitud iniciales ignorando el `note off`; al cruzar la línea de presente, extender su extremo derecho hasta el `note off` y continuar con esa longitud.
 116. [ ] Añadir un botón en la UI que permita alternar entre FPS fijo y tasa automática según la pantalla.
 117. [ ] Agregar mensajes de ayuda a todos los parámetros y botones de la UI, con explicaciones detalladas en el modo desarrollador.
+118. [x] Crear pruebas unitarias para las categorías personalizadas de familia.
+119. [x] Crear pruebas unitarias para el reinicio de reproducción mediante el botón "Inicio".

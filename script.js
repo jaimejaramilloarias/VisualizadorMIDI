@@ -131,6 +131,16 @@ function getVisibleNotes(allNotes) {
   );
 }
 
+async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback) {
+  audioPlayer.stop(false);
+  audioPlayer.resetStartOffset();
+  stopAnimation();
+  renderFrame(0);
+  const ctx = audioPlayer.getAudioContext();
+  await ctx.resume();
+  startPlayback();
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const titleEl = document.getElementById('app-title');
@@ -1042,12 +1052,7 @@ if (typeof document !== 'undefined') {
       onForward: () => seek(3),
       onBackward: () => seek(-3),
       onRestart: () => {
-        const wasPlaying = audioPlayer.isPlaying();
-        audioPlayer.stop(false);
-        audioPlayer.resetStartOffset();
-        stopAnimation();
-        renderFrame(0);
-        if (wasPlaying) startPlayback();
+        restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback);
       },
       onAspect169: () => {
         currentAspect = '16:9';
@@ -1253,6 +1258,11 @@ const FAMILY_DEFAULTS = {
   'Cuerdas frotadas': { shape: 'diamond', color: '#ffa500' },
   'Cuerdas pulsadas': { shape: 'star4', color: '#008000' },
   Voces: { shape: 'capsule', color: '#808080' },
+  'Custom 1': { shape: 'square', color: '#ffffff' },
+  'Custom 2': { shape: 'square', color: '#ffffff' },
+  'Custom 3': { shape: 'square', color: '#ffffff' },
+  'Custom 4': { shape: 'square', color: '#ffffff' },
+  'Custom 5': { shape: 'square', color: '#ffffff' },
 };
 
 // Copia mutable de los valores predeterminados
@@ -1363,6 +1373,11 @@ const FAMILY_LIST = [
   'Cuerdas frotadas',
   'Cuerdas pulsadas',
   'Voces',
+  'Custom 1',
+  'Custom 2',
+  'Custom 3',
+  'Custom 4',
+  'Custom 5',
 ];
 
 let assignedFamilies = {};
@@ -1757,5 +1772,7 @@ if (typeof module !== 'undefined') {
     setHeightScale,
     getHeightScale,
     getHeightScaleConfig,
+    restartPlayback,
+    FAMILY_LIST,
   };
 }
