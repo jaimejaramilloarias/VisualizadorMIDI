@@ -125,14 +125,10 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
 
-// Calcula la opacidad del relleno tras pasar la línea de presente
-function computeFillAlpha(xEnd, canvasWidth) {
+// Devuelve 1 si el NOTE ON aún no cruza la línea de presente y 0 en caso contrario
+function computeFillAlpha(xStart, canvasWidth) {
   const center = canvasWidth / 2;
-  if (xEnd >= center) return 1;
-  const fadeWidth = canvasWidth * 0.1;
-  const dist = center - xEnd;
-  if (dist >= fadeWidth) return 0;
-  return 1 - dist / fadeWidth;
+  return xStart >= center ? 1 : 0;
 }
 
 // Control global para el efecto "bump"

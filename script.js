@@ -862,7 +862,7 @@ if (typeof document !== 'undefined') {
 
         // Opacidad variable según distancia al centro
         const strokeAlpha = computeOpacity(xStart, xEnd, canvas.width);
-        const fillAlpha = computeFillAlpha(xEnd, canvas.width) * strokeAlpha;
+        const fillAlpha = computeFillAlpha(xStart, canvas.width) * strokeAlpha;
 
         if (fillAlpha > 0) {
           offscreenCtx.save();
