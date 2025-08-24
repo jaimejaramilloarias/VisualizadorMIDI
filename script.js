@@ -663,6 +663,9 @@ if (typeof document !== 'undefined') {
       });
 
     // ----- Configuración de Audio -----
+    let currentDPR = window.devicePixelRatio || 1;
+    let superSampling = 1.25;
+    const frameTimes = [];
     function applyCanvasSize(fullscreen = !!document.fullscreenElement) {
       const { width, height, styleWidth, styleHeight } = calculateCanvasSize(
         currentAspect,
@@ -670,7 +673,8 @@ if (typeof document !== 'undefined') {
         fullscreen,
         window.innerWidth,
         window.innerHeight,
-        window.devicePixelRatio || 1
+        currentDPR,
+        superSampling
       );
       canvas.width = width;
       canvas.height = height;
@@ -683,15 +687,21 @@ if (typeof document !== 'undefined') {
 
     applyCanvasSize(false);
 
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() =>
+        applyCanvasSize(!!document.fullscreenElement)
+      );
+      resizeObserver.observe(document.body);
+    }
+
     function setupDPRListener() {
       if (!window.matchMedia) return;
-      let dpr = window.devicePixelRatio || 1;
-      let mql = window.matchMedia(`(resolution: ${dpr}dppx)`);
+      let mql = window.matchMedia(`(resolution: ${currentDPR}dppx)`);
       const onChange = () => {
         mql.removeEventListener('change', onChange);
-        dpr = window.devicePixelRatio || 1;
+        currentDPR = window.devicePixelRatio || 1;
         applyCanvasSize(!!document.fullscreenElement);
-        mql = window.matchMedia(`(resolution: ${dpr}dppx)`);
+        mql = window.matchMedia(`(resolution: ${currentDPR}dppx)`);
         mql.addEventListener('change', onChange);
       };
       mql.addEventListener('change', onChange);
@@ -927,12 +937,29 @@ if (typeof document !== 'undefined') {
       };
     }
 
+    function adjustSupersampling(dt) {
+      frameTimes.push(dt);
+      if (frameTimes.length >= 30) {
+        const avg =
+          frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+        frameTimes.length = 0;
+        if (avg > 18 && superSampling > 1) {
+          superSampling = Math.max(1, superSampling - 0.1);
+          applyCanvasSize(!!document.fullscreenElement);
+        } else if (avg < 12 && superSampling < 2) {
+          superSampling = Math.min(2, superSampling + 0.1);
+          applyCanvasSize(!!document.fullscreenElement);
+        }
+      }
+    }
+
     function startAnimation() {
       if (prefersReducedMotion()) {
         renderFrame(audioPlayer.getCurrentTime());
         return;
       }
-      stopLoop = startFixedFPSLoop(() => {
+      stopLoop = startFixedFPSLoop((dt) => {
+        adjustSupersampling(dt);
         const currentSec = audioPlayer.getCurrentTime();
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();

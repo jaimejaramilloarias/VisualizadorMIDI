@@ -46,9 +46,9 @@ Mantener una visualización fluida de notas MIDI a 60fps o más, incluso en pant
 - [x] Procesar eventos en batch con límite configurable por frame.
 - [x] Adaptar el renderizado de notas a un sistema `time-based`.
 - [x] Convertir ticks a tiempo usando el tempo map del MIDI para evitar asumir un BPM constante.
-- [ ] Incorporar supersampling basado en `devicePixelRatio` y factor dinámico `S`.
-- [ ] Ajustar la lógica de pantalla completa y redimensionamiento con `ResizeObserver`.
-- [ ] Añadir autoajuste de supersampling según tiempos de frame.
+- [x] Incorporar supersampling basado en `devicePixelRatio` y factor dinámico `S`.
+- [x] Ajustar la lógica de pantalla completa y redimensionamiento con `ResizeObserver`.
+- [x] Añadir autoajuste de supersampling según tiempos de frame.
 - [x] Implementar soporte para `prefers-reduced-motion`.
 - [ ] Establecer mecanismos de pooling para objetos/arrays reutilizables.
 - [ ] Optimizar handlers MIDI para solo encolar eventos y colapsar ráfagas.
