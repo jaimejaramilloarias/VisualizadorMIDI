@@ -97,22 +97,22 @@
 96. [x] Cambiar la figura triángulo alargado por un diamante alargado con lados rectos.
 97. [x] Ocultar el puntero del mouse al activar el modo de pantalla completa.
 98. [x] Actualizar las pruebas unitarias para el diamante alargado.
-99. [ ] Reestructurar eventos MIDI para que solo actualicen estado interno y encolen operaciones.
-100. [ ] Crear único bucle `requestAnimationFrame` con cálculo de `dt` (8-32 ms) y renderizado basado en tiempo.
-101. [ ] Procesar la cola de eventos en batch, limitando el número de operaciones por frame.
-102. [ ] Implementar supersampling dinámico basado en `devicePixelRatio` y un factor ajustable.
-103. [ ] Integrar la Fullscreen API, recalculando resoluciones y ocultando el cursor.
-104. [ ] Detectar cambios de tamaño y DPR con `ResizeObserver` y actualizar las dimensiones una vez por frame.
+99. [x] Reestructurar eventos MIDI para que solo actualicen estado interno y encolen operaciones.
+100. [x] Crear único bucle `requestAnimationFrame` con cálculo de `dt` (8-32 ms) y renderizado basado en tiempo.
+101. [x] Procesar la cola de eventos en batch, limitando el número de operaciones por frame.
+102. [x] Implementar supersampling dinámico basado en `devicePixelRatio` y un factor ajustable.
+103. [x] Integrar la Fullscreen API, recalculando resoluciones y ocultando el cursor.
+104. [x] Detectar cambios de tamaño y DPR con `ResizeObserver` y actualizar las dimensiones una vez por frame.
 105. [x] Soportar `prefers-reduced-motion` desactivando interpolaciones continuas.
-106. [ ] Ajustar automáticamente el factor de supersampling u operaciones según el tiempo de frame (12–18 ms).
-107. [ ] Optimizar animaciones utilizando solo `transform` y `opacity`, aplicando `will-change` y `contain`.
-108. [ ] Reutilizar objetos y arrays para minimizar pausas de GC.
-109. [ ] Coalescer ráfagas de eventos MIDI para evitar saturar la cola.
+106. [x] Ajustar automáticamente el factor de supersampling u operaciones según el tiempo de frame (12–18 ms).
+107. [x] Optimizar animaciones utilizando solo `transform` y `opacity`, aplicando `will-change` y `contain`.
+108. [x] Reutilizar objetos y arrays para minimizar pausas de GC.
+109. [x] Coalescer ráfagas de eventos MIDI para evitar saturar la cola.
 110. [x] Proveer fallback de renderizado a Canvas2D cuando WebGL/MSAA no esté disponible.
-111. [ ] Cargar automáticamente el archivo `configuracion.json` al iniciar la aplicación.
+111. [x] Cargar automáticamente el archivo `configuracion.json` al iniciar la aplicación.
 112. [ ] Incorporar categorías personalizadas "Custom 1" a "Custom 5" en la lista de familias, visibles en todos los menús de la UI.
 113. [ ] Corregir el botón "Inicio" para que restablezca la reproducción incluso cuando esté detenida.
-114. [ ] Incrementar la resolución de las figuras geométricas para eliminar bordes pixelados.
+114. [x] Incrementar la resolución de las figuras geométricas para eliminar bordes pixelados.
 115. [ ] Ajustar la figura "diamante" para que, al aparecer desde la derecha, mantenga altura y longitud iniciales ignorando el `note off`; al cruzar la línea de presente, extender su extremo derecho hasta el `note off` y continuar con esa longitud.
 116. [ ] Añadir un botón en la UI que permita alternar entre FPS fijo y tasa automática según la pantalla.
 117. [ ] Agregar mensajes de ayuda a todos los parámetros y botones de la UI, con explicaciones detalladas en el modo desarrollador.
