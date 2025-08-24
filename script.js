@@ -26,15 +26,16 @@ const {
   getOpacityScale,
   setGlowStrength,
   getGlowStrength,
-    setBumpControl,
-    getBumpControl,
-    preprocessTempoMap,
-    ticksToSeconds,
-    validateColorRange,
-    prefersReducedMotion,
+  setBumpControl,
+  getBumpControl,
+  preprocessTempoMap,
+  ticksToSeconds,
+  validateColorRange,
+  prefersReducedMotion,
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,
+  computeDiamondBounds,
   } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
@@ -1158,13 +1159,23 @@ if (typeof document !== 'undefined') {
         let xStart;
         let xEnd;
         let width;
-        if (NON_STRETCHED_SHAPES.has(n.shape)) {
+        if (n.shape === 'diamond') {
+          ({ xStart, xEnd, width } = computeDiamondBounds(
+            n,
+            currentSec,
+            canvas.width,
+            pixelsPerSecond,
+            baseHeight
+          ));
+        } else if (NON_STRETCHED_SHAPES.has(n.shape)) {
           width = baseHeight;
-          const xCenter = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+          const xCenter =
+            canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
           xStart = xCenter - width / 2;
           xEnd = xStart + width;
         } else {
-          xStart = canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+          xStart =
+            canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
           xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
           width = xEnd - xStart;
         }
@@ -1802,5 +1813,6 @@ if (typeof module !== 'undefined') {
     getHeightScaleConfig,
     restartPlayback,
     FAMILY_LIST,
+    computeDiamondBounds,
   };
 }

@@ -401,6 +401,24 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
   return (note.end - note.start) * pixelsPerSecond;
 }
 
+// Calcula la posición y el ancho del diamante considerando la línea de presente
+function computeDiamondBounds(
+  note,
+  currentSec,
+  canvasWidth,
+  pixelsPerSecond,
+  baseWidth
+) {
+  const center = canvasWidth / 2;
+  const xStart = center + (note.start - currentSec) * pixelsPerSecond;
+  if (xStart > center) {
+    const width = baseWidth;
+    return { xStart, xEnd: xStart + width, width };
+  }
+  const xEnd = center + (note.end - currentSec) * pixelsPerSecond;
+  return { xStart, xEnd, width: xEnd - xStart };
+}
+
 // Calcula dimensiones del canvas según relación de aspecto y modo de pantalla
 function calculateCanvasSize(
   aspect = '16:9',
@@ -551,6 +569,7 @@ const utils = {
   SHAPE_OPTIONS,
   getFamilyModifiers,
   computeNoteWidth,
+  computeDiamondBounds,
   calculateCanvasSize,
   computeSeekOffset,
   resetStartOffset,
