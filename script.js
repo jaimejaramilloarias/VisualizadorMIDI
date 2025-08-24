@@ -25,12 +25,13 @@ const {
   getOpacityScale,
   setGlowStrength,
   getGlowStrength,
-  setBumpControl,
-  getBumpControl,
-  preprocessTempoMap,
-  ticksToSeconds,
-  validateColorRange,
-} = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
+    setBumpControl,
+    getBumpControl,
+    preprocessTempoMap,
+    ticksToSeconds,
+    validateColorRange,
+    prefersReducedMotion,
+  } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
@@ -682,6 +683,21 @@ if (typeof document !== 'undefined') {
 
     applyCanvasSize(false);
 
+    function setupDPRListener() {
+      if (!window.matchMedia) return;
+      let dpr = window.devicePixelRatio || 1;
+      let mql = window.matchMedia(`(resolution: ${dpr}dppx)`);
+      const onChange = () => {
+        mql.removeEventListener('change', onChange);
+        dpr = window.devicePixelRatio || 1;
+        applyCanvasSize(!!document.fullscreenElement);
+        mql = window.matchMedia(`(resolution: ${dpr}dppx)`);
+        mql.addEventListener('change', onChange);
+      };
+      mql.addEventListener('change', onChange);
+    }
+    setupDPRListener();
+
     document.addEventListener('fullscreenchange', () => {
       const fs = !!document.fullscreenElement;
       applyCanvasSize(fs);
@@ -912,6 +928,10 @@ if (typeof document !== 'undefined') {
     }
 
     function startAnimation() {
+      if (prefersReducedMotion()) {
+        renderFrame(audioPlayer.getCurrentTime());
+        return;
+      }
       stopLoop = startFixedFPSLoop(() => {
         const currentSec = audioPlayer.getCurrentTime();
         renderFrame(currentSec);

@@ -401,9 +401,22 @@ function canStartPlayback(audioBuffer, notes) {
   return !!(audioBuffer || (Array.isArray(notes) && notes.length > 0));
 }
 
+// Detecta si el usuario prefiere reducir las animaciones
+function prefersReducedMotion() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 // Inicia un bucle de animación a fps constantes utilizando setInterval
-// Se evita depender de requestAnimationFrame para garantizar 60 fps fijos
+// Si el usuario prefiere reducir movimiento, se ejecuta una sola vez
+// evitando animaciones continuas
 function startFixedFPSLoop(callback, fps = 60) {
+  if (prefersReducedMotion()) {
+    callback();
+    return () => {};
+  }
   const interval = 1000 / fps;
   const id = setInterval(callback, interval);
   return () => clearInterval(id);
@@ -465,6 +478,7 @@ const utils = {
   computeSeekOffset,
   resetStartOffset,
   canStartPlayback,
+  prefersReducedMotion,
   startFixedFPSLoop,
   preprocessTempoMap,
   ticksToSeconds,

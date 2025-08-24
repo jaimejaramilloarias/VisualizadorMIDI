@@ -43,15 +43,15 @@ Mantener una visualización fluida de notas MIDI a 60fps o más, incluso en pant
 ## Tareas
  - [x] Crear estructura de estado central y cola de eventos para `noteOn`/`noteOff`.
  - [x] Implementar bucle `requestAnimationFrame` único con cálculo de `dt` y clamping.
- - [x] Procesar eventos en batch con límite configurable por frame.
- - [x] Adaptar el renderizado de notas a un sistema `time-based`.
-- [ ] Convertir ticks a tiempo usando el tempo map del MIDI para evitar asumir un BPM constante.
+- [x] Procesar eventos en batch con límite configurable por frame.
+- [x] Adaptar el renderizado de notas a un sistema `time-based`.
+- [x] Convertir ticks a tiempo usando el tempo map del MIDI para evitar asumir un BPM constante.
 - [ ] Incorporar supersampling basado en `devicePixelRatio` y factor dinámico `S`.
 - [ ] Ajustar la lógica de pantalla completa y redimensionamiento con `ResizeObserver`.
 - [ ] Añadir autoajuste de supersampling según tiempos de frame.
-- [ ] Implementar soporte para `prefers-reduced-motion`.
+- [x] Implementar soporte para `prefers-reduced-motion`.
 - [ ] Establecer mecanismos de pooling para objetos/arrays reutilizables.
 - [ ] Optimizar handlers MIDI para solo encolar eventos y colapsar ráfagas.
 - [ ] Asegurar animaciones basadas en `transform`/`opacity` con `will-change` y `contain`.
-- [ ] Detectar cambios de `devicePixelRatio` para recalcular resoluciones.
+- [x] Detectar cambios de `devicePixelRatio` para recalcular resoluciones.
 - [ ] Implementar fallback a Canvas2D cuando no haya WebGL/MSAA.
