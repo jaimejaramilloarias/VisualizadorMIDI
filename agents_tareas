@@ -103,7 +103,7 @@
 102. [ ] Implementar supersampling dinámico basado en `devicePixelRatio` y un factor ajustable.
 103. [ ] Integrar la Fullscreen API, recalculando resoluciones y ocultando el cursor.
 104. [ ] Detectar cambios de tamaño y DPR con `ResizeObserver` y actualizar las dimensiones una vez por frame.
-105. [ ] Soportar `prefers-reduced-motion` desactivando interpolaciones continuas.
+105. [x] Soportar `prefers-reduced-motion` desactivando interpolaciones continuas.
 106. [ ] Ajustar automáticamente el factor de supersampling u operaciones según el tiempo de frame (12–18 ms).
 107. [ ] Optimizar animaciones utilizando solo `transform` y `opacity`, aplicando `will-change` y `contain`.
 108. [ ] Reutilizar objetos y arrays para minimizar pausas de GC.
