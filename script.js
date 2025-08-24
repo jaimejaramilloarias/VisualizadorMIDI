@@ -4,6 +4,7 @@
 // Importación de utilidades modulares para efectos visuales y cálculos
 const {
   computeOpacity,
+  computeFillAlpha,
   computeBumpHeight,
   computeGlowAlpha,
   drawNoteShape,
@@ -860,14 +861,24 @@ if (typeof document !== 'undefined') {
           (height - noteHeight) / 2;
 
         // Opacidad variable según distancia al centro
-        const alpha = computeOpacity(xStart, xEnd, canvas.width);
-        if (alpha < 1) {
+        const strokeAlpha = computeOpacity(xStart, xEnd, canvas.width);
+        const fillAlpha = computeFillAlpha(xEnd, canvas.width) * strokeAlpha;
+
+        if (fillAlpha > 0) {
           offscreenCtx.save();
-          offscreenCtx.globalAlpha = alpha;
+          offscreenCtx.globalAlpha = fillAlpha;
+          offscreenCtx.fillStyle = n.color;
+          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
+          offscreenCtx.restore();
         }
-        offscreenCtx.fillStyle = n.color;
-        drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
-        if (alpha < 1) offscreenCtx.restore();
+
+        if (strokeAlpha > 0) {
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = strokeAlpha;
+          offscreenCtx.strokeStyle = n.color;
+          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height, true);
+          offscreenCtx.restore();
+        }
 
         // Brillo blanco corto en el NOTE ON presente
         const glowAlpha = computeGlowAlpha(currentSec, n.start);
@@ -1376,6 +1387,7 @@ if (typeof module !== 'undefined') {
     INSTRUMENT_COLOR_SHIFT,
     adjustColorBrightness,
     computeOpacity,
+    computeFillAlpha,
     computeBumpHeight,
     computeGlowAlpha,
     applyGlowEffect,
