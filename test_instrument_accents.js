@@ -11,10 +11,10 @@ const tracks = assignTrackInfo([
 assert.strictEqual(tracks[0].instrument, 'Saxofón');
 assert.strictEqual(tracks[0].family, 'Saxofones');
 assert.strictEqual(tracks[1].instrument, 'Corno francés');
-assert.strictEqual(tracks[1].family, 'Metales');
+assert.strictEqual(tracks[1].family, 'Cornos');
 assert.strictEqual(tracks[2].instrument, 'Saxofón');
 assert.strictEqual(tracks[2].family, 'Saxofones');
 assert.strictEqual(tracks[3].instrument, 'Corno francés');
-assert.strictEqual(tracks[3].family, 'Metales');
+assert.strictEqual(tracks[3].family, 'Cornos');
 
 console.log('Pruebas de reconocimiento de tildes completadas');

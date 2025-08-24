@@ -405,6 +405,9 @@ if (typeof document !== 'undefined') {
 
     let currentTracks = [];
     let notes = [];
+    let startIndex = 0;
+    let endIndex = 0;
+    let lastTime = 0;
     const NOTE_MIN = 21;
     const NOTE_MAX = 108;
     const BASE_HEIGHT = 720;
@@ -999,6 +1002,9 @@ if (typeof document !== 'undefined') {
         });
       });
       notes.sort((a, b) => a.start - b.start);
+      startIndex = 0;
+      endIndex = 0;
+      lastTime = 0;
     }
 
     function renderFrame(currentSec) {
@@ -1007,7 +1013,20 @@ if (typeof document !== 'undefined') {
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
-      getVisibleNotes(notes).forEach((n) => {
+      if (currentSec < lastTime) {
+        startIndex = 0;
+        endIndex = 0;
+      }
+      lastTime = currentSec;
+      const windowStart = currentSec - 3;
+      const windowEnd = currentSec + 3;
+      while (startIndex < notes.length && notes[startIndex].end < windowStart)
+        startIndex++;
+      while (endIndex < notes.length && notes[endIndex].start < windowEnd)
+        endIndex++;
+      for (let i = startIndex; i < endIndex; i++) {
+        const n = notes[i];
+        if (enabledInstruments[n.trackName ?? n.instrument] === false) continue;
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
         let baseHeight = noteHeight * sizeFactor;
           baseHeight = computeVelocityHeight(baseHeight, n.velocity || velocityBase);
@@ -1024,7 +1043,7 @@ if (typeof document !== 'undefined') {
           xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
           width = xEnd - xStart;
         }
-        if (xEnd < 0 || xStart > canvas.width) return;
+        if (xEnd < 0 || xStart > canvas.width) continue;
         const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
 
         // Altura con efecto "bump" cuando la nota cruza la línea de presente
@@ -1063,7 +1082,7 @@ if (typeof document !== 'undefined') {
             glowAlpha
           );
         }
-      });
+      }
       // Línea de presente omitida para mantenerla invisible
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1075,6 +1094,9 @@ if (typeof document !== 'undefined') {
       window.__renderFrame = renderFrame;
       window.__setTestNotes = (n) => {
         notes = n;
+        startIndex = 0;
+        endIndex = 0;
+        lastTime = 0;
       };
     }
 
@@ -1127,6 +1149,7 @@ const FAMILY_DEFAULTS = {
   'Dobles cañas': { shape: 'star', color: '#8a2be2' },
   'Saxofones': { shape: 'star', color: '#a0522d' },
   Metales: { shape: 'capsule', color: '#ffff00' },
+  Cornos: { shape: 'capsule', color: '#ffff00' },
   'Percusión menor': { shape: 'pentagon', color: '#808080' },
   Tambores: { shape: 'circle', color: '#808080' },
   Platillos: { shape: 'circle', color: '#808080' },
@@ -1150,7 +1173,7 @@ const INSTRUMENT_FAMILIES = {
   Trompeta: 'Metales',
   Trombón: 'Metales',
   Tuba: 'Metales',
-  'Corno francés': 'Metales',
+  'Corno francés': 'Cornos',
   Piano: 'Cuerdas pulsadas',
   Violín: 'Cuerdas frotadas',
   Viola: 'Cuerdas frotadas',
