@@ -479,6 +479,23 @@ function startFixedFPSLoop(callback, fps = 60, minDt = 8, maxDt = 32) {
   return () => clearInterval(id);
 }
 
+function startAutoFPSLoop(callback, minDt = 8, maxDt = 32) {
+  if (prefersReducedMotion()) {
+    callback(0, performance.now());
+    return () => {};
+  }
+  let last = performance.now();
+  let id;
+  function frame(now) {
+    const dt = Math.min(Math.max(now - last, minDt), maxDt);
+    last = now;
+    callback(dt, now);
+    id = requestAnimationFrame(frame);
+  }
+  id = requestAnimationFrame(frame);
+  return () => cancelAnimationFrame(id);
+}
+
 // Preprocesa el mapa de tempo agregando acumulados de segundos
 function preprocessTempoMap(tempoMap, timeDivision) {
   let lastTick = 0;
@@ -540,6 +557,7 @@ const utils = {
   canStartPlayback,
   prefersReducedMotion,
   startFixedFPSLoop,
+  startAutoFPSLoop,
   preprocessTempoMap,
   ticksToSeconds,
 };
