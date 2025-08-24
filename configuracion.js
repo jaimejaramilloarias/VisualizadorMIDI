@@ -148,5 +148,7 @@ window.DEFAULT_CONFIG = {
     "mid": 0.48
   },
   "glowStrength": 0.9,
-  "bumpControl": 0.9
+  "bumpControl": 0.9,
+  "visibleSeconds": 6,
+  "heightScale": { "global": 1, "families": {} }
 };

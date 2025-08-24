@@ -184,6 +184,56 @@ function computeVelocityHeight(baseHeight, velocity, reference = velocityBase) {
   return baseHeight * (velocity / reference);
 }
 
+// Escala global o por familia para la altura de las figuras
+let heightScale = 1;
+let familyHeightScale = {};
+
+function persistHeightScale() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(
+      'heightScale',
+      JSON.stringify({ global: heightScale, families: familyHeightScale })
+    );
+  }
+}
+
+function setHeightScale(value, family) {
+  if (typeof value !== 'number' || value <= 0) return;
+  if (family) {
+    familyHeightScale[family] = value;
+  } else {
+    heightScale = value;
+  }
+  persistHeightScale();
+}
+
+function loadHeightScale() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('heightScale');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (typeof parsed.global === 'number') heightScale = parsed.global;
+      if (parsed.families && typeof parsed.families === 'object') {
+        familyHeightScale = parsed.families;
+      }
+    } catch {}
+  }
+}
+
+function getHeightScale(family) {
+  loadHeightScale();
+  if (family) return familyHeightScale[family] || heightScale;
+  return heightScale;
+}
+
+function getHeightScaleConfig() {
+  loadHeightScale();
+  return { global: heightScale, families: { ...familyHeightScale } };
+}
+
+loadHeightScale();
+
 // Control global del glow
 let glowStrength = 1;
 
@@ -344,7 +394,7 @@ function getFamilyModifiers(family) {
 // Calcula el ancho base de la nota en píxeles
 function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
   const { sizeFactor } = getFamilyModifiers(note.family);
-  const baseHeight = noteHeight * sizeFactor;
+  const baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
   if (NON_STRETCHED_SHAPES.has(note.shape)) {
     return baseHeight;
   }
@@ -477,6 +527,9 @@ const utils = {
   getGlowStrength,
   setBumpControl,
   getBumpControl,
+  setHeightScale,
+  getHeightScale,
+  getHeightScaleConfig,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,

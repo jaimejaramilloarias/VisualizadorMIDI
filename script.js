@@ -31,6 +31,9 @@ const {
     ticksToSeconds,
     validateColorRange,
     prefersReducedMotion,
+  setHeightScale,
+  getHeightScale,
+  getHeightScaleConfig,
   } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
@@ -95,6 +98,33 @@ function setInstrumentEnabled(inst, enabled) {
   }
 }
 
+let visibleSeconds = 6;
+let canvas = null;
+let pixelsPerSecond = 0;
+
+function setVisibleSeconds(sec) {
+  if (typeof sec !== 'number' || sec <= 0) return;
+  visibleSeconds = sec;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('visibleSeconds', String(visibleSeconds));
+  }
+  if (canvas) {
+    pixelsPerSecond = canvas.width / visibleSeconds;
+  }
+}
+
+function getVisibleSeconds() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = parseFloat(localStorage.getItem('visibleSeconds'));
+    if (!isNaN(stored) && stored > 0) {
+      visibleSeconds = stored;
+    }
+  }
+  return visibleSeconds;
+}
+
+getVisibleSeconds();
+
 function getVisibleNotes(allNotes) {
   return allNotes.filter(
     (n) => enabledInstruments[n.trackName ?? n.instrument] !== false,
@@ -114,7 +144,7 @@ if (typeof document !== 'undefined') {
         .join('');
     }
 
-    const canvas = document.getElementById('visualizer');
+    canvas = document.getElementById('visualizer');
     if (!canvas) {
       console.warn('Canvas element with id "visualizer" not found.');
       return;
@@ -225,6 +255,70 @@ if (typeof document !== 'undefined') {
           familyPanel.classList.add('active');
         }
       });
+
+      // Control para segundos visibles en el canvas
+      const secsLabel = document.createElement('label');
+      secsLabel.textContent = 'Segundos visibles:';
+      const secsInput = document.createElement('input');
+      secsInput.type = 'number';
+      secsInput.min = '1';
+      secsInput.step = '0.1';
+      secsInput.value = getVisibleSeconds();
+      secsInput.addEventListener('change', () => {
+        const val = parseFloat(secsInput.value);
+        if (!isNaN(val) && val > 0) {
+          setVisibleSeconds(val);
+        }
+      });
+      const secsItem = document.createElement('div');
+      secsItem.className = 'dev-control';
+      secsItem.appendChild(secsLabel);
+      secsItem.appendChild(secsInput);
+      developerControls.appendChild(secsItem);
+
+      // Control para porcentaje de altura (global o por familia)
+      const heightFamLabel = document.createElement('label');
+      heightFamLabel.textContent = 'Familia altura:';
+      const heightFamSelect = document.createElement('select');
+      const globalOption = document.createElement('option');
+      globalOption.value = '';
+      globalOption.textContent = 'Global';
+      heightFamSelect.appendChild(globalOption);
+      Object.keys(FAMILY_PRESETS).forEach((fam) => {
+        const opt = document.createElement('option');
+        opt.value = fam;
+        opt.textContent = fam;
+        heightFamSelect.appendChild(opt);
+      });
+      const heightFamItem = document.createElement('div');
+      heightFamItem.className = 'dev-control';
+      heightFamItem.appendChild(heightFamLabel);
+      heightFamItem.appendChild(heightFamSelect);
+      developerControls.appendChild(heightFamItem);
+
+      const heightLabel = document.createElement('label');
+      heightLabel.textContent = 'Altura (%):';
+      const heightInput = document.createElement('input');
+      heightInput.type = 'number';
+      heightInput.min = '10';
+      heightInput.max = '300';
+      const updateHeightInput = () => {
+        const fam = heightFamSelect.value || null;
+        heightInput.value = Math.round(getHeightScale(fam) * 100);
+      };
+      heightFamSelect.addEventListener('change', updateHeightInput);
+      updateHeightInput();
+      heightInput.addEventListener('change', () => {
+        const val = parseFloat(heightInput.value);
+        if (!isNaN(val) && val > 0) {
+          setHeightScale(val / 100, heightFamSelect.value || null);
+        }
+      });
+      const heightItem = document.createElement('div');
+      heightItem.className = 'dev-control';
+      heightItem.appendChild(heightLabel);
+      heightItem.appendChild(heightInput);
+      developerControls.appendChild(heightItem);
 
       // Control para ajustar la velocidad base de referencia
       const velLabel = document.createElement('label');
@@ -412,7 +506,7 @@ if (typeof document !== 'undefined') {
     const NOTE_MAX = 108;
     const BASE_HEIGHT = 720;
     let currentAspect = '16:9';
-    let pixelsPerSecond = canvas.width / 6;
+    pixelsPerSecond = canvas.width / visibleSeconds;
     let stopLoop = null;
     let tempoMap = [];
     let timeDivision = 1;
@@ -826,7 +920,7 @@ if (typeof document !== 'undefined') {
       offscreenCanvas.height = height;
       canvas.style.width = `${styleWidth}px`;
       canvas.style.height = `${styleHeight}px`;
-      pixelsPerSecond = canvas.width / 6;
+      pixelsPerSecond = canvas.width / visibleSeconds;
     }
 
     applyCanvasSize(false);
@@ -1018,8 +1112,8 @@ if (typeof document !== 'undefined') {
         endIndex = 0;
       }
       lastTime = currentSec;
-      const windowStart = currentSec - 3;
-      const windowEnd = currentSec + 3;
+      const windowStart = currentSec - visibleSeconds / 2;
+      const windowEnd = currentSec + visibleSeconds / 2;
       while (startIndex < notes.length && notes[startIndex].end < windowStart)
         startIndex++;
       while (endIndex < notes.length && notes[endIndex].start < windowEnd)
@@ -1028,7 +1122,7 @@ if (typeof document !== 'undefined') {
         const n = notes[i];
         if (enabledInstruments[n.trackName ?? n.instrument] === false) continue;
         const { sizeFactor, bump } = getFamilyModifiers(n.family);
-        let baseHeight = noteHeight * sizeFactor;
+        let baseHeight = noteHeight * sizeFactor * getHeightScale(n.family);
           baseHeight = computeVelocityHeight(baseHeight, n.velocity || velocityBase);
         let xStart;
         let xEnd;
@@ -1375,6 +1469,8 @@ function exportConfiguration() {
     opacityScale: getOpacityScale(),
     glowStrength: getGlowStrength(),
     bumpControl: getBumpControl(),
+    visibleSeconds: getVisibleSeconds(),
+    heightScale: getHeightScaleConfig(),
   });
 }
 
@@ -1399,6 +1495,19 @@ function importConfiguration(json, tracks = [], notes = []) {
   }
   if (typeof data.bumpControl === 'number') {
     setBumpControl(data.bumpControl);
+  }
+  if (typeof data.visibleSeconds === 'number') {
+    setVisibleSeconds(data.visibleSeconds);
+  }
+  if (data.heightScale) {
+    if (typeof data.heightScale.global === 'number') {
+      setHeightScale(data.heightScale.global);
+    }
+    if (data.heightScale.families && typeof data.heightScale.families === 'object') {
+      Object.entries(data.heightScale.families).forEach(([fam, val]) => {
+        if (typeof val === 'number') setHeightScale(val, fam);
+      });
+    }
   }
 
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
@@ -1642,5 +1751,10 @@ if (typeof module !== 'undefined') {
     loadDefaultConfiguration,
     setInstrumentEnabled,
     getVisibleNotes,
+    setVisibleSeconds,
+    getVisibleSeconds,
+    setHeightScale,
+    getHeightScale,
+    getHeightScaleConfig,
   };
 }
