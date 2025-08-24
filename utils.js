@@ -407,16 +407,11 @@ function canStartPlayback(audioBuffer, notes) {
   return !!(audioBuffer || (Array.isArray(notes) && notes.length > 0));
 }
 
-// Inicia un bucle de animación a fps constantes utilizando setInterval y rAF
+// Inicia un bucle de animación a fps constantes utilizando setInterval
+// Se evita depender de requestAnimationFrame para garantizar 60 fps fijos
 function startFixedFPSLoop(callback, fps = 60) {
   const interval = 1000 / fps;
-  const id = setInterval(() => {
-    if (typeof requestAnimationFrame !== 'undefined') {
-      requestAnimationFrame(callback);
-    } else {
-      callback();
-    }
-  }, interval);
+  const id = setInterval(callback, interval);
   return () => clearInterval(id);
 }
 
