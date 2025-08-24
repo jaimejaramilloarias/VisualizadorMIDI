@@ -15,10 +15,10 @@
     "Saxofón alto": "Saxofones",
     "Saxofón tenor": "Saxofones",
     "Saxofón barítono": "Saxofones",
-    "Corno francés (Sol) 1": "Metales",
-    "Corno francés (Sol) 2": "Metales",
-    "Corno francés (Sol) 3": "Metales",
-    "Corno francés (Sol) 4": "Metales",
+      "Corno francés (Sol) 1": "Cornos",
+      "Corno francés (Sol) 2": "Cornos",
+      "Corno francés (Sol) 3": "Cornos",
+      "Corno francés (Sol) 4": "Cornos",
     "Trompeta (Si Bemol) 1": "Metales",
     "Trompeta (Si Bemol) 2": "Metales",
     "Trompeta (Si Bemol) 3": "Metales",
@@ -42,6 +42,12 @@
   },
   "familyCustomizations": {
     "Metales": {
+      "color": "#ffb900",
+      "shape": "capsule",
+      "colorBright": "#ffea00",
+      "colorDark": "#ff8800"
+    },
+    "Cornos": {
       "color": "#ffb900",
       "shape": "capsule",
       "colorBright": "#ffea00",

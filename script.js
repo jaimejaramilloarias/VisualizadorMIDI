@@ -1259,6 +1259,7 @@ const FAMILY_LIST = [
   'Dobles cañas',
   'Saxofones',
   'Metales',
+  'Cornos',
   'Percusión menor',
   'Tambores',
   'Platillos',
