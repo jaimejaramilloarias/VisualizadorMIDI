@@ -128,6 +128,39 @@ function testLoadMusicFileMusicXML() {
   });
 }
 
+// Prueba para parseMusicXML con namespace por defecto
+function testParseMusicXMLNamespace() {
+  const { JSDOM } = require('jsdom');
+  global.DOMParser = new JSDOM().window.DOMParser;
+  const xml = `
+    <score-partwise version="3.1" xmlns="http://www.musicxml.org/ns/musicxml">
+      <part-list>
+        <score-part id="P1">
+          <part-name>Piano</part-name>
+        </score-part>
+      </part-list>
+      <part id="P1">
+        <measure number="1">
+          <attributes>
+            <divisions>1</divisions>
+          </attributes>
+          <note>
+            <pitch>
+              <step>C</step>
+              <octave>4</octave>
+            </pitch>
+            <duration>1</duration>
+          </note>
+        </measure>
+      </part>
+    </score-partwise>`;
+  const result = parseMusicXML(xml);
+  assert.strictEqual(result.tracks.length, 1);
+  assert.strictEqual(result.tracks[0].events[0].noteNumber, 60);
+  delete global.DOMParser;
+  console.log('parseMusicXML namespace OK');
+}
+
 testParseMIDI();
 testParseMusicXML();
 testAssignTrackInfo();
@@ -135,3 +168,4 @@ testLoadMusicFileMusicXML().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+testParseMusicXMLNamespace();
