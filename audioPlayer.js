@@ -41,27 +41,27 @@
       return canStartPlayback(audioBuffer, notes);
     }
 
-    function start(notes, onEnded) {
-      if (!canStart(notes)) return false;
-      const ctx = getAudioContext();
-      playStartTime = ctx.currentTime;
-      if (audioBuffer) {
-        source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.onended = () => {
-          isPlaying = false;
+      function start(notes, onEnded, delay = 0) {
+        if (!canStart(notes)) return false;
+        const ctx = getAudioContext();
+        playStartTime = ctx.currentTime + delay;
+        if (audioBuffer) {
+          source = ctx.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(ctx.destination);
+          source.onended = () => {
+            isPlaying = false;
+            source = null;
+            startOffset = 0;
+            if (onEnded) onEnded();
+          };
+          source.start(ctx.currentTime + delay, trimOffset + startOffset);
+        } else {
           source = null;
-          startOffset = 0;
-          if (onEnded) onEnded();
-        };
-        source.start(0, trimOffset + startOffset);
-      } else {
-        source = null;
+        }
+        isPlaying = true;
+        return true;
       }
-      isPlaying = true;
-      return true;
-    }
 
     function stop(preserveOffset = true) {
       if (!isPlaying) return;
@@ -88,9 +88,12 @@
       return startOffset;
     }
 
-    function getCurrentTime() {
-      return startOffset + (isPlaying ? getAudioContext().currentTime - playStartTime : 0);
-    }
+      function getCurrentTime() {
+        const t =
+          startOffset +
+          (isPlaying ? getAudioContext().currentTime - playStartTime : 0);
+        return t < 0 ? 0 : t;
+      }
 
     function resetStartOffset() {
       startOffset = 0;

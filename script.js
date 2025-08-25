@@ -122,6 +122,7 @@ function setInstrumentEnabled(inst, enabled) {
 let visibleSeconds = 6;
 let canvas = null;
 let pixelsPerSecond = 0;
+let audioOffsetMs = 0;
 
 function setVisibleSeconds(sec) {
   if (typeof sec !== 'number' || sec <= 0) return;
@@ -146,6 +147,26 @@ function getVisibleSeconds() {
 
 getVisibleSeconds();
 
+function setAudioOffset(ms) {
+  if (typeof ms !== 'number') return;
+  audioOffsetMs = ms;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('audioOffsetMs', String(audioOffsetMs));
+  }
+}
+
+function getAudioOffset() {
+  if (typeof localStorage !== 'undefined') {
+    const stored = parseFloat(localStorage.getItem('audioOffsetMs'));
+    if (!isNaN(stored)) {
+      audioOffsetMs = stored;
+    }
+  }
+  return audioOffsetMs;
+}
+
+getAudioOffset();
+
 function getVisibleNotes(allNotes) {
   return allNotes.filter(
     (n) => enabledInstruments[n.trackName ?? n.instrument] !== false,
@@ -156,7 +177,7 @@ async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPla
   audioPlayer.stop(false);
   audioPlayer.resetStartOffset();
   stopAnimation();
-  renderFrame(0);
+  renderFrame(audioOffsetMs / 1000);
   const ctx = audioPlayer.getAudioContext();
   await ctx.resume();
   startPlayback();
@@ -308,6 +329,27 @@ if (typeof document !== 'undefined') {
       secsItem.dataset.help =
         'Ajusta cuántos segundos de animación son visibles en el canvas.';
       developerControls.appendChild(secsItem);
+
+      // Control para audio offset
+      const offsetLabel = document.createElement('label');
+      offsetLabel.textContent = 'Audio offset (ms):';
+      const offsetInput = document.createElement('input');
+      offsetInput.type = 'number';
+      offsetInput.step = '1';
+      offsetInput.value = getAudioOffset();
+      offsetInput.addEventListener('change', () => {
+        const val = parseFloat(offsetInput.value);
+        if (!isNaN(val)) {
+          setAudioOffset(val);
+        }
+      });
+      const offsetItem = document.createElement('div');
+      offsetItem.className = 'dev-control';
+      offsetItem.appendChild(offsetLabel);
+      offsetItem.appendChild(offsetInput);
+      offsetItem.dataset.help =
+        'Retrasa o adelanta el inicio del audio respecto a la animación.';
+      developerControls.appendChild(offsetItem);
 
       // Control para porcentaje de altura (global o por familia)
       const heightFamLabel = document.createElement('label');
@@ -1042,7 +1084,7 @@ if (typeof document !== 'undefined') {
       if (
         !audioPlayer.start(notes, () => {
           stopAnimation();
-          renderFrame(0);
+          renderFrame(audioOffsetMs / 1000);
         })
       )
         return;
@@ -1052,7 +1094,7 @@ if (typeof document !== 'undefined') {
     function stopPlayback(preserveOffset = true) {
       audioPlayer.stop(preserveOffset);
       stopAnimation();
-      renderFrame(audioPlayer.getStartOffset());
+      renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
     }
 
     function seek(delta) {
@@ -1067,7 +1109,7 @@ if (typeof document !== 'undefined') {
         : 0;
       const trim = audioPlayer.getTrimOffset();
       audioPlayer.seek(delta, duration, trim);
-      renderFrame(audioPlayer.getStartOffset());
+      renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
       if (wasPlaying) startPlayback();
     }
 
@@ -1097,7 +1139,7 @@ if (typeof document !== 'undefined') {
         prepareNotesFromTracks(currentTracks, tempoMap, timeDivision);
         buildFamilyPanel();
         audioPlayer.resetStartOffset();
-        renderFrame(0);
+        renderFrame(audioOffsetMs / 1000);
       } catch (err) {
         alert(err.message);
       }
@@ -1317,12 +1359,12 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       if (prefersReducedMotion()) {
-        renderFrame(audioPlayer.getCurrentTime());
+        renderFrame(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
         return;
       }
       const loopFn = (dt) => {
         adjustSupersampling(dt);
-        const currentSec = audioPlayer.getCurrentTime();
+        const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();
       };
@@ -1879,10 +1921,10 @@ if (typeof module !== 'undefined') {
       setFrameWindow,
       getFrameWindow,
       setSuperSampling,
-      getSuperSampling,
-      preprocessTempoMap,
-      ticksToSeconds,
-      setFamilyCustomization,
+    getSuperSampling,
+    preprocessTempoMap,
+    ticksToSeconds,
+    setFamilyCustomization,
     resetFamilyCustomizations,
     exportConfiguration,
     importConfiguration,
@@ -1891,6 +1933,8 @@ if (typeof module !== 'undefined') {
     getVisibleNotes,
     setVisibleSeconds,
     getVisibleSeconds,
+    setAudioOffset,
+    getAudioOffset,
     setHeightScale,
     getHeightScale,
     getHeightScaleConfig,
