@@ -115,7 +115,7 @@
 114. [x] Incrementar la resolución de las figuras geométricas para eliminar bordes pixelados.
 115. [x] Ajustar la figura "diamante" para que, al aparecer desde la derecha, mantenga altura y longitud iniciales ignorando el `note off`; al cruzar la línea de presente, extender su extremo derecho hasta el `note off` y continuar con esa longitud.
 116. [x] Añadir un botón en la UI que permita alternar entre FPS fijo y tasa automática según la pantalla.
-117. [ ] Agregar mensajes de ayuda a todos los parámetros y botones de la UI, con explicaciones detalladas en el modo desarrollador.
+117. [x] Agregar mensajes de ayuda a todos los parámetros y botones de la UI, con explicaciones detalladas en el modo desarrollador.
 118. [x] Crear pruebas unitarias para las categorías personalizadas de familia.
 119. [x] Crear pruebas unitarias para el reinicio de reproducción mediante el botón "Inicio".
 120. [x] Corregir el menú desplegable de familias para incluir las categorías personalizadas.

@@ -211,3 +211,9 @@ input:hover {
 .hidden {
   display: none;
 }
+
+.help-detail {
+  font-size: 0.8em;
+  color: #ccc;
+  margin-top: 2px;
+}

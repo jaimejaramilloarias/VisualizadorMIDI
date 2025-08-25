@@ -9,19 +9,65 @@
 <body>
   <h1 id="app-title">Visualizador MIDI - Jaime Jaramillo Arias</h1>
   <nav id="top-menu">
-    <button id="load-midi">Cargar MIDI</button>
-    <button id="load-wav">Cargar WAV</button>
-    <button id="play-stop">Play/Stop</button>
-    <button id="seek-forward">Adelantar</button>
-    <button id="seek-backward">Atrasar</button>
-    <button id="restart">Inicio</button>
-    <button id="aspect-16-9">16:9</button>
-    <button id="aspect-9-16">9:16</button>
-    <button id="full-screen">Pantalla completa</button>
-    <button id="toggle-fps">FPS Auto</button>
+    <button
+      id="load-midi"
+      title="Cargar archivo MIDI"
+      data-help="Selecciona un archivo MIDI local para visualizar sus notas."
+    >Cargar MIDI</button>
+    <button
+      id="load-wav"
+      title="Cargar archivo WAV"
+      data-help="Carga un archivo WAV y sincroniza el audio con la animación."
+    >Cargar WAV</button>
+    <button
+      id="play-stop"
+      title="Reproducir o detener"
+      data-help="Inicia o detiene la reproducción de la animación y el audio cargado."
+    >Play/Stop</button>
+    <button
+      id="seek-forward"
+      title="Adelantar 3 segundos"
+      data-help="Avanza la reproducción tres segundos."
+    >Adelantar</button>
+    <button
+      id="seek-backward"
+      title="Atrasar 3 segundos"
+      data-help="Retrocede la reproducción tres segundos."
+    >Atrasar</button>
+    <button
+      id="restart"
+      title="Reiniciar"
+      data-help="Regresa la reproducción al inicio."
+    >Inicio</button>
+    <button
+      id="aspect-16-9"
+      title="Cambiar a 16:9"
+      data-help="Establece el canvas en formato horizontal 16:9."
+    >16:9</button>
+    <button
+      id="aspect-9-16"
+      title="Cambiar a 9:16"
+      data-help="Establece el canvas en formato vertical 9:16."
+    >9:16</button>
+    <button
+      id="full-screen"
+      title="Pantalla completa"
+      data-help="Expande el canvas a pantalla completa con supersampling."
+    >Pantalla completa</button>
+    <button
+      id="toggle-fps"
+      title="Alternar modo de FPS"
+      data-help="Alterna entre un FPS fijo y la tasa automática según la pantalla."
+    >FPS Auto</button>
   </nav>
 
-  <canvas id="visualizer" width="1280" height="720"></canvas>
+  <canvas
+    id="visualizer"
+    width="1280"
+    height="720"
+    title="Área de visualización"
+    data-help="Muestra la animación de las notas del archivo MIDI."
+  ></canvas>
 
   <input
     type="file"
@@ -38,10 +84,18 @@
   />
 
   <nav id="bottom-menu">
-    <select id="instrument-select">
+    <select
+      id="instrument-select"
+      title="Seleccionar instrumento"
+      data-help="Lista de instrumentos disponibles en el archivo MIDI."
+    >
       <option>Instrumento</option>
     </select>
-    <select id="family-select">
+    <select
+      id="family-select"
+      title="Seleccionar familia"
+      data-help="Permite asignar una familia al instrumento seleccionado."
+    >
       <option value="">Familia</option>
       <option>Maderas de timbre "redondo"</option>
       <option>Dobles cañas</option>
@@ -62,8 +116,16 @@
       <option>Custom 4</option>
       <option>Custom 5</option>
     </select>
-    <button id="toggle-family-panel">▼</button>
-    <button id="developer-mode">Modo desarrollador</button>
+    <button
+      id="toggle-family-panel"
+      title="Panel de familias"
+      data-help="Despliega el panel para personalizar color y figura de cada familia."
+    >▼</button>
+    <button
+      id="developer-mode"
+      title="Modo desarrollador"
+      data-help="Activa controles avanzados y muestra mensajes de ayuda detallados."
+    >Modo desarrollador</button>
   </nav>
 
   <div id="family-config-panel" class="hidden">
@@ -82,7 +144,11 @@
           <div id="modal-family-zones"></div>
         </div>
       </div>
-      <button id="apply-assignments">Aplicar</button>
+      <button
+        id="apply-assignments"
+        title="Aplicar asignaciones"
+        data-help="Confirma las asignaciones de instrumentos a familias."
+      >Aplicar</button>
     </div>
   </div>
 
@@ -91,6 +157,7 @@
   <script src="wavLoader.js"></script>
   <script src="audioPlayer.js"></script>
   <script src="ui.js"></script>
+  <script src="help.js"></script>
   <script src="configuracion.js"></script>
   <script src="script.js"></script>
 </body>

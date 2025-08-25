@@ -40,7 +40,10 @@ const {
   setShapeExtension,
   getShapeExtension,
   getShapeExtensions,
-  } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
+} = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
+
+const { setupHelpMessages } =
+  typeof require !== 'undefined' ? require('./help.js') : window.help;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
@@ -299,6 +302,8 @@ if (typeof document !== 'undefined') {
       secsItem.className = 'dev-control';
       secsItem.appendChild(secsLabel);
       secsItem.appendChild(secsInput);
+      secsItem.dataset.help =
+        'Ajusta cuántos segundos de animación son visibles en el canvas.';
       developerControls.appendChild(secsItem);
 
       // Control para porcentaje de altura (global o por familia)
@@ -319,6 +324,8 @@ if (typeof document !== 'undefined') {
       heightFamItem.className = 'dev-control';
       heightFamItem.appendChild(heightFamLabel);
       heightFamItem.appendChild(heightFamSelect);
+      heightFamItem.dataset.help =
+        'Selecciona la familia a modificar o "Global" para todas las notas.';
       developerControls.appendChild(heightFamItem);
 
       const heightLabel = document.createElement('label');
@@ -343,6 +350,8 @@ if (typeof document !== 'undefined') {
       heightItem.className = 'dev-control';
       heightItem.appendChild(heightLabel);
       heightItem.appendChild(heightInput);
+      heightItem.dataset.help =
+        'Escala de altura aplicada a la familia seleccionada.';
       developerControls.appendChild(heightItem);
 
       // Control para ajustar la velocidad base de referencia
@@ -364,6 +373,8 @@ if (typeof document !== 'undefined') {
       velItem.className = 'dev-control';
       velItem.appendChild(velLabel);
       velItem.appendChild(velInput);
+      velItem.dataset.help =
+        'Define la velocidad MIDI considerada 100% de altura.';
       developerControls.appendChild(velItem);
 
       // Control para la escala de opacidad
@@ -395,11 +406,15 @@ if (typeof document !== 'undefined') {
       edgeItem.className = 'dev-control';
       edgeItem.appendChild(edgeLabel);
       edgeItem.appendChild(edgeInput);
+      edgeItem.dataset.help =
+        'Opacidad de las notas en los extremos del canvas.';
       developerControls.appendChild(edgeItem);
       const midItem = document.createElement('div');
       midItem.className = 'dev-control';
       midItem.appendChild(midLabel);
       midItem.appendChild(midInput);
+      midItem.dataset.help =
+        'Opacidad de las notas antes de cruzar la línea de presente.';
       developerControls.appendChild(midItem);
 
       // Control para el glow
@@ -418,6 +433,8 @@ if (typeof document !== 'undefined') {
       glowItem.className = 'dev-control';
       glowItem.appendChild(glowLabel);
       glowItem.appendChild(glowInput);
+      glowItem.dataset.help =
+        'Intensidad del brillo aplicado al pasar por la línea de presente.';
       developerControls.appendChild(glowItem);
 
       // Control para el bump
@@ -436,6 +453,8 @@ if (typeof document !== 'undefined') {
       bumpItem.className = 'dev-control';
       bumpItem.appendChild(bumpLabel);
       bumpItem.appendChild(bumpInput);
+      bumpItem.dataset.help =
+        'Cantidad de aumento de altura en el efecto bump.';
       developerControls.appendChild(bumpItem);
 
       const SHAPE_LABELS = {
@@ -457,6 +476,7 @@ if (typeof document !== 'undefined') {
         item.className = 'dev-control';
         item.appendChild(label);
         item.appendChild(checkbox);
+        item.dataset.help = `Habilita la extensión progresiva de la figura ${SHAPE_LABELS[shape]}.`;
         developerControls.appendChild(item);
       });
 
@@ -482,6 +502,8 @@ if (typeof document !== 'undefined') {
       fpsItem.className = 'dev-control';
       fpsItem.appendChild(fpsLabel);
       fpsItem.appendChild(fpsInput);
+      fpsItem.dataset.help =
+        'Frames por segundo cuando el modo automático está desactivado.';
       developerControls.appendChild(fpsItem);
 
       // Control para ventana mínima y máxima de ms
@@ -514,11 +536,15 @@ if (typeof document !== 'undefined') {
       minItem.className = 'dev-control';
       minItem.appendChild(minLabel);
       minItem.appendChild(minInput);
+      minItem.dataset.help =
+        'Tiempo mínimo entre frames usado en el modo automático.';
       developerControls.appendChild(minItem);
       const maxItem = document.createElement('div');
       maxItem.className = 'dev-control';
       maxItem.appendChild(maxLabel);
       maxItem.appendChild(maxInput);
+      maxItem.dataset.help =
+        'Tiempo máximo entre frames usado en el modo automático.';
       developerControls.appendChild(maxItem);
 
       // Control para supersampling inicial
@@ -541,7 +567,10 @@ if (typeof document !== 'undefined') {
       ssItem.className = 'dev-control';
       ssItem.appendChild(ssLabel);
       ssItem.appendChild(ssInput);
+      ssItem.dataset.help =
+        'Factor de supersampling inicial aplicado al canvas.';
       developerControls.appendChild(ssItem);
+      setupHelpMessages(devMode);
     }
 
     let currentTracks = [];
