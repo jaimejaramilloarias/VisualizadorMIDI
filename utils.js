@@ -411,12 +411,17 @@ function computeDiamondBounds(
 ) {
   const center = canvasWidth / 2;
   const xStart = center + (note.start - currentSec) * pixelsPerSecond;
+  const finalWidth = (note.end - note.start) * pixelsPerSecond;
   if (xStart > center) {
     const width = baseWidth;
     return { xStart, xEnd: xStart + width, width };
   }
-  const xEnd = center + (note.end - currentSec) * pixelsPerSecond;
-  return { xStart, xEnd, width: xEnd - xStart };
+  const duration = Math.max(note.end - note.start, Number.EPSILON);
+  const elapsed = Math.max(currentSec - note.start, 0);
+  const progress = Math.min(elapsed / duration, 1);
+  const width = baseWidth + progress * (finalWidth - baseWidth);
+  const xEnd = xStart + width;
+  return { xStart, xEnd, width };
 }
 
 // Calcula dimensiones del canvas según relación de aspecto y modo de pantalla

@@ -120,3 +120,4 @@
 119. [x] Crear pruebas unitarias para el reinicio de reproducción mediante el botón "Inicio".
 120. [x] Corregir el menú desplegable de familias para incluir las categorías personalizadas.
 121. [x] Eliminar directorio duplicado `VisualizadorMIDI-main` para mantener el repositorio limpio.
+122. [x] Suavizar la extensión del diamante para que se alargue progresivamente al cruzar la línea de presente hasta el note off.
