@@ -42,7 +42,10 @@ const {
   getShapeExtensions,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
-const { setupHelpMessages } =
+// "setupHelpMessages" se declara globalmente en help.js. Para evitar conflictos
+// de redeclaración en entornos donde los scripts comparten el ámbito global,
+// renombramos la referencia local.
+const { setupHelpMessages: initHelpMessages } =
   typeof require !== 'undefined' ? require('./help.js') : window.help;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
@@ -570,7 +573,9 @@ if (typeof document !== 'undefined') {
       ssItem.dataset.help =
         'Factor de supersampling inicial aplicado al canvas.';
       developerControls.appendChild(ssItem);
-      setupHelpMessages(devMode);
+      // Ejecuta la inicialización de mensajes de ayuda usando el alias local
+      // para evitar conflictos de nombres globales.
+      initHelpMessages(devMode);
     }
 
     let currentTracks = [];
