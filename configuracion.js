@@ -142,6 +142,12 @@ window.DEFAULT_CONFIG = {
     "Violín": true,
     "Piano": false
   },
+  "shapeExtensions": {
+    "oval": true,
+    "capsule": true,
+    "star": true,
+    "diamond": true
+  },
   "velocityBase": 127,
   "opacityScale": {
     "edge": 0,

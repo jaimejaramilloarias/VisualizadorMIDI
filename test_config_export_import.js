@@ -37,6 +37,7 @@ const config = {
   bumpControl: 1.2,
   visibleSeconds: 6,
   heightScale: { global: 1, families: {} },
+  shapeExtensions: { oval: true, capsule: true, star: true, diamond: true },
 };
 
 importConfiguration(config, tracks, notes);
