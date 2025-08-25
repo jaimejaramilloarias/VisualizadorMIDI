@@ -380,6 +380,45 @@ const SHAPE_OPTIONS = [
   { value: 'pentagon', label: 'Pentágono' },
 ];
 
+// Estado de alargamiento progresivo por figura alargada
+const SHAPE_EXTENSION_DEFAULTS = {
+  oval: true,
+  capsule: true,
+  star: true,
+  diamond: true,
+};
+let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
+
+function loadShapeExtensions() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('shapeExtensions');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      shapeExtensions = { ...shapeExtensions, ...parsed };
+    } catch {}
+  }
+}
+
+function getShapeExtension(shape) {
+  loadShapeExtensions();
+  return shapeExtensions[shape] !== false;
+}
+
+function setShapeExtension(shape, enabled) {
+  shapeExtensions[shape] = !!enabled;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('shapeExtensions', JSON.stringify(shapeExtensions));
+  }
+}
+
+function getShapeExtensions() {
+  loadShapeExtensions();
+  return { ...shapeExtensions };
+}
+
+loadShapeExtensions();
+
 function getFamilyModifiers(family) {
   switch (family) {
     case 'Platillos':
@@ -401,17 +440,22 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
   return (note.end - note.start) * pixelsPerSecond;
 }
 
-// Calcula la posición y el ancho del diamante considerando la línea de presente
-function computeDiamondBounds(
+// Calcula la posición y el ancho de una figura alargada considerando la línea de presente
+function computeDynamicBounds(
   note,
   currentSec,
   canvasWidth,
   pixelsPerSecond,
-  baseWidth
+  baseWidth,
+  shape = note.shape
 ) {
   const center = canvasWidth / 2;
   const xStart = center + (note.start - currentSec) * pixelsPerSecond;
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
+  if (!getShapeExtension(shape)) {
+    const width = finalWidth;
+    return { xStart, xEnd: xStart + width, width };
+  }
   if (xStart > center) {
     const width = baseWidth;
     return { xStart, xEnd: xStart + width, width };
@@ -422,6 +466,24 @@ function computeDiamondBounds(
   const width = baseWidth + progress * (finalWidth - baseWidth);
   const xEnd = xStart + width;
   return { xStart, xEnd, width };
+}
+
+// Compatibilidad: función específica para diamantes
+function computeDiamondBounds(
+  note,
+  currentSec,
+  canvasWidth,
+  pixelsPerSecond,
+  baseWidth
+) {
+  return computeDynamicBounds(
+    note,
+    currentSec,
+    canvasWidth,
+    pixelsPerSecond,
+    baseWidth,
+    'diamond'
+  );
 }
 
 // Calcula dimensiones del canvas según relación de aspecto y modo de pantalla
@@ -570,10 +632,14 @@ const utils = {
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,
+  setShapeExtension,
+  getShapeExtension,
+  getShapeExtensions,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
   computeNoteWidth,
+  computeDynamicBounds,
   computeDiamondBounds,
   calculateCanvasSize,
   computeSeekOffset,

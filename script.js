@@ -35,7 +35,11 @@ const {
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,
+  computeDynamicBounds,
   computeDiamondBounds,
+  setShapeExtension,
+  getShapeExtension,
+  getShapeExtensions,
   } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
@@ -433,6 +437,28 @@ if (typeof document !== 'undefined') {
       bumpItem.appendChild(bumpLabel);
       bumpItem.appendChild(bumpInput);
       developerControls.appendChild(bumpItem);
+
+      const SHAPE_LABELS = {
+        oval: 'Óvalo',
+        capsule: 'Cápsula',
+        star: 'Estrella',
+        diamond: 'Diamante',
+      };
+      Object.keys(SHAPE_LABELS).forEach((shape) => {
+        const label = document.createElement('label');
+        label.textContent = `Extensión ${SHAPE_LABELS[shape]}:`;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = getShapeExtension(shape);
+        checkbox.addEventListener('change', () =>
+          setShapeExtension(shape, checkbox.checked),
+        );
+        const item = document.createElement('div');
+        item.className = 'dev-control';
+        item.appendChild(label);
+        item.appendChild(checkbox);
+        developerControls.appendChild(item);
+      });
 
       // Control para FPS fijo
       const fpsLabel = document.createElement('label');
@@ -1159,25 +1185,21 @@ if (typeof document !== 'undefined') {
         let xStart;
         let xEnd;
         let width;
-        if (n.shape === 'diamond') {
-          ({ xStart, xEnd, width } = computeDiamondBounds(
-            n,
-            currentSec,
-            canvas.width,
-            pixelsPerSecond,
-            baseHeight
-          ));
-        } else if (NON_STRETCHED_SHAPES.has(n.shape)) {
+        if (NON_STRETCHED_SHAPES.has(n.shape)) {
           width = baseHeight;
           const xCenter =
             canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
           xStart = xCenter - width / 2;
           xEnd = xStart + width;
         } else {
-          xStart =
-            canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
-          xEnd = canvas.width / 2 + (n.end - currentSec) * pixelsPerSecond;
-          width = xEnd - xStart;
+          ({ xStart, xEnd, width } = computeDynamicBounds(
+            n,
+            currentSec,
+            canvas.width,
+            pixelsPerSecond,
+            baseHeight,
+            n.shape
+          ));
         }
         if (xEnd < 0 || xStart > canvas.width) continue;
         const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
@@ -1523,6 +1545,7 @@ function exportConfiguration() {
     bumpControl: getBumpControl(),
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
+    shapeExtensions: getShapeExtensions(),
   });
 }
 
@@ -1560,6 +1583,12 @@ function importConfiguration(json, tracks = [], notes = []) {
         if (typeof val === 'number') setHeightScale(val, fam);
       });
     }
+  }
+
+  if (data.shapeExtensions && typeof data.shapeExtensions === 'object') {
+    Object.entries(data.shapeExtensions).forEach(([shape, enabled]) => {
+      setShapeExtension(shape, enabled);
+    });
   }
 
   Object.keys(FAMILY_DEFAULTS).forEach((fam) => {
@@ -1813,6 +1842,10 @@ if (typeof module !== 'undefined') {
     getHeightScaleConfig,
     restartPlayback,
     FAMILY_LIST,
+    computeDynamicBounds,
     computeDiamondBounds,
+    setShapeExtension,
+    getShapeExtension,
+    getShapeExtensions,
   };
 }
