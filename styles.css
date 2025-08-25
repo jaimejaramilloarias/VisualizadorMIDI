@@ -212,8 +212,18 @@ input:hover {
   display: none;
 }
 
-.help-detail {
+.tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 0.8em;
-  color: #ccc;
-  margin-top: 2px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#toggle-fps.active {
+  background-color: #444;
+  color: #fff;
 }

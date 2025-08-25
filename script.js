@@ -511,13 +511,13 @@ if (typeof document !== 'undefined') {
 
       // Control para ventana mínima y máxima de ms
       const minLabel = document.createElement('label');
-      minLabel.textContent = 'Mín dt (ms):';
+      minLabel.textContent = 'Mín Δt (ms):';
       const minInput = document.createElement('input');
       minInput.type = 'number';
       minInput.min = '0';
       minInput.value = minFrameMs;
       const maxLabel = document.createElement('label');
-      maxLabel.textContent = 'Máx dt (ms):';
+      maxLabel.textContent = 'Máx Δt (ms):';
       const maxInput = document.createElement('input');
       maxInput.type = 'number';
       maxInput.min = '0';
@@ -540,14 +540,14 @@ if (typeof document !== 'undefined') {
       minItem.appendChild(minLabel);
       minItem.appendChild(minInput);
       minItem.dataset.help =
-        'Tiempo mínimo entre frames usado en el modo automático.';
+        'Tiempo mínimo entre cuadros en milisegundos (inverso de los FPS) usado en el modo automático.';
       developerControls.appendChild(minItem);
       const maxItem = document.createElement('div');
       maxItem.className = 'dev-control';
       maxItem.appendChild(maxLabel);
       maxItem.appendChild(maxInput);
       maxItem.dataset.help =
-        'Tiempo máximo entre frames usado en el modo automático.';
+        'Tiempo máximo entre cuadros en milisegundos (inverso de los FPS) usado en el modo automático.';
       developerControls.appendChild(maxItem);
 
       // Control para supersampling inicial
@@ -573,10 +573,9 @@ if (typeof document !== 'undefined') {
       ssItem.dataset.help =
         'Factor de supersampling inicial aplicado al canvas.';
       developerControls.appendChild(ssItem);
-      // Ejecuta la inicialización de mensajes de ayuda usando el alias local
-      // para evitar conflictos de nombres globales.
-      initHelpMessages(devMode);
     }
+    // Inicializa los mensajes de ayuda flotantes
+    initHelpMessages();
 
     let currentTracks = [];
     let notes = [];
@@ -1149,14 +1148,16 @@ if (typeof document !== 'undefined') {
           startAnimation();
         }
         if (uiControls.toggleFPSBtn) {
-          uiControls.toggleFPSBtn.textContent = getFPSMode()
-            ? 'FPS Auto'
-            : 'FPS Fijo';
+          const fixed = getFPSMode();
+          uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo' : 'FPS Auto';
+          uiControls.toggleFPSBtn.classList.toggle('active', fixed);
         }
       },
     });
     if (uiControls.toggleFPSBtn) {
-      uiControls.toggleFPSBtn.textContent = 'FPS Auto';
+      const fixed = getFPSMode();
+      uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo' : 'FPS Auto';
+      uiControls.toggleFPSBtn.classList.toggle('active', fixed);
     }
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {

@@ -1,20 +1,25 @@
-function setupHelpMessages(devMode) {
-  const details = [];
+function setupHelpMessages() {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'tooltip hidden';
+  document.body.appendChild(tooltip);
+
   document.querySelectorAll('[data-help]').forEach((el) => {
     const text = el.getAttribute('data-help');
     if (!text) return;
-    const detail = document.createElement('div');
-    detail.className = 'help-detail hidden';
-    detail.textContent = text;
-    el.insertAdjacentElement('afterend', detail);
-    details.push(detail);
+
+    el.addEventListener('mouseenter', () => {
+      tooltip.textContent = text;
+      const rect = el.getBoundingClientRect();
+      const win = typeof window !== 'undefined' ? window : { scrollX: 0, scrollY: 0 };
+      tooltip.style.left = `${rect.left + win.scrollX}px`;
+      tooltip.style.top = `${rect.bottom + win.scrollY + 5}px`;
+      tooltip.classList.remove('hidden');
+    });
+
+    el.addEventListener('mouseleave', () => {
+      tooltip.classList.add('hidden');
+    });
   });
-  const update = () => {
-    const show = devMode.isActive();
-    details.forEach((d) => d.classList.toggle('hidden', !show));
-  };
-  devMode.button.addEventListener('click', update);
-  update();
 }
 
 if (typeof module !== 'undefined') {
