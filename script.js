@@ -728,6 +728,12 @@ if (typeof document !== 'undefined') {
         }
       });
 
+      instSection.addEventListener('click', (e) => {
+        if (e.target.type === 'checkbox') {
+          e.preventDefault();
+        }
+      });
+
       FAMILY_LIST.forEach((family) => {
         const colorItem = document.createElement('div');
         colorItem.className = 'family-config-item';
@@ -1149,14 +1155,14 @@ if (typeof document !== 'undefined') {
         }
         if (uiControls.toggleFPSBtn) {
           const fixed = getFPSMode();
-          uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo' : 'FPS Auto';
+          uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo on' : 'FPS Auto on';
           uiControls.toggleFPSBtn.classList.toggle('active', fixed);
         }
       },
     });
     if (uiControls.toggleFPSBtn) {
       const fixed = getFPSMode();
-      uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo' : 'FPS Auto';
+      uiControls.toggleFPSBtn.textContent = fixed ? 'FPS Fijo on' : 'FPS Auto on';
       uiControls.toggleFPSBtn.classList.toggle('active', fixed);
     }
     document.addEventListener('keydown', (e) => {
@@ -1414,15 +1420,28 @@ const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
   {}
 );
 
-// Determina el nombre del instrumento permitiendo coincidencias parciales
-const resolveInstrumentName = (name) => {
-  const key = normalizeInstrumentName(name);
-  if (NORMALIZED_INSTRUMENT_MAP[key]) return NORMALIZED_INSTRUMENT_MAP[key];
-  const match = Object.entries(NORMALIZED_INSTRUMENT_MAP).find(
-    ([norm]) => key.startsWith(norm) || norm.startsWith(key),
-  );
-  return match ? match[1] : normalizeAccents(name);
-};
+  // Determina el nombre del instrumento permitiendo coincidencias flexibles
+  const fuzzyInstrumentMatch = (key) => {
+    for (const [norm, inst] of Object.entries(NORMALIZED_INSTRUMENT_MAP)) {
+      const startLen = Math.min(2, key.length, norm.length);
+      const endLen = Math.min(2, key.length, norm.length);
+      const startMatch = key.slice(0, startLen) === norm.slice(0, startLen);
+      const endMatch = key.slice(-endLen) === norm.slice(-endLen);
+      if (startMatch && endMatch) return inst;
+    }
+    return null;
+  };
+
+  const resolveInstrumentName = (name) => {
+    const key = normalizeInstrumentName(name);
+    if (NORMALIZED_INSTRUMENT_MAP[key]) return NORMALIZED_INSTRUMENT_MAP[key];
+    const match = Object.entries(NORMALIZED_INSTRUMENT_MAP).find(
+      ([norm]) => key.startsWith(norm) || norm.startsWith(key),
+    );
+    if (match) return match[1];
+    const fuzzy = fuzzyInstrumentMatch(key);
+    return fuzzy ? fuzzy : normalizeAccents(name);
+  };
 
 // Variación de tono por instrumento según su registro
 const INSTRUMENT_COLOR_SHIFT = {
