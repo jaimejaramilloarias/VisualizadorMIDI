@@ -121,6 +121,7 @@ let tempoMinMultiplier = 0.9;
 let tempoMaxMultiplier = 1.1;
 let baseBpm = 120;
 let tempoRangeBPM = 20;
+let tempoOffsetBpm = 0;
 
 function startMidiLearn() {
   midiLearnMode = true;
@@ -147,10 +148,7 @@ function recomputeTempoBounds() {
   const half = tempoRangeBPM / 2;
   tempoMinMultiplier = Math.max(0.9, (baseBpm - half) / baseBpm);
   tempoMaxMultiplier = (baseBpm + half) / baseBpm;
-  tempoMultiplier = Math.min(
-    tempoMaxMultiplier,
-    Math.max(tempoMinMultiplier, tempoMultiplier)
-  );
+  applyTempoOffset();
 }
 
 function setTempoRangeBPM(range) {
@@ -181,14 +179,24 @@ function handleMIDIMessage(event) {
       midiBinding.channel === channel
     ) {
       const normalized = data2 / 127;
-      const bpmOffset = (normalized - 0.5) * tempoRangeBPM;
+      let bpmOffset = (normalized - 0.5) * tempoRangeBPM;
       const minBpm = baseBpm * tempoMinMultiplier;
       const maxBpm = baseBpm * tempoMaxMultiplier;
       let targetBpm = baseBpm + bpmOffset;
       targetBpm = Math.min(maxBpm, Math.max(minBpm, targetBpm));
+      tempoOffsetBpm = targetBpm - baseBpm;
       tempoMultiplier = targetBpm / baseBpm;
     }
   }
+}
+
+function applyTempoOffset() {
+  const minBpm = baseBpm * tempoMinMultiplier;
+  const maxBpm = baseBpm * tempoMaxMultiplier;
+  let targetBpm = baseBpm + tempoOffsetBpm;
+  targetBpm = Math.min(maxBpm, Math.max(minBpm, targetBpm));
+  tempoOffsetBpm = targetBpm - baseBpm;
+  tempoMultiplier = targetBpm / baseBpm;
 }
 
 function initMIDI() {
@@ -273,7 +281,6 @@ function getVisibleNotes(allNotes) {
 }
 
 async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback) {
-  tempoMultiplier = 1;
   audioPlayer.stop(false);
   audioPlayer.resetStartOffset();
   stopAnimation();
@@ -1195,7 +1202,6 @@ if (typeof document !== 'undefined') {
     }
 
     function stopPlayback(preserveOffset = true) {
-      tempoMultiplier = 1;
       audioPlayer.stop(preserveOffset);
       stopAnimation();
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
