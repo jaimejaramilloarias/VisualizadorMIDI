@@ -117,9 +117,10 @@ let tempoMultiplier = 1;
 let tempoSensitivity = 0.01;
 let midiLearnMode = false;
 let midiBinding = null;
-let lastMidiValue = 0;
-let tempoMinMultiplier = 0.1;
-let tempoMaxMultiplier = 4;
+let tempoMinMultiplier = 0.9;
+let tempoMaxMultiplier = 1.1;
+let baseBpm = 120;
+let tempoRangeBPM = 20;
 
 function startMidiLearn() {
   midiLearnMode = true;
@@ -134,27 +135,37 @@ function getTempoMultiplier() {
   return tempoMultiplier;
 }
 
-function setTempoRange(min, max) {
-  const minVal = parseFloat(min);
-  const maxVal = parseFloat(max);
-  if (
-    !isNaN(minVal) &&
-    !isNaN(maxVal) &&
-    minVal > 0 &&
-    maxVal >= minVal
-  ) {
-    tempoMinMultiplier = minVal;
-    tempoMaxMultiplier = maxVal;
-    tempoMultiplier = Math.min(
-      tempoMaxMultiplier,
-      Math.max(tempoMinMultiplier, tempoMultiplier)
-    );
+function setBaseBpm(bpm) {
+  const v = parseFloat(bpm);
+  if (!isNaN(v) && v > 0) {
+    baseBpm = v;
+    recomputeTempoBounds();
   }
 }
 
-function getTempoRange() {
-  return { min: tempoMinMultiplier, max: tempoMaxMultiplier };
+function recomputeTempoBounds() {
+  const half = tempoRangeBPM / 2;
+  tempoMinMultiplier = Math.max(0.9, (baseBpm - half) / baseBpm);
+  tempoMaxMultiplier = (baseBpm + half) / baseBpm;
+  tempoMultiplier = Math.min(
+    tempoMaxMultiplier,
+    Math.max(tempoMinMultiplier, tempoMultiplier)
+  );
 }
+
+function setTempoRangeBPM(range) {
+  const r = parseFloat(range);
+  if (!isNaN(r) && r > 0) {
+    tempoRangeBPM = r;
+    recomputeTempoBounds();
+  }
+}
+
+function getTempoRangeBPM() {
+  return tempoRangeBPM;
+}
+
+recomputeTempoBounds();
 
 function handleMIDIMessage(event) {
   const [status, data1, data2] = event.data || [];
@@ -163,19 +174,19 @@ function handleMIDIMessage(event) {
   if (type === 0xb0) {
     if (midiLearnMode) {
       midiBinding = { controller: data1, channel };
-      lastMidiValue = data2;
       midiLearnMode = false;
     } else if (
       midiBinding &&
       midiBinding.controller === data1 &&
       midiBinding.channel === channel
     ) {
-      const delta = (data2 - lastMidiValue) * tempoSensitivity;
-      tempoMultiplier = Math.min(
-        tempoMaxMultiplier,
-        Math.max(tempoMinMultiplier, tempoMultiplier + delta)
-      );
-      lastMidiValue = data2;
+      const normalized = data2 / 127;
+      const bpmOffset = (normalized - 0.5) * tempoRangeBPM;
+      const minBpm = baseBpm * tempoMinMultiplier;
+      const maxBpm = baseBpm * tempoMaxMultiplier;
+      let targetBpm = baseBpm + bpmOffset;
+      targetBpm = Math.min(maxBpm, Math.max(minBpm, targetBpm));
+      tempoMultiplier = targetBpm / baseBpm;
     }
   }
 }
@@ -1296,7 +1307,7 @@ if (typeof document !== 'undefined') {
       },
       onMidiLearn: () => startMidiLearn(),
       onSensitivityChange: (val) => setTempoSensitivity(val),
-      onRangeChange: (min, max) => setTempoRange(min, max),
+      onRangeChange: (range) => setTempoRangeBPM(range),
     });
     if (uiControls.toggleFPSBtn) {
       const fixed = getFPSMode();
@@ -1313,6 +1324,11 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
+      const initialTempo =
+        tempoMapRaw && tempoMapRaw.length
+          ? 60000000 / tempoMapRaw[0].microsecondsPerBeat
+          : 120;
+      setBaseBpm(initialTempo);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
           if (ev.type === 'note') {
@@ -1345,8 +1361,7 @@ if (typeof document !== 'undefined') {
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
       if (currentSec < lastTime) {
-        startIndex = 0;
-        endIndex = 0;
+        currentSec = lastTime;
       }
       lastTime = currentSec;
       const windowStart = currentSec - visibleSeconds / 2;
@@ -2045,8 +2060,9 @@ if (typeof module !== 'undefined') {
     startMidiLearn,
     setTempoSensitivity,
     getTempoMultiplier,
-    setTempoRange,
-    getTempoRange,
+    setTempoRangeBPM,
+    getTempoRangeBPM,
     handleMIDIMessage,
+    setBaseBpm,
   };
 }
