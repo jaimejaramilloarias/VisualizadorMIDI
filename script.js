@@ -118,6 +118,8 @@ let tempoSensitivity = 0.01;
 let midiLearnMode = false;
 let midiBinding = null;
 let lastMidiValue = 0;
+let tempoMinMultiplier = 0.1;
+let tempoMaxMultiplier = 4;
 
 function startMidiLearn() {
   midiLearnMode = true;
@@ -130,6 +132,28 @@ function setTempoSensitivity(val) {
 
 function getTempoMultiplier() {
   return tempoMultiplier;
+}
+
+function setTempoRange(min, max) {
+  const minVal = parseFloat(min);
+  const maxVal = parseFloat(max);
+  if (
+    !isNaN(minVal) &&
+    !isNaN(maxVal) &&
+    minVal > 0 &&
+    maxVal >= minVal
+  ) {
+    tempoMinMultiplier = minVal;
+    tempoMaxMultiplier = maxVal;
+    tempoMultiplier = Math.min(
+      tempoMaxMultiplier,
+      Math.max(tempoMinMultiplier, tempoMultiplier)
+    );
+  }
+}
+
+function getTempoRange() {
+  return { min: tempoMinMultiplier, max: tempoMaxMultiplier };
 }
 
 function handleMIDIMessage(event) {
@@ -147,7 +171,10 @@ function handleMIDIMessage(event) {
       midiBinding.channel === channel
     ) {
       const delta = (data2 - lastMidiValue) * tempoSensitivity;
-      tempoMultiplier = Math.min(4, Math.max(0.1, tempoMultiplier + delta));
+      tempoMultiplier = Math.min(
+        tempoMaxMultiplier,
+        Math.max(tempoMinMultiplier, tempoMultiplier + delta)
+      );
       lastMidiValue = data2;
     }
   }
@@ -1269,6 +1296,7 @@ if (typeof document !== 'undefined') {
       },
       onMidiLearn: () => startMidiLearn(),
       onSensitivityChange: (val) => setTempoSensitivity(val),
+      onRangeChange: (min, max) => setTempoRange(min, max),
     });
     if (uiControls.toggleFPSBtn) {
       const fixed = getFPSMode();
@@ -2017,6 +2045,8 @@ if (typeof module !== 'undefined') {
     startMidiLearn,
     setTempoSensitivity,
     getTempoMultiplier,
+    setTempoRange,
+    getTempoRange,
     handleMIDIMessage,
   };
 }

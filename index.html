@@ -76,6 +76,29 @@
         value="0.01"
       />
     </label>
+    <label
+      id="tempo-range-label"
+      title="Rango de tempo"
+      data-help="Define los porcentajes mínimo y máximo que puede ajustar el control MIDI."
+    >
+      Rango
+      <input
+        type="number"
+        id="tempo-min"
+        min="10"
+        max="100"
+        step="1"
+        value="10"
+      />
+      <input
+        type="number"
+        id="tempo-max"
+        min="100"
+        max="400"
+        step="10"
+        value="400"
+      />
+    </label>
   </nav>
 
   <canvas
