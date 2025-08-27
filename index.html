@@ -79,24 +79,16 @@
     <label
       id="tempo-range-label"
       title="Rango de tempo"
-      data-help="Define los porcentajes mínimo y máximo que puede ajustar el control MIDI."
+      data-help="Define el rango en BPM alrededor del tempo base que puede ajustar el control MIDI."
     >
-      Rango
+      Rango BPM
       <input
         type="number"
-        id="tempo-min"
-        min="10"
+        id="tempo-range"
+        min="1"
         max="100"
         step="1"
-        value="10"
-      />
-      <input
-        type="number"
-        id="tempo-max"
-        min="100"
-        max="400"
-        step="10"
-        value="400"
+        value="20"
       />
     </label>
   </nav>
