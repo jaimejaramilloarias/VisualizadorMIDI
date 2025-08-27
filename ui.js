@@ -13,7 +13,6 @@ function initializeUI({
   onFullScreen,
   onToggleFPS,
   onMidiLearn,
-  onSensitivityChange,
   onRangeChange,
 }) {
   const playBtn = document.getElementById('play-stop');
@@ -25,7 +24,6 @@ function initializeUI({
   const fullScreenBtn = document.getElementById('full-screen');
   const toggleFPSBtn = document.getElementById('toggle-fps');
   const midiLearnBtn = document.getElementById('midi-learn');
-  const tempoSensitivityInput = document.getElementById('tempo-sensitivity');
   const tempoRangeInput = document.getElementById('tempo-range');
 
   playBtn.addEventListener('click', () => {
@@ -48,11 +46,6 @@ function initializeUI({
   if (midiLearnBtn && onMidiLearn) {
     midiLearnBtn.addEventListener('click', () => onMidiLearn());
   }
-  if (tempoSensitivityInput && onSensitivityChange) {
-    tempoSensitivityInput.addEventListener('input', (e) =>
-      onSensitivityChange(e.target.value)
-    );
-  }
   if (tempoRangeInput && onRangeChange) {
     tempoRangeInput.addEventListener('input', (e) =>
       onRangeChange(parseFloat(e.target.value))
@@ -69,7 +62,6 @@ function initializeUI({
     fullScreenBtn,
     toggleFPSBtn,
     midiLearnBtn,
-    tempoSensitivityInput,
     tempoRangeInput,
   };
 }
