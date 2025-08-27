@@ -114,7 +114,6 @@ function getSuperSampling() {
 
 // Variables y funciones para control de tempo mediante MIDI
 let tempoMultiplier = 1;
-let tempoSensitivity = 0.01;
 let midiLearnMode = false;
 let midiBinding = null;
 let tempoMinMultiplier = 0.9;
@@ -125,11 +124,6 @@ let tempoOffsetBpm = 0;
 
 function startMidiLearn() {
   midiLearnMode = true;
-}
-
-function setTempoSensitivity(val) {
-  const v = parseFloat(val);
-  if (!isNaN(v)) tempoSensitivity = v;
 }
 
 function getTempoMultiplier() {
@@ -1312,7 +1306,6 @@ if (typeof document !== 'undefined') {
         }
       },
       onMidiLearn: () => startMidiLearn(),
-      onSensitivityChange: (val) => setTempoSensitivity(val),
       onRangeChange: (range) => setTempoRangeBPM(range),
     });
     if (uiControls.toggleFPSBtn) {
@@ -2064,7 +2057,6 @@ if (typeof module !== 'undefined') {
     getShapeExtension,
     getShapeExtensions,
     startMidiLearn,
-    setTempoSensitivity,
     getTempoMultiplier,
     setTempoRangeBPM,
     getTempoRangeBPM,
