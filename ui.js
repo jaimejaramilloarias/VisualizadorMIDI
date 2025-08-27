@@ -12,6 +12,8 @@ function initializeUI({
   onAspect916,
   onFullScreen,
   onToggleFPS,
+  onMidiLearn,
+  onSensitivityChange,
 }) {
   const playBtn = document.getElementById('play-stop');
   const forwardBtn = document.getElementById('seek-forward');
@@ -21,6 +23,8 @@ function initializeUI({
   const aspect916Btn = document.getElementById('aspect-9-16');
   const fullScreenBtn = document.getElementById('full-screen');
   const toggleFPSBtn = document.getElementById('toggle-fps');
+  const midiLearnBtn = document.getElementById('midi-learn');
+  const tempoSensitivityInput = document.getElementById('tempo-sensitivity');
 
   playBtn.addEventListener('click', () => {
     if (isPlaying()) {
@@ -39,6 +43,14 @@ function initializeUI({
   if (toggleFPSBtn && onToggleFPS) {
     toggleFPSBtn.addEventListener('click', () => onToggleFPS());
   }
+  if (midiLearnBtn && onMidiLearn) {
+    midiLearnBtn.addEventListener('click', () => onMidiLearn());
+  }
+  if (tempoSensitivityInput && onSensitivityChange) {
+    tempoSensitivityInput.addEventListener('input', (e) =>
+      onSensitivityChange(e.target.value)
+    );
+  }
 
   return {
     playBtn,
@@ -49,6 +61,8 @@ function initializeUI({
     aspect916Btn,
     fullScreenBtn,
     toggleFPSBtn,
+    midiLearnBtn,
+    tempoSensitivityInput,
   };
 }
 
