@@ -60,6 +60,22 @@
       data-help="Alterna entre un FPS fijo y la tasa automática según la pantalla."
       class="active"
     >FPS Fijo on</button>
+    <button
+      id="midi-learn"
+      title="MIDI Learn"
+      data-help="Asigna un control MIDI para ajustar la velocidad de reproducción de la animación."
+    >MIDI Learn</button>
+    <label id="tempo-sensitivity-label" title="Sensibilidad de tempo" data-help="Controla cuánto cambia la velocidad con cada tic del control MIDI." >
+      Sensibilidad
+      <input
+        type="range"
+        id="tempo-sensitivity"
+        min="0.001"
+        max="0.1"
+        step="0.001"
+        value="0.01"
+      />
+    </label>
   </nav>
 
   <canvas

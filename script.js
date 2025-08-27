@@ -112,6 +112,67 @@ function getSuperSampling() {
   return superSampling;
 }
 
+// Variables y funciones para control de tempo mediante MIDI
+let tempoMultiplier = 1;
+let tempoSensitivity = 0.01;
+let midiLearnMode = false;
+let midiBinding = null;
+let lastMidiValue = 0;
+
+function startMidiLearn() {
+  midiLearnMode = true;
+}
+
+function setTempoSensitivity(val) {
+  const v = parseFloat(val);
+  if (!isNaN(v)) tempoSensitivity = v;
+}
+
+function getTempoMultiplier() {
+  return tempoMultiplier;
+}
+
+function handleMIDIMessage(event) {
+  const [status, data1, data2] = event.data || [];
+  const type = status & 0xf0;
+  const channel = status & 0x0f;
+  if (type === 0xb0) {
+    if (midiLearnMode) {
+      midiBinding = { controller: data1, channel };
+      lastMidiValue = data2;
+      midiLearnMode = false;
+    } else if (
+      midiBinding &&
+      midiBinding.controller === data1 &&
+      midiBinding.channel === channel
+    ) {
+      const delta = (data2 - lastMidiValue) * tempoSensitivity;
+      tempoMultiplier = Math.min(4, Math.max(0.1, tempoMultiplier + delta));
+      lastMidiValue = data2;
+    }
+  }
+}
+
+function initMIDI() {
+  if (typeof navigator === 'undefined' || !navigator.requestMIDIAccess)
+    return;
+  navigator
+    .requestMIDIAccess()
+    .then((midi) => {
+      midi.inputs.forEach((input) => {
+        input.onmidimessage = handleMIDIMessage;
+      });
+      midi.onstatechange = () => {
+        midi.inputs.forEach((input) => {
+          input.onmidimessage = handleMIDIMessage;
+        });
+      };
+    })
+    .catch((err) => {
+      console.warn('Web MIDI API no disponible', err);
+    });
+}
+
 function setInstrumentEnabled(inst, enabled) {
   enabledInstruments[inst] = enabled;
   if (typeof localStorage !== 'undefined') {
@@ -174,6 +235,7 @@ function getVisibleNotes(allNotes) {
 }
 
 async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback) {
+  tempoMultiplier = 1;
   audioPlayer.stop(false);
   audioPlayer.resetStartOffset();
   stopAnimation();
@@ -218,6 +280,9 @@ if (typeof document !== 'undefined') {
     }
 
     ctx.imageSmoothingEnabled = false;
+
+    // Inicializa el acceso MIDI para controlar el tempo de reproducción
+    initMIDI();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     canvas.style.imageRendering = 'pixelated';
@@ -1092,6 +1157,7 @@ if (typeof document !== 'undefined') {
     }
 
     function stopPlayback(preserveOffset = true) {
+      tempoMultiplier = 1;
       audioPlayer.stop(preserveOffset);
       stopAnimation();
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
@@ -1201,6 +1267,8 @@ if (typeof document !== 'undefined') {
           uiControls.toggleFPSBtn.classList.toggle('active', fixed);
         }
       },
+      onMidiLearn: () => startMidiLearn(),
+      onSensitivityChange: (val) => setTempoSensitivity(val),
     });
     if (uiControls.toggleFPSBtn) {
       const fixed = getFPSMode();
@@ -1359,12 +1427,13 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       if (prefersReducedMotion()) {
-        renderFrame(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
+        renderFrame(audioPlayer.getCurrentTime() * tempoMultiplier + audioOffsetMs / 1000);
         return;
       }
       const loopFn = (dt) => {
         adjustSupersampling(dt);
-        const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
+        const currentSec =
+          audioPlayer.getCurrentTime() * tempoMultiplier + audioOffsetMs / 1000;
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();
       };
@@ -1945,5 +2014,9 @@ if (typeof module !== 'undefined') {
     setShapeExtension,
     getShapeExtension,
     getShapeExtensions,
+    startMidiLearn,
+    setTempoSensitivity,
+    getTempoMultiplier,
+    handleMIDIMessage,
   };
 }
