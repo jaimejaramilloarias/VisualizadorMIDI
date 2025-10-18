@@ -1215,6 +1215,7 @@ if (typeof document !== 'undefined') {
     let startIndex = 0;
     let endIndex = 0;
     let lastTime = 0;
+    const BACKWARD_TOLERANCE = 1 / 120;
     const NOTE_MIN = 21;
     const NOTE_MAX = 108;
     const BASE_HEIGHT = 720;
@@ -1841,15 +1842,22 @@ if (typeof document !== 'undefined') {
     }
 
     function renderFrame(currentSec) {
+      if (typeof currentSec !== 'number' || !isFinite(currentSec)) {
+        currentSec = lastTime;
+      }
+      const movedBackward = currentSec + BACKWARD_TOLERANCE < lastTime;
+      if (movedBackward) {
+        startIndex = 0;
+        endIndex = 0;
+      } else if (currentSec < lastTime) {
+        currentSec = lastTime;
+      }
+      lastTime = currentSec;
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
       // Usa el color de fondo asignado al canvas para rellenar cada frame
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
       const noteHeight = canvas.height / 88;
-      if (currentSec < lastTime) {
-        currentSec = lastTime;
-      }
-      lastTime = currentSec;
       const windowStart = currentSec - visibleSeconds / 2;
       const windowEnd = currentSec + visibleSeconds / 2;
       while (startIndex < notes.length && notes[startIndex].end < windowStart)
