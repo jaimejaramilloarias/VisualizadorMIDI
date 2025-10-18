@@ -299,6 +299,7 @@ if (typeof document !== 'undefined') {
     let waveformView = { start: 0, duration: 0 };
     let tapTempoStartReference = 0;
     let tapTempoMap = null;
+    let originalTempoMap = [];
     let devMode = null;
     let draggingMarkerId = null;
     let markerHandles = [];
@@ -1501,7 +1502,6 @@ if (typeof document !== 'undefined') {
     pixelsPerSecond = canvas.width / visibleSeconds;
     let stopLoop = null;
     let tempoMap = [];
-    let originalTempoMap = [];
     let timeDivision = 1;
 
     function saveAssignments() {
