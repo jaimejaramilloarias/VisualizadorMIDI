@@ -24,8 +24,10 @@ const {
   getOpacityScale,
   setGlowStrength,
   getGlowStrength,
+  getGlowStrengthConfig,
   setBumpControl,
   getBumpControl,
+  getBumpControlConfig,
   preprocessTempoMap,
   ticksToSeconds,
   validateColorRange,
@@ -38,6 +40,11 @@ const {
   setShapeExtension,
   getShapeExtension,
   getShapeExtensions,
+  setFamilyExtension,
+  getFamilyExtension,
+  getFamilyExtensionConfig,
+  clearFamilyExtension,
+  isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,
   getAllFamilyLineSettings,
@@ -269,8 +276,11 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const instrumentSelect = document.getElementById('instrument-select');
-    const familySelect = document.getElementById('family-select');
+    const familyParamSelect = document.getElementById('family-parameter-select');
+    const familyHeightControl = document.getElementById('family-height-control');
+    const familyGlowControl = document.getElementById('family-glow-control');
+    const familyBumpControl = document.getElementById('family-bump-control');
+    const familyExtensionToggle = document.getElementById('family-extension-toggle');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerBtn = document.getElementById('developer-mode');
@@ -317,6 +327,178 @@ if (typeof document !== 'undefined') {
     let altKeyActive = false;
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
+
+    const ELONGATED_SHAPES = ['oval', 'capsule', 'star', 'diamond'];
+
+    function requestImmediateRender() {
+      if (typeof renderFrame === 'function') {
+        renderFrame(lastTime);
+      }
+    }
+
+    function updateRangeDisplay(input, rawValue) {
+      if (!input) return;
+      const outputId = input.dataset ? input.dataset.output : null;
+      if (!outputId) return;
+      const target = document.getElementById(outputId);
+      if (target) {
+        const value = Math.round(Number(rawValue || input.value));
+        target.textContent = `${value}%`;
+      }
+    }
+
+    function selectedFamilyForParameters() {
+      if (!familyParamSelect) return null;
+      const value = familyParamSelect.value;
+      return value ? value : null;
+    }
+
+    function refreshFamilyParameterOptions() {
+      if (!familyParamSelect) return;
+      const current = familyParamSelect.value;
+      familyParamSelect.innerHTML = '';
+      const generalOption = document.createElement('option');
+      generalOption.value = '';
+      generalOption.textContent = 'General';
+      familyParamSelect.appendChild(generalOption);
+      FAMILY_LIST.forEach((family) => {
+        const option = document.createElement('option');
+        option.value = family;
+        option.textContent = family;
+        familyParamSelect.appendChild(option);
+      });
+      if (current && FAMILY_LIST.includes(current)) {
+        familyParamSelect.value = current;
+      }
+    }
+
+    function getEffectiveFamilyShape(family) {
+      if (!family) return null;
+      const preset = FAMILY_PRESETS[family] || FAMILY_DEFAULTS[family];
+      return preset ? preset.shape : null;
+    }
+
+    function updateExtensionToggleState() {
+      if (!familyExtensionToggle) return;
+      const family = selectedFamilyForParameters();
+      if (!family) {
+        const shapeConfig = getShapeExtensions();
+        const enabled = ELONGATED_SHAPES.every(
+          (shape) => shapeConfig[shape] !== false,
+        );
+        familyExtensionToggle.checked = enabled;
+        familyExtensionToggle.disabled = false;
+        familyExtensionToggle.dataset.state = 'global';
+        return;
+      }
+      const shape = getEffectiveFamilyShape(family);
+      if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
+        familyExtensionToggle.checked = false;
+        familyExtensionToggle.disabled = true;
+        familyExtensionToggle.dataset.state = 'disabled';
+        return;
+      }
+      familyExtensionToggle.disabled = false;
+      familyExtensionToggle.dataset.state = 'family';
+      familyExtensionToggle.checked = isExtensionEnabledForFamily(shape, family);
+    }
+
+    function updateFamilyParameterControls() {
+      const family = selectedFamilyForParameters();
+      if (familyHeightControl) {
+        const height = Math.round(getHeightScale(family) * 100);
+        familyHeightControl.value = String(height);
+        updateRangeDisplay(familyHeightControl, height);
+      }
+      if (familyGlowControl) {
+        const glow = Math.round(getGlowStrength(family) * 100);
+        familyGlowControl.value = String(glow);
+        updateRangeDisplay(familyGlowControl, glow);
+      }
+      if (familyBumpControl) {
+        const bump = Math.round(getBumpControl(family) * 100);
+        familyBumpControl.value = String(bump);
+        updateRangeDisplay(familyBumpControl, bump);
+      }
+      updateExtensionToggleState();
+    }
+
+    refreshFamilyParameterOptions();
+    updateFamilyParameterControls();
+
+    if (familyParamSelect) {
+      familyParamSelect.addEventListener('change', () => {
+        updateFamilyParameterControls();
+        requestImmediateRender();
+      });
+    }
+
+    if (familyHeightControl) {
+      familyHeightControl.addEventListener('input', () =>
+        updateRangeDisplay(familyHeightControl),
+      );
+      familyHeightControl.addEventListener('change', () => {
+        const value = parseFloat(familyHeightControl.value);
+        if (!isNaN(value) && value > 0) {
+          setHeightScale(value / 100, selectedFamilyForParameters());
+          requestImmediateRender();
+        }
+        updateRangeDisplay(familyHeightControl);
+      });
+    }
+
+    if (familyGlowControl) {
+      familyGlowControl.addEventListener('input', () =>
+        updateRangeDisplay(familyGlowControl),
+      );
+      familyGlowControl.addEventListener('change', () => {
+        const value = parseFloat(familyGlowControl.value);
+        if (!isNaN(value) && value >= 0) {
+          setGlowStrength(value / 100, selectedFamilyForParameters());
+          requestImmediateRender();
+        }
+        updateRangeDisplay(familyGlowControl);
+      });
+    }
+
+    if (familyBumpControl) {
+      familyBumpControl.addEventListener('input', () =>
+        updateRangeDisplay(familyBumpControl),
+      );
+      familyBumpControl.addEventListener('change', () => {
+        const value = parseFloat(familyBumpControl.value);
+        if (!isNaN(value) && value >= 0) {
+          setBumpControl(value / 100, selectedFamilyForParameters());
+          requestImmediateRender();
+        }
+        updateRangeDisplay(familyBumpControl);
+      });
+    }
+
+    if (familyExtensionToggle) {
+      familyExtensionToggle.addEventListener('change', () => {
+        const family = selectedFamilyForParameters();
+        const enabled = familyExtensionToggle.checked;
+        const state = familyExtensionToggle.dataset.state;
+        if (!family) {
+          ELONGATED_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
+        } else if (state !== 'disabled') {
+          const shape = getEffectiveFamilyShape(family);
+          if (shape && !NON_STRETCHED_SHAPES.has(shape)) {
+            const globalEnabled = getShapeExtension(shape);
+            if (enabled === globalEnabled) {
+              clearFamilyExtension(family);
+            } else {
+              setFamilyExtension(family, enabled);
+            }
+          } else {
+            clearFamilyExtension(family);
+          }
+        }
+        updateExtensionToggleState();
+        requestImmediateRender();
+      });
+    }
 
     function getWaveformBaseWidth() {
       if (!waveformCanvas) return 0;
@@ -1851,6 +2033,8 @@ if (typeof document !== 'undefined') {
         );
         renderFrame(lastTime);
         updateShapeControl();
+        updateExtensionToggleState();
+        updateFamilyParameterControls();
       });
 
       shapeControl.appendChild(shapeLabel);
@@ -2026,8 +2210,9 @@ if (typeof document !== 'undefined') {
         const reader = new FileReader();
         reader.onload = (ev) => {
           importConfiguration(ev.target.result, currentTracks, notes);
-          populateInstrumentDropdown(currentTracks);
           buildFamilyPanel();
+          refreshFamilyParameterOptions();
+          updateFamilyParameterControls();
         };
         reader.readAsText(file);
       });
@@ -2038,35 +2223,8 @@ if (typeof document !== 'undefined') {
       familyPanel.appendChild(exportBtn);
       familyPanel.appendChild(importBtn);
       familyPanel.appendChild(importInput);
+      updateFamilyParameterControls();
     }
-
-    function populateInstrumentDropdown(tracks) {
-      instrumentSelect.innerHTML = '<option>Instrumento</option>';
-      tracks.forEach((t) => {
-        const opt = document.createElement('option');
-        opt.value = t.name;
-        opt.textContent = t.name;
-        instrumentSelect.appendChild(opt);
-      });
-    }
-
-    instrumentSelect.addEventListener('change', () => {
-      const selected = instrumentSelect.value;
-      familySelect.value = assignedFamilies[selected] || '';
-    });
-
-    familySelect.addEventListener('change', () => {
-      const inst = instrumentSelect.value;
-      if (!inst || inst === 'Instrumento') return;
-      const fam = familySelect.value;
-      if (fam) {
-        assignedFamilies[inst] = fam;
-      } else {
-        delete assignedFamilies[inst];
-      }
-      saveAssignments();
-      updateTrackFamily(inst, fam);
-    });
 
     function showAssignmentModal(tracks) {
       modalInstrumentList.innerHTML = '';
@@ -2157,9 +2315,8 @@ if (typeof document !== 'undefined') {
         updateTrackFamily(li.dataset.instrument, '');
       });
       saveAssignments();
-      populateInstrumentDropdown(currentTracks);
-      instrumentSelect.value = 'Instrumento';
-      familySelect.value = '';
+      refreshFamilyParameterOptions();
+      updateFamilyParameterControls();
       assignmentModal.style.display = 'none';
     });
 
@@ -2173,8 +2330,9 @@ if (typeof document !== 'undefined') {
     loadDefaultConfiguration(currentTracks, notes)
       .catch(() => {})
       .then(() => {
-        populateInstrumentDropdown(currentTracks);
         buildFamilyPanel();
+        refreshFamilyParameterOptions();
+        updateFamilyParameterControls();
       });
 
     // ----- Configuración de Audio -----
@@ -2310,9 +2468,10 @@ if (typeof document !== 'undefined') {
           }
         });
         applyStoredAssignments();
-        populateInstrumentDropdown(currentTracks);
         showAssignmentModal(currentTracks);
         buildFamilyPanel();
+        refreshFamilyParameterOptions();
+        updateFamilyParameterControls();
         restoreOriginalTempoMap({ preserveStatus: false });
         resetTapTempoEditor({ preserveStatus: true, preserveMarkers: true });
         audioPlayer.resetStartOffset();
@@ -2475,7 +2634,14 @@ if (typeof document !== 'undefined') {
           ));
         }
         const clamped = Math.min(Math.max(note.noteNumber, NOTE_MIN), NOTE_MAX);
-        const height = computeBumpHeight(baseHeight, time, note.start, note.end, bump);
+        const height = computeBumpHeight(
+          baseHeight,
+          time,
+          note.start,
+          note.end,
+          bump,
+          note.family,
+        );
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
@@ -2577,7 +2743,7 @@ if (typeof document !== 'undefined') {
         );
         offscreenCtx.restore();
 
-        const glowAlpha = computeGlowAlpha(currentSec, note.start);
+        const glowAlpha = computeGlowAlpha(currentSec, note.start, 0.2, note.family);
         if (glowAlpha > 0) {
           applyGlowEffect(
             offscreenCtx,
@@ -2587,6 +2753,7 @@ if (typeof document !== 'undefined') {
             metrics.width,
             metrics.height,
             glowAlpha,
+            note.family,
           );
         }
       }
@@ -2915,11 +3082,12 @@ function exportConfiguration() {
     enabledInstruments,
     velocityBase: getVelocityBase(),
     opacityScale: getOpacityScale(),
-    glowStrength: getGlowStrength(),
-    bumpControl: getBumpControl(),
+    glowStrength: getGlowStrengthConfig(),
+    bumpControl: getBumpControlConfig(),
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
     shapeExtensions: getShapeExtensions(),
+    familyExtensions: getFamilyExtensionConfig(),
     familyLineSettings: getAllFamilyLineSettings(),
     familyTravelSettings: getTravelEffectSettings(),
   });
@@ -2945,9 +3113,27 @@ function importConfiguration(json, tracks = [], notes = []) {
   }
   if (typeof data.glowStrength === 'number') {
     setGlowStrength(data.glowStrength);
+  } else if (data.glowStrength && typeof data.glowStrength === 'object') {
+    if (typeof data.glowStrength.global === 'number') {
+      setGlowStrength(data.glowStrength.global);
+    }
+    if (data.glowStrength.families && typeof data.glowStrength.families === 'object') {
+      Object.entries(data.glowStrength.families).forEach(([fam, val]) => {
+        if (typeof val === 'number') setGlowStrength(val, fam);
+      });
+    }
   }
   if (typeof data.bumpControl === 'number') {
     setBumpControl(data.bumpControl);
+  } else if (data.bumpControl && typeof data.bumpControl === 'object') {
+    if (typeof data.bumpControl.global === 'number') {
+      setBumpControl(data.bumpControl.global);
+    }
+    if (data.bumpControl.families && typeof data.bumpControl.families === 'object') {
+      Object.entries(data.bumpControl.families).forEach(([fam, val]) => {
+        if (typeof val === 'number') setBumpControl(val, fam);
+      });
+    }
   }
   if (typeof data.visibleSeconds === 'number') {
     setVisibleSeconds(data.visibleSeconds);
@@ -2966,6 +3152,15 @@ function importConfiguration(json, tracks = [], notes = []) {
   if (data.shapeExtensions && typeof data.shapeExtensions === 'object') {
     Object.entries(data.shapeExtensions).forEach(([shape, enabled]) => {
       setShapeExtension(shape, enabled);
+    });
+  }
+
+  if (data.familyExtensions && typeof data.familyExtensions === 'object') {
+    Object.keys(getFamilyExtensionConfig()).forEach((fam) => clearFamilyExtension(fam));
+    Object.entries(data.familyExtensions).forEach(([fam, enabled]) => {
+      if (typeof enabled === 'boolean') {
+        setFamilyExtension(fam, enabled);
+      }
     });
   }
 
@@ -3198,8 +3393,10 @@ if (typeof module !== 'undefined') {
     getOpacityScale,
     setGlowStrength,
     getGlowStrength,
+    getGlowStrengthConfig,
     setBumpControl,
     getBumpControl,
+    getBumpControlConfig,
     setSuperSampling,
     getSuperSampling,
     preprocessTempoMap,
@@ -3226,5 +3423,10 @@ if (typeof module !== 'undefined') {
     setShapeExtension,
     getShapeExtension,
     getShapeExtensions,
+    setFamilyExtension,
+    getFamilyExtension,
+    getFamilyExtensionConfig,
+    clearFamilyExtension,
+    isExtensionEnabledForFamily,
   };
 }

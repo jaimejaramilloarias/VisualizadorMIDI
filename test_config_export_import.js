@@ -31,11 +31,12 @@ const config = {
   enabledInstruments: { Flauta: true },
   velocityBase: 80,
   opacityScale: { edge: 0.1, mid: 0.8 },
-  glowStrength: 1.5,
-  bumpControl: 1.2,
+  glowStrength: { global: 1.5, families: { Metales: 1.2 } },
+  bumpControl: { global: 1.2, families: { Metales: 1.1 } },
   visibleSeconds: 6,
   heightScale: { global: 1, families: {} },
   shapeExtensions: { oval: true, capsule: true, star: true, diamond: true },
+  familyExtensions: { Metales: true },
   familyLineSettings: {},
   familyTravelSettings: {},
 };
@@ -52,7 +53,9 @@ assert.strictEqual(notes[0].color, '#123456');
 assert.strictEqual(getVelocityBase(), 80);
 assert.deepStrictEqual(getOpacityScale(), { edge: 0.1, mid: 0.8 });
 assert.strictEqual(getGlowStrength(), 1.5);
+assert.strictEqual(getGlowStrength('Metales'), 1.2);
 assert.strictEqual(getBumpControl(), 1.2);
+assert.strictEqual(getBumpControl('Metales'), 1.1);
 assert.strictEqual(getVisibleSeconds(), 6);
 assert.deepStrictEqual(getHeightScaleConfig(), { global: 1, families: {} });
 

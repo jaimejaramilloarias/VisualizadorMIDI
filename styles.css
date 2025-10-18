@@ -36,25 +36,58 @@ body {
 #bottom-menu {
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-#bottom-menu #instrument-select,
-#bottom-menu #family-select,
-#bottom-menu #developer-mode {
-  flex: 1;
+#toggle-family-panel {
+  flex: 0 0 40px;
+  min-width: 40px;
+}
+
+#bottom-menu button {
+  text-align: center;
+}
+
+#developer-mode,
+#tap-tempo-mode {
+  flex: 1 1 160px;
   min-width: 150px;
 }
 
-#bottom-menu #toggle-family-panel {
-  flex: 0 0 40px;
-  text-align: center;
-  padding: 6px;
+.family-parameter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  flex: 1 1 160px;
 }
 
-#bottom-menu select,
-#bottom-menu button {
+.family-parameter label {
+  font-weight: 600;
+}
+
+.family-parameter input[type='range'] {
   width: 100%;
+}
+
+.family-parameter-toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.family-parameter-toggle label {
+  flex: 1;
+}
+
+.family-parameter-toggle input[type='checkbox'] {
+  width: auto;
+  transform: scale(1.2);
+}
+
+.parameter-value {
   text-align: center;
+  font-weight: 600;
 }
 
 button,
