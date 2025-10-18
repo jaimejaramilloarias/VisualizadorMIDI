@@ -1553,23 +1553,6 @@ if (typeof document !== 'undefined') {
       familyPanel.innerHTML = '';
       if (devControls) familyPanel.appendChild(devControls);
 
-      const colorColumn = document.createElement('div');
-      colorColumn.className = 'side-column';
-      const shapeColumn = document.createElement('div');
-      shapeColumn.className = 'side-column';
-      const lineColumn = document.createElement('div');
-      lineColumn.className = 'side-column';
-      familyPanel.appendChild(colorColumn);
-      familyPanel.appendChild(shapeColumn);
-      familyPanel.appendChild(lineColumn);
-
-      const bgItem = document.createElement('div');
-      bgItem.className = 'family-config-item';
-      const bgLabel = document.createElement('label');
-      bgLabel.textContent = 'Color del canvas';
-      const bgInput = document.createElement('input');
-      bgInput.type = 'color';
-      bgInput.id = 'canvas-color-input';
       const toHex = (val) => {
         if (!val) return '#000000';
         if (val.startsWith('#')) return val;
@@ -1580,6 +1563,123 @@ if (typeof document !== 'undefined') {
           .map((n) => parseInt(n, 10).toString(16).padStart(2, '0'))
           .join('')}`;
       };
+
+      const createFamilySelector = () => {
+        const select = document.createElement('select');
+        const globalOption = document.createElement('option');
+        globalOption.value = '';
+        globalOption.textContent = 'Global';
+        select.appendChild(globalOption);
+        FAMILY_LIST.forEach((family) => {
+          if (!FAMILY_PRESETS[family]) return;
+          const option = document.createElement('option');
+          option.value = family;
+          option.textContent = family;
+          select.appendChild(option);
+        });
+        return select;
+      };
+
+      const familiesFromSelection = (value) => {
+        const list = value ? [value] : FAMILY_LIST;
+        return list.filter((family) => !!FAMILY_PRESETS[family]);
+      };
+
+      const getColorState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let baseColor = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const preset = FAMILY_PRESETS[family] || {};
+          const color = preset.color || '#ffffff';
+          if (baseColor === null) {
+            baseColor = color;
+          } else if (baseColor.toLowerCase() !== color.toLowerCase()) {
+            mixed = true;
+          }
+        });
+        if (baseColor === null) baseColor = '#ffffff';
+        return { color: baseColor, mixed };
+      };
+
+      const getShapeState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let baseShape = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const preset = FAMILY_PRESETS[family] || {};
+          const shape = preset.shape || (SHAPE_OPTIONS[0] ? SHAPE_OPTIONS[0].value : 'square');
+          if (baseShape === null) {
+            baseShape = shape;
+          } else if (baseShape !== shape) {
+            mixed = true;
+          }
+        });
+        if (baseShape === null) {
+          baseShape = SHAPE_OPTIONS[0] ? SHAPE_OPTIONS[0].value : 'square';
+        }
+        return { shape: baseShape, mixed };
+      };
+
+      const getLineState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let enabled = null;
+        let opacity = null;
+        let width = null;
+        let travel = null;
+        let mixedEnabled = false;
+        let mixedOpacity = false;
+        let mixedWidth = false;
+        let mixedTravel = false;
+        families.forEach((family) => {
+          const settings = getFamilyLineSettings(family);
+          const travelEnabled = isTravelEffectEnabled(family);
+          if (enabled === null) {
+            enabled = settings.enabled;
+          } else if (enabled !== settings.enabled) {
+            mixedEnabled = true;
+          }
+          if (opacity === null) {
+            opacity = settings.opacity;
+          } else if (Math.abs(opacity - settings.opacity) > 1e-6) {
+            mixedOpacity = true;
+          }
+          if (width === null) {
+            width = settings.width;
+          } else if (Math.abs(width - settings.width) > 1e-6) {
+            mixedWidth = true;
+          }
+          if (travel === null) {
+            travel = travelEnabled;
+          } else if (travel !== travelEnabled) {
+            mixedTravel = true;
+          }
+        });
+        if (enabled === null) {
+          enabled = true;
+          opacity = 0.45;
+          width = 1.5;
+          travel = false;
+        }
+        return {
+          enabled,
+          opacity,
+          width,
+          travel,
+          mixedEnabled,
+          mixedOpacity,
+          mixedWidth,
+          mixedTravel,
+        };
+      };
+
+      const bgItem = document.createElement('div');
+      bgItem.className = 'family-config-item';
+      const bgLabel = document.createElement('label');
+      bgLabel.textContent = 'Color del canvas';
+      const bgInput = document.createElement('input');
+      bgInput.type = 'color';
+      bgInput.id = 'canvas-color-input';
       bgInput.value = toHex(canvas.style.backgroundColor);
       bgInput.addEventListener('change', () => {
         canvas.style.backgroundColor = bgInput.value;
@@ -1589,7 +1689,7 @@ if (typeof document !== 'undefined') {
       });
       bgItem.appendChild(bgLabel);
       bgItem.appendChild(bgInput);
-      colorColumn.appendChild(bgItem);
+      familyPanel.appendChild(bgItem);
 
       const instSection = document.createElement('div');
       instSection.className = 'inst-section';
@@ -1660,152 +1760,222 @@ if (typeof document !== 'undefined') {
         }
       });
 
-      FAMILY_LIST.forEach((family) => {
-        const colorItem = document.createElement('div');
-        colorItem.className = 'family-config-item';
-        colorItem.dataset.family = family;
-        const colorLabel = document.createElement('label');
-        colorLabel.textContent = family;
-        const colorInput = document.createElement('input');
-        colorInput.type = 'color';
-        colorInput.value =
-          FAMILY_PRESETS[family]?.color ||
-          '#ffffff';
-        colorInput.addEventListener('change', () => {
+      const colorControl = document.createElement('div');
+      colorControl.className = 'family-config-item family-config-group';
+      const colorLabel = document.createElement('label');
+      colorLabel.textContent = 'Color de familia:';
+      const colorFamilySelect = createFamilySelector();
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      const colorHint = document.createElement('span');
+      colorHint.className = 'control-hint';
+
+      const updateColorControl = () => {
+        const { color, mixed } = getColorState(colorFamilySelect.value);
+        colorInput.value = color;
+        colorHint.textContent = mixed ? 'Valores variados' : color.toUpperCase();
+        colorHint.classList.toggle('hint-active', mixed);
+      };
+
+      colorFamilySelect.addEventListener('change', updateColorControl);
+      colorInput.addEventListener('change', () => {
+        const color = colorInput.value;
+        familiesFromSelection(colorFamilySelect.value).forEach((family) =>
           setFamilyCustomization(
             family,
-            { color: colorInput.value },
+            { color },
             currentTracks,
             notes,
-          );
-        });
-        colorItem.appendChild(colorLabel);
-        colorItem.appendChild(colorInput);
-        colorColumn.appendChild(colorItem);
-
-        const shapeItem = document.createElement('div');
-        shapeItem.className = 'family-config-item';
-        shapeItem.dataset.family = family;
-        const shapeLabel = document.createElement('label');
-        shapeLabel.textContent = family;
-        const shapeSelect = document.createElement('select');
-        SHAPE_OPTIONS.forEach((opt) => {
-          const o = document.createElement('option');
-          o.value = opt.value;
-          o.textContent = opt.label;
-          if (opt.value === (FAMILY_PRESETS[family]?.shape || '')) o.selected = true;
-          shapeSelect.appendChild(o);
-        });
-        shapeSelect.addEventListener('change', () => {
-          setFamilyCustomization(
-            family,
-            { shape: shapeSelect.value },
-            currentTracks,
-            notes,
-          );
-        });
-        shapeItem.appendChild(shapeLabel);
-        shapeItem.appendChild(shapeSelect);
-        shapeColumn.appendChild(shapeItem);
-
-        const lineSettings = getFamilyLineSettings(family);
-        const lineItem = document.createElement('div');
-        lineItem.className = 'family-config-item family-line-item';
-        lineItem.dataset.family = family;
-
-        const lineTitle = document.createElement('div');
-        lineTitle.className = 'family-line-title';
-        lineTitle.textContent = family;
-        lineItem.appendChild(lineTitle);
-
-        const lineToggleLabel = document.createElement('label');
-        lineToggleLabel.className = 'family-line-toggle';
-        const lineToggle = document.createElement('input');
-        lineToggle.type = 'checkbox';
-        lineToggle.checked = lineSettings.enabled;
-        lineToggle.addEventListener('change', () => {
-          updateFamilyLineSettings(family, { enabled: lineToggle.checked });
-          lineOpacity.disabled = !lineToggle.checked;
-          lineWidth.disabled = !lineToggle.checked;
-          renderFrame(lastTime);
-        });
-        lineToggleLabel.appendChild(lineToggle);
-        lineToggleLabel.appendChild(document.createTextNode(' Línea activa'));
-        lineItem.appendChild(lineToggleLabel);
-
-        const opacityRow = document.createElement('div');
-        opacityRow.className = 'family-line-row';
-        const opacityText = document.createElement('span');
-        opacityText.textContent = 'Opacidad';
-        const opacityControl = document.createElement('div');
-        opacityControl.className = 'family-line-range';
-        const lineOpacity = document.createElement('input');
-        lineOpacity.type = 'range';
-        lineOpacity.min = '0';
-        lineOpacity.max = '1';
-        lineOpacity.step = '0.05';
-        lineOpacity.value = String(lineSettings.opacity);
-        lineOpacity.disabled = !lineSettings.enabled;
-        const opacityValue = document.createElement('span');
-        opacityValue.className = 'range-value';
-        opacityValue.textContent = Number(lineSettings.opacity).toFixed(2);
-        lineOpacity.addEventListener('input', () => {
-          const value = parseFloat(lineOpacity.value);
-          updateFamilyLineSettings(family, { opacity: value });
-          opacityValue.textContent = value.toFixed(2);
-          renderFrame(lastTime);
-        });
-        opacityControl.appendChild(lineOpacity);
-        opacityControl.appendChild(opacityValue);
-        opacityRow.appendChild(opacityText);
-        opacityRow.appendChild(opacityControl);
-        lineItem.appendChild(opacityRow);
-
-        const widthRow = document.createElement('div');
-        widthRow.className = 'family-line-row';
-        const widthText = document.createElement('span');
-        widthText.textContent = 'Ancho';
-        const widthControl = document.createElement('div');
-        widthControl.className = 'family-line-range';
-        const lineWidth = document.createElement('input');
-        lineWidth.type = 'range';
-        lineWidth.min = '0.25';
-        lineWidth.max = '8';
-        lineWidth.step = '0.05';
-        lineWidth.value = String(lineSettings.width);
-        lineWidth.disabled = !lineSettings.enabled;
-        const widthValue = document.createElement('span');
-        widthValue.className = 'range-value';
-        widthValue.textContent = Number(lineSettings.width).toFixed(2);
-        lineWidth.addEventListener('input', () => {
-          const value = parseFloat(lineWidth.value);
-          updateFamilyLineSettings(family, { width: value });
-          widthValue.textContent = value.toFixed(2);
-          renderFrame(lastTime);
-        });
-        widthControl.appendChild(lineWidth);
-        widthControl.appendChild(widthValue);
-        widthRow.appendChild(widthText);
-        widthRow.appendChild(widthControl);
-        lineItem.appendChild(widthRow);
-
-        const travelToggleLabel = document.createElement('label');
-        travelToggleLabel.className = 'family-line-toggle';
-        const travelToggle = document.createElement('input');
-        travelToggle.type = 'checkbox';
-        travelToggle.checked = isTravelEffectEnabled(family);
-        travelToggle.addEventListener('change', () => {
-          setTravelEffectEnabled(family, travelToggle.checked);
-          renderFrame(lastTime);
-        });
-        travelToggleLabel.appendChild(travelToggle);
-        travelToggleLabel.appendChild(
-          document.createTextNode(' Viaje tras NOTE OFF'),
+          ),
         );
-        lineItem.appendChild(travelToggleLabel);
-
-        lineColumn.appendChild(lineItem);
+        renderFrame(lastTime);
+        updateColorControl();
       });
+
+      colorControl.appendChild(colorLabel);
+      colorControl.appendChild(colorFamilySelect);
+      colorControl.appendChild(colorInput);
+      colorControl.appendChild(colorHint);
+      familyPanel.appendChild(colorControl);
+
+      const shapeControl = document.createElement('div');
+      shapeControl.className = 'family-config-item family-config-group';
+      const shapeLabel = document.createElement('label');
+      shapeLabel.textContent = 'Figura de familia:';
+      const shapeFamilySelect = createFamilySelector();
+      const shapeSelect = document.createElement('select');
+      SHAPE_OPTIONS.forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        shapeSelect.appendChild(option);
+      });
+      const shapeHint = document.createElement('span');
+      shapeHint.className = 'control-hint';
+
+      const updateShapeControl = () => {
+        const { shape, mixed } = getShapeState(shapeFamilySelect.value);
+        if (shapeSelect.querySelector(`option[value="${shape}"]`)) {
+          shapeSelect.value = shape;
+        } else if (SHAPE_OPTIONS[0]) {
+          shapeSelect.value = SHAPE_OPTIONS[0].value;
+        }
+        const currentOption = SHAPE_OPTIONS.find((opt) => opt.value === shapeSelect.value);
+        shapeHint.textContent = mixed
+          ? 'Valores variados'
+          : currentOption
+          ? currentOption.label
+          : '';
+        shapeHint.classList.toggle('hint-active', mixed);
+      };
+
+      shapeFamilySelect.addEventListener('change', updateShapeControl);
+      shapeSelect.addEventListener('change', () => {
+        const shape = shapeSelect.value;
+        familiesFromSelection(shapeFamilySelect.value).forEach((family) =>
+          setFamilyCustomization(
+            family,
+            { shape },
+            currentTracks,
+            notes,
+          ),
+        );
+        renderFrame(lastTime);
+        updateShapeControl();
+      });
+
+      shapeControl.appendChild(shapeLabel);
+      shapeControl.appendChild(shapeFamilySelect);
+      shapeControl.appendChild(shapeSelect);
+      shapeControl.appendChild(shapeHint);
+      familyPanel.appendChild(shapeControl);
+
+      const lineControl = document.createElement('div');
+      lineControl.className = 'family-config-item family-line-item';
+      const lineHeader = document.createElement('div');
+      lineHeader.className = 'family-line-row family-line-header';
+      const lineFamilyLabel = document.createElement('span');
+      lineFamilyLabel.textContent = 'Familia línea:';
+      const lineFamilySelect = createFamilySelector();
+      lineHeader.appendChild(lineFamilyLabel);
+      lineHeader.appendChild(lineFamilySelect);
+      lineControl.appendChild(lineHeader);
+
+      const lineToggleLabel = document.createElement('label');
+      lineToggleLabel.className = 'family-line-toggle';
+      const lineToggle = document.createElement('input');
+      lineToggle.type = 'checkbox';
+      lineToggleLabel.appendChild(lineToggle);
+      lineToggleLabel.appendChild(document.createTextNode(' Línea activa'));
+      lineControl.appendChild(lineToggleLabel);
+
+      const opacityRow = document.createElement('div');
+      opacityRow.className = 'family-line-row';
+      const opacityText = document.createElement('span');
+      opacityText.textContent = 'Opacidad';
+      const opacityControl = document.createElement('div');
+      opacityControl.className = 'family-line-range';
+      const lineOpacity = document.createElement('input');
+      lineOpacity.type = 'range';
+      lineOpacity.min = '0';
+      lineOpacity.max = '1';
+      lineOpacity.step = '0.05';
+      const opacityValue = document.createElement('span');
+      opacityValue.className = 'range-value';
+      opacityControl.appendChild(lineOpacity);
+      opacityControl.appendChild(opacityValue);
+      opacityRow.appendChild(opacityText);
+      opacityRow.appendChild(opacityControl);
+      lineControl.appendChild(opacityRow);
+
+      const widthRow = document.createElement('div');
+      widthRow.className = 'family-line-row';
+      const widthText = document.createElement('span');
+      widthText.textContent = 'Ancho';
+      const widthControl = document.createElement('div');
+      widthControl.className = 'family-line-range';
+      const lineWidth = document.createElement('input');
+      lineWidth.type = 'range';
+      lineWidth.min = '0.25';
+      lineWidth.max = '8';
+      lineWidth.step = '0.05';
+      const widthValue = document.createElement('span');
+      widthValue.className = 'range-value';
+      widthControl.appendChild(lineWidth);
+      widthControl.appendChild(widthValue);
+      widthRow.appendChild(widthText);
+      widthRow.appendChild(widthControl);
+      lineControl.appendChild(widthRow);
+
+      const travelToggleLabel = document.createElement('label');
+      travelToggleLabel.className = 'family-line-toggle';
+      const travelToggle = document.createElement('input');
+      travelToggle.type = 'checkbox';
+      travelToggleLabel.appendChild(travelToggle);
+      travelToggleLabel.appendChild(
+        document.createTextNode(' Viaje tras NOTE OFF'),
+      );
+      lineControl.appendChild(travelToggleLabel);
+
+      const updateLineControl = () => {
+        const state = getLineState(lineFamilySelect.value);
+        lineToggle.checked = state.enabled;
+        lineToggle.indeterminate = state.mixedEnabled;
+        lineOpacity.value = String(state.opacity);
+        lineOpacity.disabled = !state.enabled && !state.mixedEnabled;
+        opacityValue.textContent = state.mixedOpacity
+          ? '—'
+          : Number(state.opacity).toFixed(2);
+        lineWidth.value = String(state.width);
+        lineWidth.disabled = !state.enabled && !state.mixedEnabled;
+        widthValue.textContent = state.mixedWidth
+          ? '—'
+          : Number(state.width).toFixed(2);
+        travelToggle.checked = state.travel;
+        travelToggle.indeterminate = state.mixedTravel;
+      };
+
+      lineFamilySelect.addEventListener('change', updateLineControl);
+      lineToggle.addEventListener('change', () => {
+        const enabled = lineToggle.checked;
+        lineToggle.indeterminate = false;
+        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+          updateFamilyLineSettings(family, { enabled }),
+        );
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+      lineOpacity.addEventListener('input', () => {
+        const value = parseFloat(lineOpacity.value);
+        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+          updateFamilyLineSettings(family, { opacity: value }),
+        );
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+      lineWidth.addEventListener('input', () => {
+        const value = parseFloat(lineWidth.value);
+        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+          updateFamilyLineSettings(family, { width: value }),
+        );
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+      travelToggle.addEventListener('change', () => {
+        const enabled = travelToggle.checked;
+        travelToggle.indeterminate = false;
+        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+          setTravelEffectEnabled(family, enabled),
+        );
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+
+      familyPanel.appendChild(lineControl);
+
+      updateColorControl();
+      updateShapeControl();
+      updateLineControl();
 
       const resetBtn = document.createElement('button');
       resetBtn.id = 'reset-family-defaults';
