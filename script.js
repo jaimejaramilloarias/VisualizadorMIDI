@@ -325,10 +325,11 @@ if (typeof document !== 'undefined') {
     let tapTempoMap = null;
     let devMode = null;
     let draggingMarkerId = null;
+    const audioPlayer = createAudioPlayer();
 
     function updateTapTempoAvailability() {
       if (!startTapTempoBtn) return;
-      const hasAudio = !!audioPlayer.getAudioBuffer();
+      const hasAudio = !!(audioPlayer && audioPlayer.getAudioBuffer());
       startTapTempoBtn.disabled = !hasAudio || tapTempoActive;
       if (!hasAudio && tapTempoStatus) {
         tapTempoStatus.textContent =
@@ -1223,7 +1224,6 @@ if (typeof document !== 'undefined') {
     let tempoMap = [];
     let originalTempoMap = [];
     let timeDivision = 1;
-    const audioPlayer = createAudioPlayer();
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
