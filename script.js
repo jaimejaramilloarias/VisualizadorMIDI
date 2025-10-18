@@ -38,6 +38,16 @@ const {
   setShapeExtension,
   getShapeExtension,
   getShapeExtensions,
+  getFamilyLineSettings,
+  updateFamilyLineSettings,
+  getAllFamilyLineSettings,
+  setAllFamilyLineSettings,
+  resetFamilyLineSettings,
+  isTravelEffectEnabled,
+  setTravelEffectEnabled,
+  getTravelEffectSettings,
+  setTravelEffectSettings,
+  resetTravelEffectSettings,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "setupHelpMessages" se declara globalmente en help.js. Para evitar conflictos
@@ -1491,6 +1501,7 @@ if (typeof document !== 'undefined') {
 
     let currentTracks = [];
     let notes = [];
+    let trackNoteSequences = new Map();
     let startIndex = 0;
     let endIndex = 0;
     let lastTime = 0;
@@ -1546,8 +1557,11 @@ if (typeof document !== 'undefined') {
       colorColumn.className = 'side-column';
       const shapeColumn = document.createElement('div');
       shapeColumn.className = 'side-column';
+      const lineColumn = document.createElement('div');
+      lineColumn.className = 'side-column';
       familyPanel.appendChild(colorColumn);
       familyPanel.appendChild(shapeColumn);
+      familyPanel.appendChild(lineColumn);
 
       const bgItem = document.createElement('div');
       bgItem.className = 'family-config-item';
@@ -1693,6 +1707,104 @@ if (typeof document !== 'undefined') {
         shapeItem.appendChild(shapeLabel);
         shapeItem.appendChild(shapeSelect);
         shapeColumn.appendChild(shapeItem);
+
+        const lineSettings = getFamilyLineSettings(family);
+        const lineItem = document.createElement('div');
+        lineItem.className = 'family-config-item family-line-item';
+        lineItem.dataset.family = family;
+
+        const lineTitle = document.createElement('div');
+        lineTitle.className = 'family-line-title';
+        lineTitle.textContent = family;
+        lineItem.appendChild(lineTitle);
+
+        const lineToggleLabel = document.createElement('label');
+        lineToggleLabel.className = 'family-line-toggle';
+        const lineToggle = document.createElement('input');
+        lineToggle.type = 'checkbox';
+        lineToggle.checked = lineSettings.enabled;
+        lineToggle.addEventListener('change', () => {
+          updateFamilyLineSettings(family, { enabled: lineToggle.checked });
+          lineOpacity.disabled = !lineToggle.checked;
+          lineWidth.disabled = !lineToggle.checked;
+          renderFrame(lastTime);
+        });
+        lineToggleLabel.appendChild(lineToggle);
+        lineToggleLabel.appendChild(document.createTextNode(' Línea activa'));
+        lineItem.appendChild(lineToggleLabel);
+
+        const opacityRow = document.createElement('div');
+        opacityRow.className = 'family-line-row';
+        const opacityText = document.createElement('span');
+        opacityText.textContent = 'Opacidad';
+        const opacityControl = document.createElement('div');
+        opacityControl.className = 'family-line-range';
+        const lineOpacity = document.createElement('input');
+        lineOpacity.type = 'range';
+        lineOpacity.min = '0';
+        lineOpacity.max = '1';
+        lineOpacity.step = '0.05';
+        lineOpacity.value = String(lineSettings.opacity);
+        lineOpacity.disabled = !lineSettings.enabled;
+        const opacityValue = document.createElement('span');
+        opacityValue.className = 'range-value';
+        opacityValue.textContent = Number(lineSettings.opacity).toFixed(2);
+        lineOpacity.addEventListener('input', () => {
+          const value = parseFloat(lineOpacity.value);
+          updateFamilyLineSettings(family, { opacity: value });
+          opacityValue.textContent = value.toFixed(2);
+          renderFrame(lastTime);
+        });
+        opacityControl.appendChild(lineOpacity);
+        opacityControl.appendChild(opacityValue);
+        opacityRow.appendChild(opacityText);
+        opacityRow.appendChild(opacityControl);
+        lineItem.appendChild(opacityRow);
+
+        const widthRow = document.createElement('div');
+        widthRow.className = 'family-line-row';
+        const widthText = document.createElement('span');
+        widthText.textContent = 'Ancho';
+        const widthControl = document.createElement('div');
+        widthControl.className = 'family-line-range';
+        const lineWidth = document.createElement('input');
+        lineWidth.type = 'range';
+        lineWidth.min = '0.25';
+        lineWidth.max = '8';
+        lineWidth.step = '0.05';
+        lineWidth.value = String(lineSettings.width);
+        lineWidth.disabled = !lineSettings.enabled;
+        const widthValue = document.createElement('span');
+        widthValue.className = 'range-value';
+        widthValue.textContent = Number(lineSettings.width).toFixed(2);
+        lineWidth.addEventListener('input', () => {
+          const value = parseFloat(lineWidth.value);
+          updateFamilyLineSettings(family, { width: value });
+          widthValue.textContent = value.toFixed(2);
+          renderFrame(lastTime);
+        });
+        widthControl.appendChild(lineWidth);
+        widthControl.appendChild(widthValue);
+        widthRow.appendChild(widthText);
+        widthRow.appendChild(widthControl);
+        lineItem.appendChild(widthRow);
+
+        const travelToggleLabel = document.createElement('label');
+        travelToggleLabel.className = 'family-line-toggle';
+        const travelToggle = document.createElement('input');
+        travelToggle.type = 'checkbox';
+        travelToggle.checked = isTravelEffectEnabled(family);
+        travelToggle.addEventListener('change', () => {
+          setTravelEffectEnabled(family, travelToggle.checked);
+          renderFrame(lastTime);
+        });
+        travelToggleLabel.appendChild(travelToggle);
+        travelToggleLabel.appendChild(
+          document.createTextNode(' Viaje tras NOTE OFF'),
+        );
+        lineItem.appendChild(travelToggleLabel);
+
+        lineColumn.appendChild(lineItem);
       });
 
       const resetBtn = document.createElement('button');
@@ -2087,13 +2199,16 @@ if (typeof document !== 'undefined') {
 
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
+      trackNoteSequences = new Map();
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
+        const sequence = [];
+        trackNoteSequences.set(track.name, sequence);
         track.events.forEach((ev) => {
           if (ev.type === 'note') {
             const start = ticksToSeconds(ev.start, tempoMap, timeDivision);
             const end = ticksToSeconds(ev.start + ev.duration, tempoMap, timeDivision);
-            notes.push({
+            const noteEntry = {
               start,
               end,
               noteNumber: ev.noteNumber,
@@ -2103,9 +2218,21 @@ if (typeof document !== 'undefined') {
               family: track.family,
               instrument: track.instrument,
               trackName: track.name,
-            });
+              next: null,
+              prev: null,
+            };
+            notes.push(noteEntry);
+            sequence.push(noteEntry);
           }
         });
+      });
+      trackNoteSequences.forEach((sequence) => {
+        sequence.sort((a, b) => a.start - b.start);
+        for (let i = 0; i < sequence.length; i++) {
+          const current = sequence[i];
+          current.prev = sequence[i - 1] || null;
+          current.next = sequence[i + 1] || null;
+        }
       });
       notes.sort((a, b) => a.start - b.start);
       startIndex = 0;
@@ -2125,10 +2252,11 @@ if (typeof document !== 'undefined') {
         currentSec = lastTime;
       }
       lastTime = currentSec;
+
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
-      // Usa el color de fondo asignado al canvas para rellenar cada frame
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
+
       const noteHeight = canvas.height / 88;
       const windowStart = currentSec - visibleSeconds / 2;
       const windowEnd = currentSec + visibleSeconds / 2;
@@ -2136,72 +2264,188 @@ if (typeof document !== 'undefined') {
         startIndex++;
       while (endIndex < notes.length && notes[endIndex].start < windowEnd)
         endIndex++;
-      for (let i = startIndex; i < endIndex; i++) {
-        const n = notes[i];
-        if (enabledInstruments[n.trackName ?? n.instrument] === false) continue;
-        const { sizeFactor, bump } = getFamilyModifiers(n.family);
-        let baseHeight = noteHeight * sizeFactor * getHeightScale(n.family);
-          baseHeight = computeVelocityHeight(baseHeight, n.velocity || velocityBase);
+
+      const layouts = [];
+      const trackSegments = new Map();
+      const activeTravels = [];
+      const margin = Math.max(canvas.width * 0.1, 80);
+
+      const computeLayoutAt = (note, time) => {
+        const { sizeFactor, bump } = getFamilyModifiers(note.family);
+        let baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
+        baseHeight = computeVelocityHeight(baseHeight, note.velocity || velocityBase);
         let xStart;
         let xEnd;
         let width;
-        if (NON_STRETCHED_SHAPES.has(n.shape)) {
+        if (NON_STRETCHED_SHAPES.has(note.shape)) {
           width = baseHeight;
-          const xCenter =
-            canvas.width / 2 + (n.start - currentSec) * pixelsPerSecond;
+          const xCenter = canvas.width / 2 + (note.start - time) * pixelsPerSecond;
           xStart = xCenter - width / 2;
           xEnd = xStart + width;
         } else {
           ({ xStart, xEnd, width } = computeDynamicBounds(
-            n,
-            currentSec,
+            note,
+            time,
             canvas.width,
             pixelsPerSecond,
             baseHeight,
-            n.shape
+            note.shape,
           ));
         }
-        if (xEnd < 0 || xStart > canvas.width) continue;
-        const clamped = Math.min(Math.max(n.noteNumber, NOTE_MIN), NOTE_MAX);
-
-        // Altura con efecto "bump" cuando la nota cruza la línea de presente
-        const height = computeBumpHeight(baseHeight, currentSec, n.start, n.end, bump);
+        const clamped = Math.min(Math.max(note.noteNumber, NOTE_MIN), NOTE_MAX);
+        const height = computeBumpHeight(baseHeight, time, note.start, note.end, bump);
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
-
-        // Opacidad progresiva con relleno simétrico alrededor de la línea de presente
         const alpha = computeOpacity(xStart, xEnd, canvas.width);
+        const centerX = xStart + width / 2;
+        const centerY = y + height / 2;
+        return { xStart, xEnd, width, height, y, alpha, centerX, centerY };
+      };
 
-        if (alpha > 0) {
-          offscreenCtx.save();
-          offscreenCtx.globalAlpha = alpha;
-          offscreenCtx.fillStyle = n.color;
-          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height);
-          offscreenCtx.restore();
+      for (let i = startIndex; i < endIndex; i++) {
+        const note = notes[i];
+        if (enabledInstruments[note.trackName ?? note.instrument] === false) continue;
+        const metrics = computeLayoutAt(note, currentSec);
+        if (metrics.xEnd < -margin || metrics.xStart > canvas.width + margin) continue;
 
-          offscreenCtx.save();
-          offscreenCtx.globalAlpha = alpha;
-          offscreenCtx.strokeStyle = n.color;
-          drawNoteShape(offscreenCtx, n.shape, xStart, y, width, height, true);
-          offscreenCtx.restore();
+        const layout = { note, metrics, drawBase: true };
+        layouts.push(layout);
+
+        const lineConfig = getFamilyLineSettings(note.family);
+        if (lineConfig.enabled) {
+          const trackKey = note.trackName ?? note.instrument;
+          const group = trackSegments.get(trackKey);
+          if (group) group.push(layout);
+          else trackSegments.set(trackKey, [layout]);
         }
 
-        // Brillo blanco corto en el NOTE ON presente
-        const glowAlpha = computeGlowAlpha(currentSec, n.start);
+        const travelEnabled = isTravelEffectEnabled(note.family);
+        if (travelEnabled && note.next && note.next.start > note.end) {
+          const travelDuration = note.next.start - note.end;
+          if (travelDuration > 0) {
+            const travelProgress = (currentSec - note.end) / travelDuration;
+            if (travelProgress >= 0) {
+              layout.drawBase = currentSec < note.end;
+              if (travelProgress <= 1) {
+                activeTravels.push({ note, progress: travelProgress, layout });
+              }
+            }
+          }
+        }
+      }
+
+      trackSegments.forEach((segmentLayouts) => {
+        if (segmentLayouts.length < 2) return;
+        segmentLayouts.sort((a, b) => a.note.start - b.note.start);
+        for (let idx = 0; idx < segmentLayouts.length - 1; idx++) {
+          const current = segmentLayouts[idx];
+          const next = segmentLayouts[idx + 1];
+          const config = getFamilyLineSettings(current.note.family);
+          if (!config.enabled || config.width <= 0) continue;
+          const avgAlpha = ((current.metrics.alpha || 0) + (next.metrics.alpha || 0)) / 2;
+          const lineAlpha = config.opacity * avgAlpha;
+          if (lineAlpha <= 0) continue;
+          const controlX = (current.metrics.centerX + next.metrics.centerX) / 2;
+          const controlY = (current.metrics.centerY + next.metrics.centerY) / 2;
+          offscreenCtx.save();
+          offscreenCtx.strokeStyle = current.note.color;
+          offscreenCtx.lineWidth = config.width;
+          offscreenCtx.globalAlpha = lineAlpha;
+          offscreenCtx.beginPath();
+          offscreenCtx.moveTo(current.metrics.centerX, current.metrics.centerY);
+          if (typeof offscreenCtx.quadraticCurveTo === 'function') {
+            offscreenCtx.quadraticCurveTo(
+              controlX,
+              controlY,
+              next.metrics.centerX,
+              next.metrics.centerY,
+            );
+          } else {
+            offscreenCtx.lineTo(next.metrics.centerX, next.metrics.centerY);
+          }
+          offscreenCtx.stroke();
+          offscreenCtx.restore();
+        }
+      });
+
+      for (const layout of layouts) {
+        if (!layout.drawBase) continue;
+        const { note, metrics } = layout;
+        const alpha = metrics.alpha;
+        if (alpha <= 0) continue;
+
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = alpha;
+        offscreenCtx.fillStyle = note.color;
+        drawNoteShape(offscreenCtx, note.shape, metrics.xStart, metrics.y, metrics.width, metrics.height);
+        offscreenCtx.restore();
+
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = alpha;
+        offscreenCtx.strokeStyle = note.color;
+        drawNoteShape(
+          offscreenCtx,
+          note.shape,
+          metrics.xStart,
+          metrics.y,
+          metrics.width,
+          metrics.height,
+          true,
+        );
+        offscreenCtx.restore();
+
+        const glowAlpha = computeGlowAlpha(currentSec, note.start);
         if (glowAlpha > 0) {
           applyGlowEffect(
             offscreenCtx,
-            n.shape,
-            xStart,
-            y,
-            width,
-            height,
-            glowAlpha
+            note.shape,
+            metrics.xStart,
+            metrics.y,
+            metrics.width,
+            metrics.height,
+            glowAlpha,
           );
         }
       }
-      // Línea de presente omitida para mantenerla invisible
+
+      activeTravels.forEach(({ note, progress, layout }) => {
+        const duration = note.next.start - note.end;
+        if (duration <= 0) return;
+        const clamped = Math.min(Math.max(progress, 0), 1);
+        const startLayout = computeLayoutAt(note, note.end);
+        const targetLayout = computeLayoutAt(note.next, note.next.start);
+        const startShift = (currentSec - note.end) * pixelsPerSecond;
+        const targetShift = (currentSec - note.next.start) * pixelsPerSecond;
+        const startX = startLayout.centerX - startShift;
+        const startY = startLayout.centerY;
+        const endX = targetLayout.centerX - targetShift;
+        const endY = targetLayout.centerY;
+        const posX = startX + (endX - startX) * clamped;
+        const posY = startY + (endY - startY) * clamped;
+        const scale = Math.max(0, 1 - clamped);
+        if (scale <= 0) return;
+        const width = Math.max(0.0001, layout.metrics.width * scale);
+        const height = Math.max(0.0001, layout.metrics.height * scale);
+        const baseAlpha = Math.max(layout.metrics.alpha, 0);
+        const alpha = Math.max(0, Math.min(1, baseAlpha * scale));
+        if (alpha <= 0) return;
+        const drawX = posX - width / 2;
+        const drawY = posY - height / 2;
+        if (drawX > canvas.width || drawX + width < 0) return;
+
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = alpha;
+        offscreenCtx.fillStyle = note.color;
+        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height);
+        offscreenCtx.restore();
+
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = alpha;
+        offscreenCtx.strokeStyle = note.color;
+        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height, true);
+        offscreenCtx.restore();
+      });
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(offscreenCanvas, 0, 0);
@@ -2465,6 +2709,8 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('familyCustomizations');
   }
+  resetFamilyLineSettings();
+  resetTravelEffectSettings();
   tracks.forEach((t) => {
     const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
     t.shape = preset.shape;
@@ -2475,6 +2721,9 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
   });
+  if (typeof renderFrame === 'function') {
+    renderFrame(lastTime);
+  }
 }
 
 function exportConfiguration() {
@@ -2489,6 +2738,8 @@ function exportConfiguration() {
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
     shapeExtensions: getShapeExtensions(),
+    familyLineSettings: getAllFamilyLineSettings(),
+    familyTravelSettings: getTravelEffectSettings(),
   });
 }
 
@@ -2498,6 +2749,8 @@ function importConfiguration(json, tracks = [], notes = []) {
   const famCustoms = data.familyCustomizations || {};
   familyCustomizations = {};
   Object.assign(enabledInstruments, data.enabledInstruments || {});
+  setAllFamilyLineSettings(data.familyLineSettings || {});
+  setTravelEffectSettings(data.familyTravelSettings || {});
   if (typeof data.velocityBase === 'number') {
     setVelocityBase(data.velocityBase);
   }

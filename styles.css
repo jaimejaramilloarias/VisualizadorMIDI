@@ -96,7 +96,7 @@ input:hover {
   width: calc(100% - 20px);
   justify-content: center;
   font-size: inherit;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 #family-config-panel.active {
@@ -149,6 +149,55 @@ input:hover {
 
 .family-config-item label {
   min-width: 150px;
+}
+
+.family-line-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.family-line-item label,
+.family-line-item span {
+  min-width: 0;
+}
+
+.family-line-title {
+  font-weight: 600;
+}
+
+.family-line-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.family-line-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.family-line-row span {
+  flex: 0 0 auto;
+}
+
+.family-line-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.family-line-range input[type='range'] {
+  flex: 1;
+}
+
+.family-line-range .range-value {
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 #visualizer {
