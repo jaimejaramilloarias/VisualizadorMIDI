@@ -3,8 +3,6 @@ const {
   assignTrackInfo,
   exportConfiguration,
   importConfiguration,
-  INSTRUMENT_COLOR_SHIFT,
-  adjustColorBrightness,
   getVelocityBase,
   getOpacityScale,
   getGlowStrength,
@@ -44,14 +42,10 @@ importConfiguration(config, tracks, notes);
 
 assert.strictEqual(tracks[0].family, 'Metales');
 assert.strictEqual(tracks[0].shape, 'diamond');
-const expectedColor = adjustColorBrightness(
-  '#123456',
-  INSTRUMENT_COLOR_SHIFT['Flauta']
-);
-assert.strictEqual(tracks[0].color, expectedColor);
+assert.strictEqual(tracks[0].color, '#123456');
 assert.strictEqual(notes[0].family, 'Metales');
 assert.strictEqual(notes[0].shape, 'diamond');
-assert.strictEqual(notes[0].color, expectedColor);
+assert.strictEqual(notes[0].color, '#123456');
 
 assert.strictEqual(getVelocityBase(), 80);
 assert.deepStrictEqual(getOpacityScale(), { edge: 0.1, mid: 0.8 });

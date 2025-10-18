@@ -58,74 +58,51 @@ window.DEFAULT_CONFIG = {
   "familyCustomizations": {
     "Metales": {
       "color": "#edd113",
-      "shape": "capsule",
-      "colorBright": "#ffe326",
-      "colorDark": "#dbbe00"
+      "shape": "capsule"
     },
     "Cornos": {
       "color": "#edbe13",
-      "shape": "capsule",
-      "colorBright": "#ffd025",
-      "colorDark": "#dbac00"
+      "shape": "capsule"
     },
     "Maderas de timbre \"redondo\"": {
       "color": "#769df3",
-      "shape": "oval",
-      "colorBright": "#96b5fe",
-      "colorDark": "#5585e7"
+      "shape": "oval"
     },
     "Dobles cañas": {
       "color": "#c23afd",
-      "shape": "star",
-      "colorBright": "#fd6bff",
-      "colorDark": "#8609fb"
+      "shape": "star"
     },
     "Saxofones": {
       "color": "#ce8767",
-      "shape": "star",
-      "colorBright": "#e39d7d",
-      "colorDark": "#b97150"
+      "shape": "star"
     },
     "Placas": {
       "color": "#ff0000",
-      "shape": "square",
-      "colorBright": "#ff7070"
+      "shape": "square"
     },
     "Auxiliares": {
       "color": "#347875",
-      "shape": "circle",
-      "colorBright": "#54aba1",
-      "colorDark": "#134549"
+      "shape": "circle"
     },
     "Cuerdas frotadas": {
       "color": "#41e342",
-      "shape": "circle",
-      "colorBright": "#62fe43",
-      "colorDark": "#1fc740"
+      "shape": "circle"
     },
     "Cuerdas pulsadas": {
       "color": "#1abeb4",
-      "shape": "star4",
-      "colorBright": "#16dac3",
-      "colorDark": "#1da2a5"
+      "shape": "star4"
     },
     "Voces": {
       "color": "#bebebe",
-      "shape": "capsule",
-      "colorBright": "#d1d1d1",
-      "colorDark": "#ababab"
+      "shape": "capsule"
     },
     "Custom 1": {
       "color": "#d52b2b",
-      "shape": "diamond",
-      "colorBright": "#ff5656",
-      "colorDark": "#aa0000"
+      "shape": "diamond"
     },
     "Percusión menor": {
       "color": "#a78269",
-      "shape": "pentagon",
-      "colorBright": "#c39e86",
-      "colorDark": "#8a654c"
+      "shape": "pentagon"
     }
   },
   "enabledInstruments": {

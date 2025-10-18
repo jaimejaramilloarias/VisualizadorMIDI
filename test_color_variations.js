@@ -1,27 +1,13 @@
 const assert = require('assert');
-const {
-  assignTrackInfo,
-  FAMILY_PRESETS,
-  INSTRUMENT_COLOR_SHIFT,
-  adjustColorBrightness,
-} = require('./script.js');
+const { assignTrackInfo, FAMILY_PRESETS } = require('./script.js');
 
-// Verifica oscurecimiento para instrumentos más graves
+// Verifica que los colores se mantienen constantes para instrumentos de la misma familia
 const clarinetTrack = assignTrackInfo([{ name: 'Clarinete', events: [] }])[0];
 const clarinetBase = FAMILY_PRESETS['Dobles cañas'].color;
-const clarinetExpected = adjustColorBrightness(
-  clarinetBase,
-  INSTRUMENT_COLOR_SHIFT['Clarinete']
-);
-assert.strictEqual(clarinetTrack.color, clarinetExpected);
+assert.strictEqual(clarinetTrack.color, clarinetBase);
 
-// Verifica aclarado para instrumentos más agudos
 const trumpetTrack = assignTrackInfo([{ name: 'Trompeta', events: [] }])[0];
 const trumpetBase = FAMILY_PRESETS['Metales'].color;
-const trumpetExpected = adjustColorBrightness(
-  trumpetBase,
-  INSTRUMENT_COLOR_SHIFT['Trompeta']
-);
-assert.strictEqual(trumpetTrack.color, trumpetExpected);
+assert.strictEqual(trumpetTrack.color, trumpetBase);
 
-console.log('Pruebas de variaciones de color por instrumento completadas');
+console.log('Pruebas de colores consistentes por instrumento completadas');
