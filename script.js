@@ -1697,6 +1697,7 @@ if (typeof document !== 'undefined') {
       instTitle.textContent = 'Instrumentos activos';
       instSection.appendChild(instTitle);
       const instBtnWrap = document.createElement('div');
+      instBtnWrap.className = 'inst-button-row';
       const activateAllBtn = document.createElement('button');
       activateAllBtn.textContent = 'Activar todos';
       activateAllBtn.addEventListener('click', () => {
@@ -1722,7 +1723,7 @@ if (typeof document !== 'undefined') {
       instSection.appendChild(instBtnWrap);
       currentTracks.forEach((t) => {
         const item = document.createElement('div');
-        item.className = 'family-config-item';
+        item.className = 'family-config-item family-checkbox-item';
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = enabledInstruments[t.name] !== false;
@@ -1760,27 +1761,38 @@ if (typeof document !== 'undefined') {
         }
       });
 
+      const targetControl = document.createElement('div');
+      targetControl.className = 'family-config-item family-target-control';
+      const targetLabel = document.createElement('label');
+      targetLabel.textContent = 'Aplicar cambios a:';
+      targetLabel.setAttribute('for', 'family-target-select');
+      const familyTargetSelect = createFamilySelector();
+      familyTargetSelect.id = 'family-target-select';
+      targetControl.appendChild(targetLabel);
+      targetControl.appendChild(familyTargetSelect);
+      targetControl.dataset.help =
+        'Elige si los ajustes afectan a todas las familias o solo a una.';
+      familyPanel.appendChild(targetControl);
+
       const colorControl = document.createElement('div');
       colorControl.className = 'family-config-item family-config-group';
       const colorLabel = document.createElement('label');
       colorLabel.textContent = 'Color de familia:';
-      const colorFamilySelect = createFamilySelector();
       const colorInput = document.createElement('input');
       colorInput.type = 'color';
       const colorHint = document.createElement('span');
       colorHint.className = 'control-hint';
 
       const updateColorControl = () => {
-        const { color, mixed } = getColorState(colorFamilySelect.value);
+        const { color, mixed } = getColorState(familyTargetSelect.value);
         colorInput.value = color;
         colorHint.textContent = mixed ? 'Valores variados' : color.toUpperCase();
         colorHint.classList.toggle('hint-active', mixed);
       };
 
-      colorFamilySelect.addEventListener('change', updateColorControl);
       colorInput.addEventListener('change', () => {
         const color = colorInput.value;
-        familiesFromSelection(colorFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           setFamilyCustomization(
             family,
             { color },
@@ -1793,7 +1805,6 @@ if (typeof document !== 'undefined') {
       });
 
       colorControl.appendChild(colorLabel);
-      colorControl.appendChild(colorFamilySelect);
       colorControl.appendChild(colorInput);
       colorControl.appendChild(colorHint);
       familyPanel.appendChild(colorControl);
@@ -1802,7 +1813,6 @@ if (typeof document !== 'undefined') {
       shapeControl.className = 'family-config-item family-config-group';
       const shapeLabel = document.createElement('label');
       shapeLabel.textContent = 'Figura de familia:';
-      const shapeFamilySelect = createFamilySelector();
       const shapeSelect = document.createElement('select');
       SHAPE_OPTIONS.forEach((opt) => {
         const option = document.createElement('option');
@@ -1814,7 +1824,7 @@ if (typeof document !== 'undefined') {
       shapeHint.className = 'control-hint';
 
       const updateShapeControl = () => {
-        const { shape, mixed } = getShapeState(shapeFamilySelect.value);
+        const { shape, mixed } = getShapeState(familyTargetSelect.value);
         if (shapeSelect.querySelector(`option[value="${shape}"]`)) {
           shapeSelect.value = shape;
         } else if (SHAPE_OPTIONS[0]) {
@@ -1829,10 +1839,9 @@ if (typeof document !== 'undefined') {
         shapeHint.classList.toggle('hint-active', mixed);
       };
 
-      shapeFamilySelect.addEventListener('change', updateShapeControl);
       shapeSelect.addEventListener('change', () => {
         const shape = shapeSelect.value;
-        familiesFromSelection(shapeFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           setFamilyCustomization(
             family,
             { shape },
@@ -1845,7 +1854,6 @@ if (typeof document !== 'undefined') {
       });
 
       shapeControl.appendChild(shapeLabel);
-      shapeControl.appendChild(shapeFamilySelect);
       shapeControl.appendChild(shapeSelect);
       shapeControl.appendChild(shapeHint);
       familyPanel.appendChild(shapeControl);
@@ -1853,12 +1861,11 @@ if (typeof document !== 'undefined') {
       const lineControl = document.createElement('div');
       lineControl.className = 'family-config-item family-line-item';
       const lineHeader = document.createElement('div');
-      lineHeader.className = 'family-line-row family-line-header';
-      const lineFamilyLabel = document.createElement('span');
-      lineFamilyLabel.textContent = 'Familia línea:';
-      const lineFamilySelect = createFamilySelector();
-      lineHeader.appendChild(lineFamilyLabel);
-      lineHeader.appendChild(lineFamilySelect);
+      lineHeader.className = 'family-line-header';
+      const lineHeaderTitle = document.createElement('span');
+      lineHeaderTitle.className = 'family-line-title';
+      lineHeaderTitle.textContent = 'Líneas de conexión';
+      lineHeader.appendChild(lineHeaderTitle);
       lineControl.appendChild(lineHeader);
 
       const lineToggleLabel = document.createElement('label');
@@ -1913,12 +1920,12 @@ if (typeof document !== 'undefined') {
       travelToggle.type = 'checkbox';
       travelToggleLabel.appendChild(travelToggle);
       travelToggleLabel.appendChild(
-        document.createTextNode(' Viaje tras NOTE OFF'),
+        document.createTextNode(' Viaje desde NOTE ON'),
       );
       lineControl.appendChild(travelToggleLabel);
 
       const updateLineControl = () => {
-        const state = getLineState(lineFamilySelect.value);
+        const state = getLineState(familyTargetSelect.value);
         lineToggle.checked = state.enabled;
         lineToggle.indeterminate = state.mixedEnabled;
         lineOpacity.value = String(state.opacity);
@@ -1935,11 +1942,10 @@ if (typeof document !== 'undefined') {
         travelToggle.indeterminate = state.mixedTravel;
       };
 
-      lineFamilySelect.addEventListener('change', updateLineControl);
       lineToggle.addEventListener('change', () => {
         const enabled = lineToggle.checked;
         lineToggle.indeterminate = false;
-        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           updateFamilyLineSettings(family, { enabled }),
         );
         renderFrame(lastTime);
@@ -1947,7 +1953,7 @@ if (typeof document !== 'undefined') {
       });
       lineOpacity.addEventListener('input', () => {
         const value = parseFloat(lineOpacity.value);
-        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           updateFamilyLineSettings(family, { opacity: value }),
         );
         renderFrame(lastTime);
@@ -1955,7 +1961,7 @@ if (typeof document !== 'undefined') {
       });
       lineWidth.addEventListener('input', () => {
         const value = parseFloat(lineWidth.value);
-        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           updateFamilyLineSettings(family, { width: value }),
         );
         renderFrame(lastTime);
@@ -1964,7 +1970,7 @@ if (typeof document !== 'undefined') {
       travelToggle.addEventListener('change', () => {
         const enabled = travelToggle.checked;
         travelToggle.indeterminate = false;
-        familiesFromSelection(lineFamilySelect.value).forEach((family) =>
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
           setTravelEffectEnabled(family, enabled),
         );
         renderFrame(lastTime);
@@ -1972,6 +1978,12 @@ if (typeof document !== 'undefined') {
       });
 
       familyPanel.appendChild(lineControl);
+
+      familyTargetSelect.addEventListener('change', () => {
+        updateColorControl();
+        updateShapeControl();
+        updateLineControl();
+      });
 
       updateColorControl();
       updateShapeControl();
@@ -2491,10 +2503,10 @@ if (typeof document !== 'undefined') {
         }
 
         const travelEnabled = isTravelEffectEnabled(note.family);
-        if (travelEnabled && note.next && note.next.start > note.end) {
-          const travelDuration = note.next.start - note.end;
+        if (travelEnabled && note.next && note.next.start > note.start) {
+          const travelDuration = note.next.start - note.start;
           if (travelDuration > 0) {
-            const travelProgress = (currentSec - note.end) / travelDuration;
+            const travelProgress = (currentSec - note.start) / travelDuration;
             if (travelProgress >= 0) {
               layout.drawBase = currentSec < note.end;
               if (travelProgress <= 1) {
@@ -2580,12 +2592,12 @@ if (typeof document !== 'undefined') {
       }
 
       activeTravels.forEach(({ note, progress, layout }) => {
-        const duration = note.next.start - note.end;
+        const duration = note.next.start - note.start;
         if (duration <= 0) return;
         const clamped = Math.min(Math.max(progress, 0), 1);
-        const startLayout = computeLayoutAt(note, note.end);
+        const startLayout = computeLayoutAt(note, note.start);
         const targetLayout = computeLayoutAt(note.next, note.next.start);
-        const startShift = (currentSec - note.end) * pixelsPerSecond;
+        const startShift = (currentSec - note.start) * pixelsPerSecond;
         const targetShift = (currentSec - note.next.start) * pixelsPerSecond;
         const startX = startLayout.centerX - startShift;
         const startY = startLayout.centerY;
