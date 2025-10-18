@@ -54,42 +54,6 @@ body {
   min-width: 150px;
 }
 
-.family-parameter {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 150px;
-  flex: 1 1 160px;
-}
-
-.family-parameter label {
-  font-weight: 600;
-}
-
-.family-parameter input[type='range'] {
-  width: 100%;
-}
-
-.family-parameter-toggle {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.family-parameter-toggle label {
-  flex: 1;
-}
-
-.family-parameter-toggle input[type='checkbox'] {
-  width: auto;
-  transform: scale(1.2);
-}
-
-.parameter-value {
-  text-align: center;
-  font-weight: 600;
-}
-
 button,
 select,
 input {
@@ -224,12 +188,39 @@ input:hover {
 }
 
 .family-config-group select,
-.family-config-group input[type='color'] {
+.family-config-group input[type='color'],
+.family-config-group input[type='number'] {
   width: 100%;
 }
 
 .family-target-control {
   gap: 8px;
+}
+
+.bg-image-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bg-image-buttons button {
+  flex: 1 1 160px;
+}
+
+.bg-image-info {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.extension-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.extension-toggle-input {
+  transform: scale(1.1);
 }
 
 .control-hint {
