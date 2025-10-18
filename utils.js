@@ -545,38 +545,50 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// Inicia un bucle de animación a fps constantes utilizando setInterval
-// Si el usuario prefiere reducir movimiento, se ejecuta una sola vez
-// evitando animaciones continuas
-function startFixedFPSLoop(callback, fps = 60, minDt = 8, maxDt = 32) {
-  if (prefersReducedMotion()) {
-    callback(0, performance.now());
-    return () => {};
-  }
-  const interval = 1000 / fps;
-  let last = performance.now();
-  const id = setInterval(() => {
-    const now = performance.now();
-    const dt = Math.min(Math.max(now - last, minDt), maxDt);
-    last = now;
-    callback(dt, now);
-  }, interval);
-  return () => clearInterval(id);
-}
-
 function startAutoFPSLoop(callback, minDt = 8, maxDt = 32) {
   if (prefersReducedMotion()) {
     callback(0, performance.now());
     return () => {};
   }
+
   let last = performance.now();
+  let adaptiveMin = minDt;
+  let adaptiveMax = maxDt;
+  let sampleCount = 0;
+  let sampleTotal = 0;
   let id;
+
+  const clampDt = (value) => {
+    const lower = Math.min(Math.max(adaptiveMin, minDt), maxDt);
+    const upper = Math.max(lower, Math.min(adaptiveMax, maxDt));
+    return Math.min(Math.max(value, lower), upper);
+  };
+
+  function updateAdaptiveWindow(delta) {
+    if (!Number.isFinite(delta) || delta <= 0) return;
+    sampleCount += 1;
+    sampleTotal += delta;
+    if (sampleCount > 120) {
+      sampleCount = Math.round(sampleCount / 2);
+      sampleTotal /= 2;
+    }
+    if (sampleCount < 5) return;
+    const average = sampleTotal / sampleCount;
+    const target = Math.min(Math.max(average, minDt), maxDt);
+    const span = target * 0.25;
+    adaptiveMin = Math.max(minDt, target - span);
+    adaptiveMax = Math.min(maxDt, target + span);
+  }
+
   function frame(now) {
-    const dt = Math.min(Math.max(now - last, minDt), maxDt);
+    const delta = now - last;
+    updateAdaptiveWindow(delta);
+    const dt = clampDt(Number.isFinite(delta) ? delta : minDt);
     last = now;
     callback(dt, now);
     id = requestAnimationFrame(frame);
   }
+
   id = requestAnimationFrame(frame);
   return () => cancelAnimationFrame(id);
 }
@@ -646,7 +658,6 @@ const utils = {
   resetStartOffset,
   canStartPlayback,
   prefersReducedMotion,
-  startFixedFPSLoop,
   startAutoFPSLoop,
   preprocessTempoMap,
   ticksToSeconds,
