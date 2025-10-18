@@ -419,6 +419,132 @@ function getShapeExtensions() {
 
 loadShapeExtensions();
 
+const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.45, width: 1.5 };
+let familyLineSettings = {};
+let familyTravelSettings = {};
+
+function sanitizeLineSettings(config = {}) {
+  const sanitized = { ...DEFAULT_LINE_SETTINGS };
+  if (typeof config.enabled === 'boolean') sanitized.enabled = config.enabled;
+  if (typeof config.opacity === 'number' && isFinite(config.opacity)) {
+    sanitized.opacity = Math.min(Math.max(config.opacity, 0), 1);
+  }
+  if (typeof config.width === 'number' && isFinite(config.width)) {
+    sanitized.width = Math.max(config.width, 0.25);
+  }
+  return sanitized;
+}
+
+function loadFamilyLineSettings() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('familyLineSettings');
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (parsed && typeof parsed === 'object') {
+      familyLineSettings = Object.entries(parsed).reduce((acc, [family, cfg]) => {
+        acc[family] = sanitizeLineSettings(cfg);
+        return acc;
+      }, {});
+    }
+  } catch {
+    familyLineSettings = {};
+  }
+}
+
+function persistFamilyLineSettings() {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem('familyLineSettings', JSON.stringify(familyLineSettings));
+}
+
+function getFamilyLineSettings(family) {
+  if (!Object.keys(familyLineSettings).length) loadFamilyLineSettings();
+  const stored = familyLineSettings[family];
+  return stored ? { ...stored } : { ...DEFAULT_LINE_SETTINGS };
+}
+
+function updateFamilyLineSettings(family, updates = {}) {
+  const current = getFamilyLineSettings(family);
+  const merged = sanitizeLineSettings({ ...current, ...updates });
+  familyLineSettings[family] = merged;
+  persistFamilyLineSettings();
+  return merged;
+}
+
+function getAllFamilyLineSettings() {
+  if (!Object.keys(familyLineSettings).length) loadFamilyLineSettings();
+  return { ...familyLineSettings };
+}
+
+function setAllFamilyLineSettings(settings = {}) {
+  familyLineSettings = Object.entries(settings || {}).reduce(
+    (acc, [family, cfg]) => {
+      acc[family] = sanitizeLineSettings(cfg);
+      return acc;
+    },
+    {},
+  );
+  persistFamilyLineSettings();
+}
+
+function resetFamilyLineSettings() {
+  familyLineSettings = {};
+  persistFamilyLineSettings();
+}
+
+function loadFamilyTravelSettings() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('familyTravelSettings');
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (parsed && typeof parsed === 'object') {
+      familyTravelSettings = Object.entries(parsed).reduce((acc, [family, enabled]) => {
+        acc[family] = !!enabled;
+        return acc;
+      }, {});
+    }
+  } catch {
+    familyTravelSettings = {};
+  }
+}
+
+function persistFamilyTravelSettings() {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem('familyTravelSettings', JSON.stringify(familyTravelSettings));
+}
+
+function isTravelEffectEnabled(family) {
+  if (!Object.keys(familyTravelSettings).length) loadFamilyTravelSettings();
+  return !!familyTravelSettings[family];
+}
+
+function setTravelEffectEnabled(family, enabled) {
+  familyTravelSettings[family] = !!enabled;
+  persistFamilyTravelSettings();
+}
+
+function getTravelEffectSettings() {
+  if (!Object.keys(familyTravelSettings).length) loadFamilyTravelSettings();
+  return { ...familyTravelSettings };
+}
+
+function setTravelEffectSettings(settings = {}) {
+  familyTravelSettings = Object.entries(settings || {}).reduce(
+    (acc, [family, enabled]) => {
+      acc[family] = !!enabled;
+      return acc;
+    },
+    {},
+  );
+  persistFamilyTravelSettings();
+}
+
+function resetTravelEffectSettings() {
+  familyTravelSettings = {};
+  persistFamilyTravelSettings();
+}
+
 function getFamilyModifiers(family) {
   switch (family) {
     case 'Platillos':
@@ -647,6 +773,16 @@ const utils = {
   setShapeExtension,
   getShapeExtension,
   getShapeExtensions,
+  getFamilyLineSettings,
+  updateFamilyLineSettings,
+  getAllFamilyLineSettings,
+  setAllFamilyLineSettings,
+  resetFamilyLineSettings,
+  isTravelEffectEnabled,
+  setTravelEffectEnabled,
+  getTravelEffectSettings,
+  setTravelEffectSettings,
+  resetTravelEffectSettings,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,

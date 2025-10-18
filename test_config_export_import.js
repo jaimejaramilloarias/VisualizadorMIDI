@@ -36,6 +36,8 @@ const config = {
   visibleSeconds: 6,
   heightScale: { global: 1, families: {} },
   shapeExtensions: { oval: true, capsule: true, star: true, diamond: true },
+  familyLineSettings: {},
+  familyTravelSettings: {},
 };
 
 importConfiguration(config, tracks, notes);
