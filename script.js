@@ -276,11 +276,6 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const familyParamSelect = document.getElementById('family-parameter-select');
-    const familyHeightControl = document.getElementById('family-height-control');
-    const familyGlowControl = document.getElementById('family-glow-control');
-    const familyBumpControl = document.getElementById('family-bump-control');
-    const familyExtensionToggle = document.getElementById('family-extension-toggle');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerBtn = document.getElementById('developer-mode');
@@ -325,6 +320,11 @@ if (typeof document !== 'undefined') {
     let markerHandles = [];
     let hoveredHandleKey = null;
     let altKeyActive = false;
+    let refreshFamilyControls = () => {};
+    let backgroundImage = null;
+    let backgroundImageUrl = null;
+    let backgroundImageName = '';
+    let backgroundImageOpacity = 0.6;
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
@@ -334,170 +334,6 @@ if (typeof document !== 'undefined') {
       if (typeof renderFrame === 'function') {
         renderFrame(lastTime);
       }
-    }
-
-    function updateRangeDisplay(input, rawValue) {
-      if (!input) return;
-      const outputId = input.dataset ? input.dataset.output : null;
-      if (!outputId) return;
-      const target = document.getElementById(outputId);
-      if (target) {
-        const value = Math.round(Number(rawValue || input.value));
-        target.textContent = `${value}%`;
-      }
-    }
-
-    function selectedFamilyForParameters() {
-      if (!familyParamSelect) return null;
-      const value = familyParamSelect.value;
-      return value ? value : null;
-    }
-
-    function refreshFamilyParameterOptions() {
-      if (!familyParamSelect) return;
-      const current = familyParamSelect.value;
-      familyParamSelect.innerHTML = '';
-      const generalOption = document.createElement('option');
-      generalOption.value = '';
-      generalOption.textContent = 'General';
-      familyParamSelect.appendChild(generalOption);
-      FAMILY_LIST.forEach((family) => {
-        const option = document.createElement('option');
-        option.value = family;
-        option.textContent = family;
-        familyParamSelect.appendChild(option);
-      });
-      if (current && FAMILY_LIST.includes(current)) {
-        familyParamSelect.value = current;
-      }
-    }
-
-    function getEffectiveFamilyShape(family) {
-      if (!family) return null;
-      const preset = FAMILY_PRESETS[family] || FAMILY_DEFAULTS[family];
-      return preset ? preset.shape : null;
-    }
-
-    function updateExtensionToggleState() {
-      if (!familyExtensionToggle) return;
-      const family = selectedFamilyForParameters();
-      if (!family) {
-        const shapeConfig = getShapeExtensions();
-        const enabled = ELONGATED_SHAPES.every(
-          (shape) => shapeConfig[shape] !== false,
-        );
-        familyExtensionToggle.checked = enabled;
-        familyExtensionToggle.disabled = false;
-        familyExtensionToggle.dataset.state = 'global';
-        return;
-      }
-      const shape = getEffectiveFamilyShape(family);
-      if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
-        familyExtensionToggle.checked = false;
-        familyExtensionToggle.disabled = true;
-        familyExtensionToggle.dataset.state = 'disabled';
-        return;
-      }
-      familyExtensionToggle.disabled = false;
-      familyExtensionToggle.dataset.state = 'family';
-      familyExtensionToggle.checked = isExtensionEnabledForFamily(shape, family);
-    }
-
-    function updateFamilyParameterControls() {
-      const family = selectedFamilyForParameters();
-      if (familyHeightControl) {
-        const height = Math.round(getHeightScale(family) * 100);
-        familyHeightControl.value = String(height);
-        updateRangeDisplay(familyHeightControl, height);
-      }
-      if (familyGlowControl) {
-        const glow = Math.round(getGlowStrength(family) * 100);
-        familyGlowControl.value = String(glow);
-        updateRangeDisplay(familyGlowControl, glow);
-      }
-      if (familyBumpControl) {
-        const bump = Math.round(getBumpControl(family) * 100);
-        familyBumpControl.value = String(bump);
-        updateRangeDisplay(familyBumpControl, bump);
-      }
-      updateExtensionToggleState();
-    }
-
-    refreshFamilyParameterOptions();
-    updateFamilyParameterControls();
-
-    if (familyParamSelect) {
-      familyParamSelect.addEventListener('change', () => {
-        updateFamilyParameterControls();
-        requestImmediateRender();
-      });
-    }
-
-    if (familyHeightControl) {
-      familyHeightControl.addEventListener('input', () =>
-        updateRangeDisplay(familyHeightControl),
-      );
-      familyHeightControl.addEventListener('change', () => {
-        const value = parseFloat(familyHeightControl.value);
-        if (!isNaN(value) && value > 0) {
-          setHeightScale(value / 100, selectedFamilyForParameters());
-          requestImmediateRender();
-        }
-        updateRangeDisplay(familyHeightControl);
-      });
-    }
-
-    if (familyGlowControl) {
-      familyGlowControl.addEventListener('input', () =>
-        updateRangeDisplay(familyGlowControl),
-      );
-      familyGlowControl.addEventListener('change', () => {
-        const value = parseFloat(familyGlowControl.value);
-        if (!isNaN(value) && value >= 0) {
-          setGlowStrength(value / 100, selectedFamilyForParameters());
-          requestImmediateRender();
-        }
-        updateRangeDisplay(familyGlowControl);
-      });
-    }
-
-    if (familyBumpControl) {
-      familyBumpControl.addEventListener('input', () =>
-        updateRangeDisplay(familyBumpControl),
-      );
-      familyBumpControl.addEventListener('change', () => {
-        const value = parseFloat(familyBumpControl.value);
-        if (!isNaN(value) && value >= 0) {
-          setBumpControl(value / 100, selectedFamilyForParameters());
-          requestImmediateRender();
-        }
-        updateRangeDisplay(familyBumpControl);
-      });
-    }
-
-    if (familyExtensionToggle) {
-      familyExtensionToggle.addEventListener('change', () => {
-        const family = selectedFamilyForParameters();
-        const enabled = familyExtensionToggle.checked;
-        const state = familyExtensionToggle.dataset.state;
-        if (!family) {
-          ELONGATED_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
-        } else if (state !== 'disabled') {
-          const shape = getEffectiveFamilyShape(family);
-          if (shape && !NON_STRETCHED_SHAPES.has(shape)) {
-            const globalEnabled = getShapeExtension(shape);
-            if (enabled === globalEnabled) {
-              clearFamilyExtension(family);
-            } else {
-              setFamilyExtension(family, enabled);
-            }
-          } else {
-            clearFamilyExtension(family);
-          }
-        }
-        updateExtensionToggleState();
-        requestImmediateRender();
-      });
     }
 
     function getWaveformBaseWidth() {
@@ -1735,6 +1571,12 @@ if (typeof document !== 'undefined') {
       familyPanel.innerHTML = '';
       if (devControls) familyPanel.appendChild(devControls);
 
+      let updateHeightControl = () => {};
+      let updateGlowControl = () => {};
+      let updateBumpControl = () => {};
+      let updateExtensionControl = () => {};
+      let updateParameterControls = () => {};
+
       const toHex = (val) => {
         if (!val) return '#000000';
         if (val.startsWith('#')) return val;
@@ -1765,6 +1607,12 @@ if (typeof document !== 'undefined') {
       const familiesFromSelection = (value) => {
         const list = value ? [value] : FAMILY_LIST;
         return list.filter((family) => !!FAMILY_PRESETS[family]);
+      };
+
+      const getEffectiveFamilyShape = (family) => {
+        if (!family) return null;
+        const preset = FAMILY_PRESETS[family] || FAMILY_DEFAULTS[family];
+        return preset ? preset.shape : null;
       };
 
       const getColorState = (targetFamily) => {
@@ -1801,6 +1649,60 @@ if (typeof document !== 'undefined') {
           baseShape = SHAPE_OPTIONS[0] ? SHAPE_OPTIONS[0].value : 'square';
         }
         return { shape: baseShape, mixed };
+      };
+
+      const getHeightState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let base = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const value = Math.round(getHeightScale(family) * 100);
+          if (base === null) {
+            base = value;
+          } else if (Math.abs(base - value) > 0.5) {
+            mixed = true;
+          }
+        });
+        if (base === null) {
+          base = Math.round(getHeightScale(null) * 100);
+        }
+        return { value: base, mixed };
+      };
+
+      const getGlowState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let base = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const value = Math.round(getGlowStrength(family) * 100);
+          if (base === null) {
+            base = value;
+          } else if (Math.abs(base - value) > 0.5) {
+            mixed = true;
+          }
+        });
+        if (base === null) {
+          base = Math.round(getGlowStrength(null) * 100);
+        }
+        return { value: base, mixed };
+      };
+
+      const getBumpState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let base = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const value = Math.round(getBumpControl(family) * 100);
+          if (base === null) {
+            base = value;
+          } else if (Math.abs(base - value) > 0.5) {
+            mixed = true;
+          }
+        });
+        if (base === null) {
+          base = Math.round(getBumpControl(null) * 100);
+        }
+        return { value: base, mixed };
       };
 
       const getLineState = (targetFamily) => {
@@ -1865,13 +1767,144 @@ if (typeof document !== 'undefined') {
       bgInput.value = toHex(canvas.style.backgroundColor);
       bgInput.addEventListener('change', () => {
         canvas.style.backgroundColor = bgInput.value;
-        offscreenCtx.fillStyle = bgInput.value;
-        offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-        ctx.drawImage(offscreenCanvas, 0, 0);
+        requestImmediateRender();
       });
       bgItem.appendChild(bgLabel);
       bgItem.appendChild(bgInput);
       familyPanel.appendChild(bgItem);
+
+      const bgImageItem = document.createElement('div');
+      bgImageItem.className = 'family-config-item family-config-group';
+      const bgImageLabel = document.createElement('label');
+      bgImageLabel.textContent = 'Imagen de fondo:';
+      const bgImageInfo = document.createElement('span');
+      bgImageInfo.className = 'control-hint bg-image-info';
+      const bgImageButtons = document.createElement('div');
+      bgImageButtons.className = 'bg-image-buttons';
+      const bgImageInput = document.createElement('input');
+      bgImageInput.type = 'file';
+      bgImageInput.accept = 'image/*';
+      bgImageInput.style.display = 'none';
+      const selectBgButton = document.createElement('button');
+      selectBgButton.type = 'button';
+      selectBgButton.textContent = 'Seleccionar imagen';
+      const clearBgButton = document.createElement('button');
+      clearBgButton.type = 'button';
+      clearBgButton.textContent = 'Quitar imagen';
+
+      const updateBackgroundImageControl = () => {
+        if (backgroundImage && backgroundImageName) {
+          bgImageInfo.textContent = backgroundImageName;
+          bgImageInfo.classList.remove('hint-active');
+          clearBgButton.disabled = false;
+        } else {
+          bgImageInfo.textContent = 'Sin imagen';
+          bgImageInfo.classList.add('hint-active');
+          clearBgButton.disabled = true;
+        }
+      };
+
+      const loadBackgroundImageFromFile = (file) => {
+        if (backgroundImageUrl) {
+          URL.revokeObjectURL(backgroundImageUrl);
+          backgroundImageUrl = null;
+        }
+        if (!file) {
+          backgroundImage = null;
+          backgroundImageName = '';
+          updateBackgroundImageControl();
+          requestImmediateRender();
+          return;
+        }
+        const url = URL.createObjectURL(file);
+        backgroundImageUrl = url;
+        const img = new Image();
+        img.onload = () => {
+          backgroundImage = {
+            element: img,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          };
+          backgroundImageName = file.name || 'Imagen';
+          URL.revokeObjectURL(url);
+          backgroundImageUrl = null;
+          updateBackgroundImageControl();
+          requestImmediateRender();
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          backgroundImageUrl = null;
+          backgroundImage = null;
+          backgroundImageName = '';
+          updateBackgroundImageControl();
+        };
+        img.src = url;
+      };
+
+      selectBgButton.addEventListener('click', () => bgImageInput.click());
+      clearBgButton.addEventListener('click', () => {
+        if (backgroundImageUrl) {
+          URL.revokeObjectURL(backgroundImageUrl);
+          backgroundImageUrl = null;
+        }
+        backgroundImage = null;
+        backgroundImageName = '';
+        updateBackgroundImageControl();
+        requestImmediateRender();
+      });
+      bgImageInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          loadBackgroundImageFromFile(file);
+        }
+        e.target.value = '';
+      });
+
+      bgImageButtons.appendChild(selectBgButton);
+      bgImageButtons.appendChild(clearBgButton);
+      bgImageItem.appendChild(bgImageLabel);
+      bgImageItem.appendChild(bgImageButtons);
+      bgImageItem.appendChild(bgImageInfo);
+      bgImageItem.appendChild(bgImageInput);
+      familyPanel.appendChild(bgImageItem);
+
+      const bgOpacityItem = document.createElement('div');
+      bgOpacityItem.className = 'family-config-item family-config-group';
+      const bgOpacityLabel = document.createElement('label');
+      bgOpacityLabel.textContent = 'Opacidad imagen (%):';
+      const bgOpacityInput = document.createElement('input');
+      bgOpacityInput.type = 'number';
+      bgOpacityInput.min = '0';
+      bgOpacityInput.max = '100';
+      bgOpacityInput.step = '1';
+      const bgOpacityHint = document.createElement('span');
+      bgOpacityHint.className = 'control-hint';
+
+      const updateBackgroundOpacityControl = () => {
+        const value = Math.round(backgroundImageOpacity * 100);
+        bgOpacityInput.value = String(value);
+        bgOpacityHint.textContent = `${value}%`;
+      };
+
+      bgOpacityInput.addEventListener('change', () => {
+        let value = parseFloat(bgOpacityInput.value);
+        if (!isFinite(value)) {
+          updateBackgroundOpacityControl();
+          return;
+        }
+        value = Math.max(0, Math.min(100, value));
+        backgroundImageOpacity = value / 100;
+        updateBackgroundOpacityControl();
+        requestImmediateRender();
+      });
+
+      bgOpacityItem.appendChild(bgOpacityLabel);
+      bgOpacityItem.appendChild(bgOpacityInput);
+      bgOpacityItem.appendChild(bgOpacityHint);
+      familyPanel.appendChild(bgOpacityItem);
+
+      updateBackgroundImageControl();
+      updateBackgroundOpacityControl();
 
       const instSection = document.createElement('div');
       instSection.className = 'inst-section';
@@ -2033,14 +2066,255 @@ if (typeof document !== 'undefined') {
         );
         renderFrame(lastTime);
         updateShapeControl();
-        updateExtensionToggleState();
-        updateFamilyParameterControls();
+        updateParameterControls();
       });
 
       shapeControl.appendChild(shapeLabel);
       shapeControl.appendChild(shapeSelect);
       shapeControl.appendChild(shapeHint);
       familyPanel.appendChild(shapeControl);
+
+      const heightControl = document.createElement('div');
+      heightControl.className = 'family-config-item family-config-group';
+      const heightLabel = document.createElement('label');
+      heightLabel.textContent = 'Altura (%):';
+      const heightInput = document.createElement('input');
+      heightInput.type = 'number';
+      heightInput.min = '10';
+      heightInput.max = '300';
+      heightInput.step = '1';
+      const heightHint = document.createElement('span');
+      heightHint.className = 'control-hint';
+
+      updateHeightControl = () => {
+        const { value, mixed } = getHeightState(familyTargetSelect.value);
+        if (mixed) {
+          heightInput.value = '';
+          heightInput.placeholder = '—';
+          heightHint.textContent = 'Valores variados';
+          heightHint.classList.add('hint-active');
+        } else {
+          heightInput.placeholder = '';
+          const rounded = Math.round(value);
+          heightInput.value = String(rounded);
+          heightHint.textContent = `${rounded}%`;
+          heightHint.classList.remove('hint-active');
+        }
+      };
+
+      heightInput.addEventListener('change', () => {
+        let value = parseFloat(heightInput.value);
+        if (!isFinite(value)) {
+          updateHeightControl();
+          return;
+        }
+        value = Math.max(10, Math.min(300, value));
+        heightInput.value = String(Math.round(value));
+        const target = familyTargetSelect.value;
+        if (target) {
+          setHeightScale(value / 100, target);
+        } else {
+          setHeightScale(value / 100);
+        }
+        requestImmediateRender();
+        updateHeightControl();
+      });
+
+      heightControl.appendChild(heightLabel);
+      heightControl.appendChild(heightInput);
+      heightControl.appendChild(heightHint);
+      familyPanel.appendChild(heightControl);
+
+      const glowControl = document.createElement('div');
+      glowControl.className = 'family-config-item family-config-group';
+      const glowLabel = document.createElement('label');
+      glowLabel.textContent = 'Glow (%):';
+      const glowInput = document.createElement('input');
+      glowInput.type = 'number';
+      glowInput.min = '0';
+      glowInput.max = '300';
+      glowInput.step = '1';
+      const glowHint = document.createElement('span');
+      glowHint.className = 'control-hint';
+
+      updateGlowControl = () => {
+        const { value, mixed } = getGlowState(familyTargetSelect.value);
+        if (mixed) {
+          glowInput.value = '';
+          glowInput.placeholder = '—';
+          glowHint.textContent = 'Valores variados';
+          glowHint.classList.add('hint-active');
+        } else {
+          glowInput.placeholder = '';
+          const rounded = Math.round(value);
+          glowInput.value = String(rounded);
+          glowHint.textContent = `${rounded}%`;
+          glowHint.classList.remove('hint-active');
+        }
+      };
+
+      glowInput.addEventListener('change', () => {
+        let value = parseFloat(glowInput.value);
+        if (!isFinite(value)) {
+          updateGlowControl();
+          return;
+        }
+        value = Math.max(0, Math.min(300, value));
+        glowInput.value = String(Math.round(value));
+        const target = familyTargetSelect.value;
+        if (target) {
+          setGlowStrength(value / 100, target);
+        } else {
+          setGlowStrength(value / 100);
+        }
+        requestImmediateRender();
+        updateGlowControl();
+      });
+
+      glowControl.appendChild(glowLabel);
+      glowControl.appendChild(glowInput);
+      glowControl.appendChild(glowHint);
+      familyPanel.appendChild(glowControl);
+
+      const bumpControl = document.createElement('div');
+      bumpControl.className = 'family-config-item family-config-group';
+      const bumpLabel = document.createElement('label');
+      bumpLabel.textContent = 'Bump (%):';
+      const bumpInput = document.createElement('input');
+      bumpInput.type = 'number';
+      bumpInput.min = '0';
+      bumpInput.max = '300';
+      bumpInput.step = '1';
+      const bumpHint = document.createElement('span');
+      bumpHint.className = 'control-hint';
+
+      updateBumpControl = () => {
+        const { value, mixed } = getBumpState(familyTargetSelect.value);
+        if (mixed) {
+          bumpInput.value = '';
+          bumpInput.placeholder = '—';
+          bumpHint.textContent = 'Valores variados';
+          bumpHint.classList.add('hint-active');
+        } else {
+          bumpInput.placeholder = '';
+          const rounded = Math.round(value);
+          bumpInput.value = String(rounded);
+          bumpHint.textContent = `${rounded}%`;
+          bumpHint.classList.remove('hint-active');
+        }
+      };
+
+      bumpInput.addEventListener('change', () => {
+        let value = parseFloat(bumpInput.value);
+        if (!isFinite(value)) {
+          updateBumpControl();
+          return;
+        }
+        value = Math.max(0, Math.min(300, value));
+        bumpInput.value = String(Math.round(value));
+        const target = familyTargetSelect.value;
+        if (target) {
+          setBumpControl(value / 100, target);
+        } else {
+          setBumpControl(value / 100);
+        }
+        requestImmediateRender();
+        updateBumpControl();
+      });
+
+      bumpControl.appendChild(bumpLabel);
+      bumpControl.appendChild(bumpInput);
+      bumpControl.appendChild(bumpHint);
+      familyPanel.appendChild(bumpControl);
+
+      const extensionControl = document.createElement('div');
+      extensionControl.className = 'family-config-item family-config-group';
+      const extensionLabel = document.createElement('label');
+      extensionLabel.className = 'extension-toggle-label';
+      const extensionToggle = document.createElement('input');
+      extensionToggle.type = 'checkbox';
+      extensionToggle.className = 'extension-toggle-input';
+      extensionLabel.appendChild(extensionToggle);
+      extensionLabel.appendChild(document.createTextNode(' Extensión dinámica'));
+      const extensionHint = document.createElement('span');
+      extensionHint.className = 'control-hint';
+
+      updateExtensionControl = () => {
+        const target = familyTargetSelect.value;
+        if (!target) {
+          const config = getShapeExtensions();
+          const values = ELONGATED_SHAPES.map((shape) => config[shape] !== false);
+          const allTrue = values.every(Boolean);
+          const allFalse = values.every((val) => !val);
+          extensionToggle.disabled = false;
+          extensionToggle.checked = allTrue;
+          extensionToggle.indeterminate = !allTrue && !allFalse;
+          extensionHint.textContent = allTrue
+            ? 'Activa en todas las figuras alargadas'
+            : allFalse
+            ? 'Desactivada globalmente'
+            : 'Valores variados';
+          extensionHint.classList.toggle('hint-active', !allTrue && !allFalse);
+        } else {
+          extensionToggle.indeterminate = false;
+          const shape = getEffectiveFamilyShape(target);
+          if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
+            extensionToggle.checked = false;
+            extensionToggle.disabled = true;
+            extensionHint.textContent = 'No disponible para esta figura';
+            extensionHint.classList.add('hint-active');
+          } else {
+            extensionToggle.disabled = false;
+            const override = getFamilyExtension(target);
+            const globalEnabled = getShapeExtension(shape);
+            const enabled = isExtensionEnabledForFamily(shape, target);
+            extensionToggle.checked = !!enabled;
+            extensionHint.textContent =
+              typeof override === 'boolean'
+                ? override
+                  ? 'Personalizado: activado'
+                  : 'Personalizado: desactivado'
+                : globalEnabled
+                ? 'Usa valor global (activado)'
+                : 'Usa valor global (desactivado)';
+            extensionHint.classList.toggle('hint-active', typeof override !== 'boolean');
+          }
+        }
+      };
+
+      extensionToggle.addEventListener('change', () => {
+        const target = familyTargetSelect.value;
+        const enabled = extensionToggle.checked;
+        extensionToggle.indeterminate = false;
+        if (!target) {
+          ELONGATED_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
+        } else {
+          const shape = getEffectiveFamilyShape(target);
+          if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
+            updateExtensionControl();
+            return;
+          }
+          const globalEnabled = getShapeExtension(shape);
+          if (enabled === globalEnabled) {
+            clearFamilyExtension(target);
+          } else {
+            setFamilyExtension(target, enabled);
+          }
+        }
+        requestImmediateRender();
+        updateExtensionControl();
+      });
+
+      extensionControl.appendChild(extensionLabel);
+      extensionControl.appendChild(extensionHint);
+      familyPanel.appendChild(extensionControl);
+
+      updateParameterControls = () => {
+        updateHeightControl();
+        updateGlowControl();
+        updateBumpControl();
+        updateExtensionControl();
+      };
 
       const lineControl = document.createElement('div');
       lineControl.className = 'family-config-item family-line-item';
@@ -2166,12 +2440,20 @@ if (typeof document !== 'undefined') {
       familyTargetSelect.addEventListener('change', () => {
         updateColorControl();
         updateShapeControl();
+        updateParameterControls();
         updateLineControl();
       });
 
-      updateColorControl();
-      updateShapeControl();
-      updateLineControl();
+      refreshFamilyControls = () => {
+        updateBackgroundImageControl();
+        updateBackgroundOpacityControl();
+        updateColorControl();
+        updateShapeControl();
+        updateParameterControls();
+        updateLineControl();
+      };
+
+      refreshFamilyControls();
 
       const resetBtn = document.createElement('button');
       resetBtn.id = 'reset-family-defaults';
@@ -2211,8 +2493,6 @@ if (typeof document !== 'undefined') {
         reader.onload = (ev) => {
           importConfiguration(ev.target.result, currentTracks, notes);
           buildFamilyPanel();
-          refreshFamilyParameterOptions();
-          updateFamilyParameterControls();
         };
         reader.readAsText(file);
       });
@@ -2223,7 +2503,6 @@ if (typeof document !== 'undefined') {
       familyPanel.appendChild(exportBtn);
       familyPanel.appendChild(importBtn);
       familyPanel.appendChild(importInput);
-      updateFamilyParameterControls();
     }
 
     function showAssignmentModal(tracks) {
@@ -2315,8 +2594,7 @@ if (typeof document !== 'undefined') {
         updateTrackFamily(li.dataset.instrument, '');
       });
       saveAssignments();
-      refreshFamilyParameterOptions();
-      updateFamilyParameterControls();
+      buildFamilyPanel();
       assignmentModal.style.display = 'none';
     });
 
@@ -2331,8 +2609,6 @@ if (typeof document !== 'undefined') {
       .catch(() => {})
       .then(() => {
         buildFamilyPanel();
-        refreshFamilyParameterOptions();
-        updateFamilyParameterControls();
       });
 
     // ----- Configuración de Audio -----
@@ -2470,8 +2746,6 @@ if (typeof document !== 'undefined') {
         applyStoredAssignments();
         showAssignmentModal(currentTracks);
         buildFamilyPanel();
-        refreshFamilyParameterOptions();
-        updateFamilyParameterControls();
         restoreOriginalTempoMap({ preserveStatus: false });
         resetTapTempoEditor({ preserveStatus: true, preserveMarkers: true });
         audioPlayer.resetStartOffset();
@@ -2597,6 +2871,28 @@ if (typeof document !== 'undefined') {
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
+      if (backgroundImage && backgroundImage.element) {
+        const img = backgroundImage.element;
+        const imgWidth = backgroundImage.width || img.naturalWidth || img.width;
+        const imgHeight = backgroundImage.height || img.naturalHeight || img.height;
+        if (imgWidth > 0 && imgHeight > 0 && backgroundImageOpacity > 0) {
+          const scale = Math.max(
+            canvas.width / imgWidth,
+            canvas.height / imgHeight,
+          );
+          const drawWidth = imgWidth * scale;
+          const drawHeight = imgHeight * scale;
+          const drawX = (canvas.width - drawWidth) / 2;
+          const drawY = (canvas.height - drawHeight) / 2;
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = Math.max(
+            0,
+            Math.min(1, backgroundImageOpacity),
+          );
+          offscreenCtx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+          offscreenCtx.restore();
+        }
+      }
 
       const noteHeight = canvas.height / 88;
       const windowStart = currentSec - visibleSeconds / 2;
