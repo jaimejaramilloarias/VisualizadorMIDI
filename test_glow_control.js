@@ -7,6 +7,8 @@ function approx(a, b, eps = 1e-6) {
 
 setGlowStrength(2);
 approx(computeGlowAlpha(0.2, 0), 0.5);
+setGlowStrength(1.5, 'Metales');
+approx(computeGlowAlpha(0.15, 0, 0.2, 'Metales'), 0.5);
 
 const ctx = {
   shadowBlur: 0,
@@ -22,7 +24,7 @@ const ctx = {
   fill() {},
 };
 
-applyGlowEffect(ctx, 'square', 0, 0, 10, 10, 0.5);
+applyGlowEffect(ctx, 'square', 0, 0, 10, 10, 0.5, 'Metales');
 assert(ctx.shadowBlur > 20, 'blur no escalado');
 assert.strictEqual(ctx.w, 10, 'el ancho no debe cambiar');
 assert(ctx.h > 10, 'la altura debe escalarse');

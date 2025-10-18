@@ -7,8 +7,14 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <input id="midi-file-input" />
 <button id="load-wav"></button>
 <input id="wav-file-input" />
-<select id="instrument-select"></select>
-<select id="family-select"></select>
+<select id="family-parameter-select"></select>
+<input id="family-height-control" data-output="family-height-value" />
+<span id="family-height-value"></span>
+<input id="family-glow-control" data-output="family-glow-value" />
+<span id="family-glow-value"></span>
+<input id="family-bump-control" data-output="family-bump-value" />
+<span id="family-bump-value"></span>
+<input type="checkbox" id="family-extension-toggle" />
 <button id="toggle-family-panel"></button>
 <button id="developer-mode"></button>
 <div id="family-config-panel"><div id="developer-controls"></div></div>

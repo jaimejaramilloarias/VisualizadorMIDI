@@ -125,31 +125,82 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
   return opacityScale.edge + (opacityScale.mid - opacityScale.edge) * progress;
 }
 
-// Control global para el efecto "bump"
+// Control global y por familia para el efecto "bump"
 let bumpControl = 1;
+let familyBumpControl = {};
 
-function setBumpControl(value) {
-  bumpControl = value;
+function persistBumpControl() {
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('bumpControl', String(bumpControl));
+    localStorage.setItem(
+      'bumpControl',
+      JSON.stringify({ global: bumpControl, families: familyBumpControl })
+    );
   }
 }
 
-function getBumpControl() {
-  if (typeof localStorage !== 'undefined') {
-    const stored = parseFloat(localStorage.getItem('bumpControl'));
-    if (!isNaN(stored)) bumpControl = stored;
+function loadBumpControl() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('bumpControl');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (typeof parsed === 'number') {
+        bumpControl = parsed;
+      } else {
+        if (typeof parsed.global === 'number') bumpControl = parsed.global;
+        if (parsed.families && typeof parsed.families === 'object') {
+          familyBumpControl = Object.entries(parsed.families).reduce(
+            (acc, [fam, val]) => {
+              if (typeof val === 'number' && isFinite(val)) {
+                acc[fam] = val;
+              }
+              return acc;
+            },
+            {},
+          );
+        }
+      }
+    } catch {
+      const numeric = parseFloat(stored);
+      if (!isNaN(numeric)) bumpControl = numeric;
+    }
+  }
+}
+
+function setBumpControl(value, family) {
+  if (typeof value !== 'number' || !isFinite(value) || value < 0) return;
+  if (family) {
+    familyBumpControl[family] = value;
+  } else {
+    bumpControl = value;
+  }
+  persistBumpControl();
+}
+
+function getBumpControl(family) {
+  loadBumpControl();
+  if (family) {
+    const override = familyBumpControl[family];
+    if (typeof override === 'number' && isFinite(override)) {
+      return override;
+    }
   }
   return bumpControl;
 }
 
-getBumpControl();
+function getBumpControlConfig() {
+  loadBumpControl();
+  return { global: bumpControl, families: { ...familyBumpControl } };
+}
+
+loadBumpControl();
 
 // Calcula la altura con efecto "bump" para una nota en reproducción
 // "bump" indica el incremento inicial de altura (0.5 = +50%)
-function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5) {
-  const amount = bump * bumpControl;
-  const duration = (end - start) * bumpControl;
+function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5, family) {
+  const control = getBumpControl(family);
+  const amount = bump * control;
+  const duration = (end - start) * control;
   if (amount <= 0 || duration <= 0) return baseHeight;
   if (currentSec < start || currentSec > start + duration) return baseHeight;
   const progress = (currentSec - start) / duration;
@@ -234,44 +285,96 @@ function getHeightScaleConfig() {
 
 loadHeightScale();
 
-// Control global del glow
+// Control global y por familia del glow
 let glowStrength = 1;
+let familyGlowStrength = {};
 
-function setGlowStrength(value) {
-  glowStrength = value;
+function persistGlowStrength() {
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('glowStrength', String(glowStrength));
+    localStorage.setItem(
+      'glowStrength',
+      JSON.stringify({ global: glowStrength, families: familyGlowStrength })
+    );
   }
 }
 
-function getGlowStrength() {
-  if (typeof localStorage !== 'undefined') {
-    const stored = parseFloat(localStorage.getItem('glowStrength'));
-    if (!isNaN(stored)) glowStrength = stored;
+function loadGlowStrength() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('glowStrength');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (typeof parsed === 'number') {
+        glowStrength = parsed;
+      } else {
+        if (typeof parsed.global === 'number') glowStrength = parsed.global;
+        if (parsed.families && typeof parsed.families === 'object') {
+          familyGlowStrength = Object.entries(parsed.families).reduce(
+            (acc, [fam, val]) => {
+              if (typeof val === 'number' && isFinite(val)) {
+                acc[fam] = val;
+              }
+              return acc;
+            },
+            {},
+          );
+        }
+      }
+    } catch {
+      const numeric = parseFloat(stored);
+      if (!isNaN(numeric)) glowStrength = numeric;
+    }
+  }
+}
+
+function setGlowStrength(value, family) {
+  if (typeof value !== 'number' || !isFinite(value) || value < 0) return;
+  if (family) {
+    familyGlowStrength[family] = value;
+  } else {
+    glowStrength = value;
+  }
+  persistGlowStrength();
+}
+
+function getGlowStrength(family) {
+  loadGlowStrength();
+  if (family) {
+    const override = familyGlowStrength[family];
+    if (typeof override === 'number' && isFinite(override)) {
+      return override;
+    }
   }
   return glowStrength;
 }
 
-getGlowStrength();
+function getGlowStrengthConfig() {
+  loadGlowStrength();
+  return { global: glowStrength, families: { ...familyGlowStrength } };
+}
+
+loadGlowStrength();
 
 // Calcula la intensidad del brillo en el NOTE ON
-function computeGlowAlpha(currentSec, start, baseDuration = 0.2) {
-  const duration = baseDuration * glowStrength;
+function computeGlowAlpha(currentSec, start, baseDuration = 0.2, family) {
+  const strength = getGlowStrength(family);
+  const duration = baseDuration * strength;
   if (duration <= 0 || currentSec < start || currentSec > start + duration) return 0;
   const progress = (currentSec - start) / duration;
   return 1 - progress;
 }
 
 // Aplica un efecto de brillo con desenfoque alrededor de la figura
-function applyGlowEffect(ctx, shape, x, y, width, height, alpha) {
-  if (alpha <= 0 || glowStrength <= 0) return;
+function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
+  const strength = getGlowStrength(family);
+  if (alpha <= 0 || strength <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.shadowBlur = 20 * glowStrength;
+  ctx.shadowBlur = 20 * strength;
   ctx.shadowColor = '#ffffff';
   ctx.fillStyle = '#ffffff';
   const w = width;
-  const h = height * glowStrength;
+  const h = height * strength;
   const offsetX = x;
   const offsetY = y - (h - height) / 2;
   drawNoteShape(ctx, shape, offsetX, offsetY, w, h);
@@ -388,6 +491,7 @@ const SHAPE_EXTENSION_DEFAULTS = {
   diamond: true,
 };
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
+let familyShapeExtensions = {};
 
 function loadShapeExtensions() {
   if (typeof localStorage === 'undefined') return;
@@ -396,6 +500,21 @@ function loadShapeExtensions() {
     try {
       const parsed = JSON.parse(stored);
       shapeExtensions = { ...shapeExtensions, ...parsed };
+    } catch {}
+  }
+  const byFamily = localStorage.getItem('familyShapeExtensions');
+  if (byFamily) {
+    try {
+      const parsed = JSON.parse(byFamily);
+      if (parsed && typeof parsed === 'object') {
+        familyShapeExtensions = Object.entries(parsed).reduce(
+          (acc, [fam, val]) => {
+            if (typeof val === 'boolean') acc[fam] = val;
+            return acc;
+          },
+          {},
+        );
+      }
     } catch {}
   }
 }
@@ -415,6 +534,52 @@ function setShapeExtension(shape, enabled) {
 function getShapeExtensions() {
   loadShapeExtensions();
   return { ...shapeExtensions };
+}
+
+function persistFamilyShapeExtensions() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(
+      'familyShapeExtensions',
+      JSON.stringify({ ...familyShapeExtensions })
+    );
+  }
+}
+
+function setFamilyExtension(family, enabled) {
+  if (!family) return;
+  if (typeof enabled === 'boolean') {
+    familyShapeExtensions[family] = enabled;
+  } else {
+    delete familyShapeExtensions[family];
+  }
+  persistFamilyShapeExtensions();
+}
+
+function clearFamilyExtension(family) {
+  setFamilyExtension(family, null);
+}
+
+function getFamilyExtension(family) {
+  loadShapeExtensions();
+  if (!family) return null;
+  if (Object.prototype.hasOwnProperty.call(familyShapeExtensions, family)) {
+    return familyShapeExtensions[family];
+  }
+  return null;
+}
+
+function getFamilyExtensionConfig() {
+  loadShapeExtensions();
+  return { ...familyShapeExtensions };
+}
+
+function isExtensionEnabledForFamily(shape, family) {
+  if (NON_STRETCHED_SHAPES.has(shape)) return false;
+  const override = getFamilyExtension(family);
+  if (typeof override === 'boolean') {
+    return override;
+  }
+  return getShapeExtension(shape);
 }
 
 loadShapeExtensions();
@@ -578,7 +743,8 @@ function computeDynamicBounds(
   const center = canvasWidth / 2;
   const xStart = center + (note.start - currentSec) * pixelsPerSecond;
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
-  if (!getShapeExtension(shape)) {
+  const effectiveShape = shape || note.shape;
+  if (!isExtensionEnabledForFamily(effectiveShape, note.family)) {
     const width = finalWidth;
     return { xStart, xEnd: xStart + width, width };
   }
@@ -765,14 +931,21 @@ const utils = {
   getOpacityScale,
   setGlowStrength,
   getGlowStrength,
+  getGlowStrengthConfig,
   setBumpControl,
   getBumpControl,
+  getBumpControlConfig,
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,
   setShapeExtension,
   getShapeExtension,
   getShapeExtensions,
+  setFamilyExtension,
+  getFamilyExtension,
+  getFamilyExtensionConfig,
+  clearFamilyExtension,
+  isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,
   getAllFamilyLineSettings,
