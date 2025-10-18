@@ -299,8 +299,555 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
+    const tapTempoBtn = document.getElementById('tap-tempo-mode');
+    const tapTempoPanel = document.getElementById('tap-tempo-panel');
+    const startTapTempoBtn = document.getElementById('start-tap-tempo');
+    const tapTempoStatus = document.getElementById('tap-tempo-status');
+    const tapTempoEditor = document.getElementById('tap-tempo-editor');
+    const waveformCanvas = document.getElementById('tap-waveform');
+    const zoomControl = document.getElementById('tap-zoom');
+    const positionControl = document.getElementById('tap-position');
+    const addMarkerBtn = document.getElementById('tap-marker-add');
+    const deleteMarkerBtn = document.getElementById('tap-marker-delete');
 
     let velocityBase = getVelocityBase();
+    let tapTempoActive = false;
+    let tapTempoHits = [];
+    let tapTempoMarkers = [];
+    let tapTempoModeActive = false;
+    let selectedMarkerId = null;
+    let markerIdCounter = 0;
+    let waveformData = null;
+    let waveformDuration = 0;
+    let waveformCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
+    let waveformView = { start: 0, duration: 0 };
+    let tapTempoStartReference = 0;
+    let tapTempoMap = null;
+    let devMode = null;
+    let draggingMarkerId = null;
+
+    function updateTapTempoAvailability() {
+      if (!startTapTempoBtn) return;
+      const hasAudio = !!audioPlayer.getAudioBuffer();
+      startTapTempoBtn.disabled = !hasAudio || tapTempoActive;
+      if (!hasAudio && tapTempoStatus) {
+        tapTempoStatus.textContent =
+          'Carga un archivo WAV para habilitar la captura de tap tempo.';
+      }
+    }
+
+    function deactivateTapTempoMode() {
+      if (!tapTempoModeActive) return;
+      tapTempoModeActive = false;
+      if (tapTempoPanel) tapTempoPanel.classList.add('hidden');
+      if (tapTempoBtn) tapTempoBtn.classList.remove('active');
+    }
+
+    function activateTapTempoMode() {
+      if (tapTempoModeActive) return;
+      tapTempoModeActive = true;
+      if (tapTempoPanel) tapTempoPanel.classList.remove('hidden');
+      if (tapTempoBtn) tapTempoBtn.classList.add('active');
+      if (familyPanel) familyPanel.classList.remove('active');
+    }
+
+    function clampMarkerTime(time) {
+      if (!waveformDuration || waveformDuration <= 0) {
+        return Math.max(0, time);
+      }
+      return Math.min(Math.max(0, time), waveformDuration);
+    }
+
+    function sortMarkers() {
+      tapTempoMarkers.sort((a, b) => a.time - b.time);
+    }
+
+    function setSelectedMarker(markerId) {
+      selectedMarkerId = markerId;
+      if (deleteMarkerBtn) {
+        deleteMarkerBtn.disabled =
+          markerId === null || tapTempoMarkers.length === 0;
+      }
+    }
+
+    function markersUpdated({ updateTempo = true } = {}) {
+      sortMarkers();
+      renderWaveform();
+      updateZoomControls();
+      if (updateTempo) {
+        updateTempoMapFromMarkers();
+      }
+    }
+
+    function buildWaveformFromBuffer(buffer, samples = 4096) {
+      if (!buffer) return null;
+      const channelData = buffer.numberOfChannels
+        ? buffer.getChannelData(0)
+        : null;
+      if (!channelData) return null;
+      const length = channelData.length;
+      if (length === 0) return null;
+      const step = Math.max(1, Math.floor(length / samples));
+      const waveform = [];
+      for (let i = 0; i < length; i += step) {
+        let min = 1;
+        let max = -1;
+        const end = Math.min(i + step, length);
+        for (let j = i; j < end; j++) {
+          const value = channelData[j];
+          if (value < min) min = value;
+          if (value > max) max = value;
+        }
+        waveform.push({ min, max });
+      }
+      return waveform;
+    }
+
+    function prepareWaveform(buffer) {
+      waveformDuration = buffer ? buffer.duration : 0;
+      waveformData = buffer ? buildWaveformFromBuffer(buffer) : null;
+      waveformView = {
+        start: 0,
+        duration: waveformDuration || 0,
+      };
+      renderWaveform();
+      updateZoomControls();
+      updateTapTempoAvailability();
+    }
+
+    function getMinWindowSize() {
+      if (!waveformDuration) return 0;
+      const minByDuration = waveformDuration / 20;
+      return Math.min(waveformDuration, Math.max(minByDuration, 0.5));
+    }
+
+    function updateZoomControls() {
+      if (!zoomControl || !positionControl) return;
+      const hasData =
+        waveformData && waveformData.length > 0 && waveformDuration > 0;
+      zoomControl.disabled = !hasData;
+      positionControl.disabled = !hasData;
+      if (addMarkerBtn) addMarkerBtn.disabled = !hasData;
+      if (deleteMarkerBtn) {
+        deleteMarkerBtn.disabled =
+          !hasData || selectedMarkerId === null || tapTempoMarkers.length === 0;
+      }
+      if (!hasData) {
+        zoomControl.value = '0';
+        positionControl.value = '0';
+        return;
+      }
+      if (!waveformView.duration || waveformView.duration > waveformDuration) {
+        waveformView.duration = waveformDuration;
+      }
+      const minWindow = getMinWindowSize();
+      const range = Math.max(waveformDuration - minWindow, 0);
+      const fraction =
+        range === 0
+          ? 0
+          : (waveformDuration - waveformView.duration) / range;
+      zoomControl.value = String(Math.round(fraction * 100));
+      const maxStart = Math.max(0, waveformDuration - waveformView.duration);
+      const posFraction =
+        maxStart === 0 ? 0 : waveformView.start / maxStart;
+      positionControl.value = String(Math.round(posFraction * 100));
+    }
+
+    function renderWaveform() {
+      if (!waveformCtx || !waveformCanvas) return;
+      const { width, height } = waveformCanvas;
+      waveformCtx.clearRect(0, 0, width, height);
+      waveformCtx.fillStyle = '#111';
+      waveformCtx.fillRect(0, 0, width, height);
+      waveformCtx.strokeStyle = '#333';
+      waveformCtx.lineWidth = 1;
+      waveformCtx.beginPath();
+      waveformCtx.moveTo(0, height / 2);
+      waveformCtx.lineTo(width, height / 2);
+      waveformCtx.stroke();
+
+      if (!waveformData || waveformData.length === 0 || !waveformDuration) {
+        return;
+      }
+
+      const start = Math.max(0, Math.min(waveformView.start, waveformDuration));
+      const duration = Math.max(
+        0.001,
+        Math.min(waveformView.duration || waveformDuration, waveformDuration)
+      );
+      const end = Math.min(start + duration, waveformDuration);
+      const totalSamples = waveformData.length;
+      const startIndex = Math.max(
+        0,
+        Math.floor((start / waveformDuration) * totalSamples)
+      );
+      const endIndex = Math.min(
+        totalSamples - 1,
+        Math.ceil((end / waveformDuration) * totalSamples)
+      );
+      const span = Math.max(1, endIndex - startIndex);
+
+      waveformCtx.strokeStyle = '#4caf50';
+      waveformCtx.lineWidth = 1;
+      for (let i = startIndex; i <= endIndex; i++) {
+        const sample = waveformData[i];
+        const x = ((i - startIndex) / span) * width;
+        const yMin = ((1 - sample.max) * 0.5) * height;
+        const yMax = ((1 - sample.min) * 0.5) * height;
+        waveformCtx.beginPath();
+        waveformCtx.moveTo(x, yMin);
+        waveformCtx.lineTo(x, yMax);
+        waveformCtx.stroke();
+      }
+
+      tapTempoMarkers.forEach((marker) => {
+        if (marker.time < start || marker.time > end) return;
+        const x = ((marker.time - start) / duration) * width;
+        waveformCtx.beginPath();
+        waveformCtx.moveTo(x, 0);
+        waveformCtx.lineTo(x, height);
+        waveformCtx.strokeStyle =
+          marker.id === selectedMarkerId ? '#ff5722' : '#ffeb3b';
+        waveformCtx.lineWidth = marker.id === selectedMarkerId ? 3 : 1.5;
+        waveformCtx.stroke();
+      });
+      waveformCtx.lineWidth = 1;
+    }
+
+    function addMarkerAt(time, { select = true, updateTempo = true } = {}) {
+      const marker = { id: markerIdCounter++, time: clampMarkerTime(time) };
+      tapTempoMarkers.push(marker);
+      if (select) {
+        setSelectedMarker(marker.id);
+      }
+      markersUpdated({ updateTempo });
+      return marker;
+    }
+
+    function removeSelectedMarker() {
+      if (selectedMarkerId === null) return;
+      const idx = tapTempoMarkers.findIndex(
+        (marker) => marker.id === selectedMarkerId
+      );
+      if (idx === -1) return;
+      tapTempoMarkers.splice(idx, 1);
+      if (tapTempoMarkers.length === 0) {
+        setSelectedMarker(null);
+      } else {
+        const newIndex = Math.min(idx, tapTempoMarkers.length - 1);
+        setSelectedMarker(tapTempoMarkers[newIndex].id);
+      }
+      markersUpdated();
+    }
+
+    function updateMarkerTime(markerId, time, { updateTempo = false } = {}) {
+      const marker = tapTempoMarkers.find((m) => m.id === markerId);
+      if (!marker) return;
+      marker.time = clampMarkerTime(time);
+      markersUpdated({ updateTempo });
+    }
+
+    function updateTempoMapFromMarkers() {
+      if (!currentTracks || currentTracks.length === 0) return;
+      if (tapTempoMarkers.length < 2) {
+        if (originalTempoMap.length > 0) {
+          prepareNotesFromTracks(currentTracks, originalTempoMap, timeDivision);
+          renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
+        }
+        return;
+      }
+
+      const ordered = [...tapTempoMarkers].sort((a, b) => a.time - b.time);
+      const events = [];
+      for (let i = 1; i < ordered.length; i++) {
+        const prev = ordered[i - 1];
+        const curr = ordered[i];
+        const interval = Math.max(curr.time - prev.time, 1 / 960);
+        events.push({
+          time: (i - 1) * timeDivision,
+          microsecondsPerBeat: Math.round(interval * 1e6),
+        });
+      }
+
+      tapTempoMap = events;
+      prepareNotesFromTracks(currentTracks, tapTempoMap, timeDivision);
+      renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
+    }
+
+    function resetTapTempoEditor({ preserveStatus = false } = {}) {
+      tapTempoHits = [];
+      tapTempoMarkers = [];
+      tapTempoMap = null;
+      markerIdCounter = 0;
+      draggingMarkerId = null;
+      setSelectedMarker(null);
+      if (tapTempoEditor) tapTempoEditor.classList.add('hidden');
+      updateZoomControls();
+      renderWaveform();
+      if (!preserveStatus && tapTempoStatus) {
+        tapTempoStatus.textContent =
+          'Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado.';
+      }
+      if (currentTracks.length && originalTempoMap.length > 0) {
+        prepareNotesFromTracks(currentTracks, originalTempoMap, timeDivision);
+        renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
+      }
+      updateTapTempoAvailability();
+    }
+
+    function handleTapTempoKey(event) {
+      if (!tapTempoActive) return;
+      if (event.repeat) return;
+      const tag = event.target && event.target.tagName;
+      if (tag && ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag.toUpperCase())) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const current = audioPlayer.getCurrentTime();
+      const relative = Math.max(0, current - tapTempoStartReference);
+      tapTempoHits.push(relative);
+      if (tapTempoStatus) {
+        tapTempoStatus.textContent = `Pulsos registrados: ${tapTempoHits.length}`;
+      }
+    }
+
+    async function startTapTempoRecording() {
+      if (tapTempoActive) return;
+      if (!audioPlayer.getAudioBuffer()) {
+        if (tapTempoStatus) {
+          tapTempoStatus.textContent =
+            'Se necesita un archivo WAV cargado para iniciar el tap tempo.';
+        }
+        return;
+      }
+      tapTempoActive = true;
+      tapTempoHits = [];
+      draggingMarkerId = null;
+      tapTempoStartReference = 0;
+      if (tapTempoStatus) {
+        tapTempoStatus.textContent =
+          'Tap tempo activo. Marca el pulso presionando cualquier tecla.';
+      }
+      if (startTapTempoBtn) startTapTempoBtn.disabled = true;
+      audioPlayer.stop(false);
+      stopAnimation();
+      audioPlayer.resetStartOffset();
+      renderFrame(audioOffsetMs / 1000);
+      const ctx = audioPlayer.getAudioContext();
+      if (ctx && ctx.state === 'suspended' && ctx.resume) {
+        await ctx.resume();
+      }
+      tapTempoStartReference = audioPlayer.getCurrentTime();
+      const started = startPlayback({
+        onEnded: () => finalizeTapTempoRecording(),
+      });
+      if (!started) {
+        tapTempoActive = false;
+        if (startTapTempoBtn) startTapTempoBtn.disabled = false;
+        if (tapTempoStatus) {
+          tapTempoStatus.textContent =
+            'No fue posible iniciar la reproducción para el tap tempo.';
+        }
+        return;
+      }
+      document.addEventListener('keydown', handleTapTempoKey, true);
+    }
+
+    function finalizeTapTempoRecording({ canceled = false } = {}) {
+      if (!tapTempoActive) return;
+      tapTempoActive = false;
+      document.removeEventListener('keydown', handleTapTempoKey, true);
+      if (startTapTempoBtn) startTapTempoBtn.disabled = false;
+      if (tapTempoHits.length === 0) {
+        if (tapTempoStatus) {
+          tapTempoStatus.textContent = canceled
+            ? 'Tap tempo cancelado.'
+            : 'No se registraron pulsos durante el tap tempo.';
+        }
+        return;
+      }
+
+      tapTempoMarkers = tapTempoHits.map((time) => ({
+        id: markerIdCounter++,
+        time: clampMarkerTime(time),
+      }));
+      sortMarkers();
+      setSelectedMarker(
+        tapTempoMarkers.length ? tapTempoMarkers[0].id : null
+      );
+      if (tapTempoEditor && waveformData) {
+        tapTempoEditor.classList.toggle('hidden', tapTempoMarkers.length === 0);
+      }
+
+      if (tapTempoMarkers.length >= 2) {
+        if (tapTempoStatus) {
+          tapTempoStatus.textContent = `Tap tempo finalizado. Marcadores capturados: ${tapTempoMarkers.length}. Ajusta su posición sobre la forma de onda.`;
+        }
+        markersUpdated();
+        if (tapTempoEditor && waveformData) {
+          tapTempoEditor.classList.remove('hidden');
+        }
+      } else {
+        if (tapTempoStatus) {
+          tapTempoStatus.textContent =
+            'Se necesitan al menos dos pulsos para generar un mapa de tempo.';
+        }
+        updateTempoMapFromMarkers();
+        if (tapTempoEditor) tapTempoEditor.classList.add('hidden');
+      }
+      tapTempoHits = [];
+      updateTapTempoAvailability();
+    }
+
+    function positionToTime(clientX) {
+      if (!waveformCanvas) return 0;
+      const rect = waveformCanvas.getBoundingClientRect();
+      const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+      const viewDuration = Math.max(
+        0.001,
+        Math.min(
+          waveformView.duration || waveformDuration || 0,
+          waveformDuration || 0.001
+        )
+      );
+      const time = waveformView.start + (x / rect.width) * viewDuration;
+      return clampMarkerTime(time);
+    }
+
+    function findMarkerNear(time, toleranceSeconds) {
+      let closest = null;
+      let minDelta = toleranceSeconds;
+      tapTempoMarkers.forEach((marker) => {
+        const delta = Math.abs(marker.time - time);
+        if (delta <= minDelta) {
+          closest = marker;
+          minDelta = delta;
+        }
+      });
+      return closest;
+    }
+
+    if (tapTempoBtn) {
+      tapTempoBtn.addEventListener('click', () => {
+        if (tapTempoModeActive) {
+          deactivateTapTempoMode();
+        } else {
+          if (devMode && devMode.isActive()) {
+            devMode.setActive(false);
+          }
+          activateTapTempoMode();
+        }
+      });
+    }
+
+    if (startTapTempoBtn) {
+      startTapTempoBtn.addEventListener('click', () => {
+        startTapTempoRecording().catch((err) => console.error(err));
+      });
+    }
+
+    if (addMarkerBtn) {
+      addMarkerBtn.addEventListener('click', () => {
+        const viewDuration =
+          waveformView.duration || waveformDuration || getMinWindowSize();
+        if (!viewDuration) return;
+        const center = waveformView.start + viewDuration / 2;
+        addMarkerAt(center);
+        if (tapTempoEditor && waveformData) {
+          tapTempoEditor.classList.remove('hidden');
+        }
+      });
+    }
+
+    if (deleteMarkerBtn) {
+      deleteMarkerBtn.addEventListener('click', () => {
+        removeSelectedMarker();
+        if (tapTempoMarkers.length < 2 && tapTempoEditor) {
+          tapTempoEditor.classList.toggle('hidden', tapTempoMarkers.length === 0);
+        }
+      });
+    }
+
+    if (zoomControl) {
+      zoomControl.addEventListener('input', () => {
+        if (!waveformDuration) return;
+        const fraction = parseInt(zoomControl.value || '0', 10) / 100;
+        const minWindow = getMinWindowSize();
+        const range = Math.max(waveformDuration - minWindow, 0);
+        const newDuration = waveformDuration - fraction * range;
+        waveformView.duration = Math.max(
+          minWindow,
+          Math.min(newDuration, waveformDuration)
+        );
+        if (waveformView.start + waveformView.duration > waveformDuration) {
+          waveformView.start = Math.max(
+            0,
+            waveformDuration - waveformView.duration
+          );
+        }
+        renderWaveform();
+        updateZoomControls();
+      });
+    }
+
+    if (positionControl) {
+      positionControl.addEventListener('input', () => {
+        if (!waveformDuration) return;
+        const fraction = parseInt(positionControl.value || '0', 10) / 100;
+        const maxStart = Math.max(0, waveformDuration - waveformView.duration);
+        waveformView.start = fraction * maxStart;
+        renderWaveform();
+        updateZoomControls();
+      });
+    }
+
+    if (waveformCanvas) {
+      waveformCanvas.addEventListener('pointerdown', (event) => {
+        if (!waveformData || waveformData.length === 0 || !waveformDuration) {
+          return;
+        }
+        const rect = waveformCanvas.getBoundingClientRect();
+        const time = positionToTime(event.clientX);
+        const pixelTolerance = 8;
+        const toleranceSeconds =
+          (pixelTolerance / rect.width) *
+          Math.max(waveformView.duration || waveformDuration || 0.001, 0.001);
+        const marker = findMarkerNear(time, toleranceSeconds);
+        if (marker) {
+          setSelectedMarker(marker.id);
+          draggingMarkerId = marker.id;
+        } else {
+          const created = addMarkerAt(time, { select: true, updateTempo: false });
+          draggingMarkerId = created.id;
+          if (tapTempoEditor) tapTempoEditor.classList.remove('hidden');
+        }
+        waveformCanvas.setPointerCapture(event.pointerId);
+      });
+
+      waveformCanvas.addEventListener('pointermove', (event) => {
+        if (draggingMarkerId === null) return;
+        const time = positionToTime(event.clientX);
+        updateMarkerTime(draggingMarkerId, time, { updateTempo: false });
+      });
+
+      const endDrag = (event) => {
+        if (draggingMarkerId === null) return;
+        if (event && event.pointerId !== undefined) {
+          waveformCanvas.releasePointerCapture(event.pointerId);
+        }
+        sortMarkers();
+        renderWaveform();
+        updateTempoMapFromMarkers();
+        draggingMarkerId = null;
+      };
+
+      waveformCanvas.addEventListener('pointerup', endDrag);
+      waveformCanvas.addEventListener('pointercancel', endDrag);
+    }
+
+    updateTapTempoAvailability();
+
 
     // ---- Soporte de selección múltiple en el modal de asignación ----
     let modalSelectMode = null;
@@ -340,15 +887,15 @@ if (typeof document !== 'undefined') {
     });
 
     if (developerBtn && developerControls) {
-      const devMode = initDeveloperMode({
+      devMode = initDeveloperMode({
         button: developerBtn,
         panel: developerControls,
-      });
-
-      developerBtn.addEventListener('click', () => {
-        if (devMode.isActive()) {
-          familyPanel.classList.add('active');
-        }
+        onToggle: (active) => {
+          if (active) {
+            familyPanel.classList.add('active');
+            deactivateTapTempoMode();
+          }
+        },
       });
 
       // Control para segundos visibles en el canvas
@@ -674,6 +1221,7 @@ if (typeof document !== 'undefined') {
     pixelsPerSecond = canvas.width / visibleSeconds;
     let stopLoop = null;
     let tempoMap = [];
+    let originalTempoMap = [];
     let timeDivision = 1;
     const audioPlayer = createAudioPlayer();
 
@@ -1107,21 +1655,26 @@ if (typeof document !== 'undefined') {
       canvas.style.cursor = fs ? 'none' : 'default';
     });
 
-    function startPlayback() {
-      if (
-        !audioPlayer.start(notes, () => {
-          stopAnimation();
-          renderFrame(audioOffsetMs / 1000);
-        })
-      )
-        return;
+    function startPlayback({ onEnded } = {}) {
+      const endedHandler = () => {
+        stopAnimation();
+        renderFrame(audioOffsetMs / 1000);
+        if (typeof onEnded === 'function') {
+          onEnded();
+        }
+      };
+      if (!audioPlayer.start(notes, endedHandler)) return false;
       startAnimation();
+      return true;
     }
 
     function stopPlayback(preserveOffset = true) {
       audioPlayer.stop(preserveOffset);
       stopAnimation();
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
+      if (tapTempoActive) {
+        finalizeTapTempoRecording({ canceled: true });
+      }
     }
 
     function seek(delta) {
@@ -1165,6 +1718,7 @@ if (typeof document !== 'undefined') {
         );
         currentTracks = tracks;
         tempoMap = tMap || [];
+        originalTempoMap = tempoMap.map((ev) => ({ ...ev }));
         timeDivision = tDiv || 1;
         currentTracks.forEach((t) => {
           if (!(t.name in enabledInstruments)) {
@@ -1176,6 +1730,7 @@ if (typeof document !== 'undefined') {
         showAssignmentModal(currentTracks);
         prepareNotesFromTracks(currentTracks, tempoMap, timeDivision);
         buildFamilyPanel();
+        resetTapTempoEditor();
         audioPlayer.resetStartOffset();
         renderFrame(audioOffsetMs / 1000);
       } catch (err) {
@@ -1191,6 +1746,8 @@ if (typeof document !== 'undefined') {
       const result = await loadWavFile(file, audioPlayer.getAudioContext());
         audioPlayer.loadBuffer(result.audioBuffer, result.trimOffset);
         console.log('WAV cargado, trimOffset =', result.trimOffset);
+        prepareWaveform(result.audioBuffer);
+        resetTapTempoEditor();
       } catch (err) {
         alert(err.message);
       }

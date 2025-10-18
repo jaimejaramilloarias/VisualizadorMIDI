@@ -146,10 +146,73 @@
       title="Modo desarrollador"
       data-help="Activa controles avanzados y muestra mensajes de ayuda detallados."
     >Modo desarrollador</button>
+    <button
+      id="tap-tempo-mode"
+      title="Modo tap tempo"
+      data-help="Accede a las herramientas de tap tempo para definir el mapa de tempo a partir del audio."
+    >Modo tap tempo</button>
   </nav>
 
   <div id="family-config-panel" class="hidden">
     <div id="developer-controls" class="hidden"></div>
+  </div>
+
+  <div id="tap-tempo-panel" class="hidden">
+    <div id="tap-tempo-controls">
+      <button
+        id="start-tap-tempo"
+        title="Iniciar captura de tap tempo"
+        data-help="Reproduce el audio desde el inicio y registra tus pulsos con cualquier tecla."
+      >Iniciar tap tempo</button>
+      <p id="tap-tempo-status">
+        Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado.
+      </p>
+    </div>
+    <div id="tap-tempo-editor" class="hidden">
+      <div class="tap-tempo-toolbar">
+        <label>
+          Zoom
+          <input
+            type="range"
+            id="tap-zoom"
+            min="0"
+            max="100"
+            value="0"
+            title="Ajusta la cantidad de audio visible en la forma de onda"
+          />
+        </label>
+        <label>
+          Posición
+          <input
+            type="range"
+            id="tap-position"
+            min="0"
+            max="100"
+            value="0"
+            title="Desplaza la ventana visible de la forma de onda"
+          />
+        </label>
+        <button
+          id="tap-marker-add"
+          type="button"
+          title="Agregar un nuevo marcador"
+        >Agregar marcador</button>
+        <button
+          id="tap-marker-delete"
+          type="button"
+          title="Eliminar el marcador seleccionado"
+        >Eliminar marcador</button>
+      </div>
+      <canvas
+        id="tap-waveform"
+        width="900"
+        height="180"
+        title="Forma de onda del audio con marcadores de tempo"
+      ></canvas>
+      <p class="tap-tempo-hint">
+        Arrastra los marcadores para ajustar su posición. También puedes hacer clic en la forma de onda para añadir nuevos marcadores y usarlos como referencia del tempo.
+      </p>
+    </div>
   </div>
 
   <div id="assignment-modal" class="hidden">
