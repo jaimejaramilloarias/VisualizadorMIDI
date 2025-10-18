@@ -8,6 +8,7 @@ function initializeUI({
   onForward,
   onBackward,
   onRestart,
+  onRefresh,
   onAspect169,
   onAspect916,
   onFullScreen,
@@ -18,7 +19,10 @@ function initializeUI({
   const playBtn = document.getElementById('play-stop');
   const forwardBtn = document.getElementById('seek-forward');
   const backwardBtn = document.getElementById('seek-backward');
+  const forwardArrowBtn = document.getElementById('seek-forward-arrow');
+  const backwardArrowBtn = document.getElementById('seek-backward-arrow');
   const restartBtn = document.getElementById('restart');
+  const refreshBtn = document.getElementById('refresh-animation');
   const aspect169Btn = document.getElementById('aspect-16-9');
   const aspect916Btn = document.getElementById('aspect-9-16');
   const fullScreenBtn = document.getElementById('full-screen');
@@ -36,7 +40,16 @@ function initializeUI({
 
   forwardBtn.addEventListener('click', () => onForward());
   backwardBtn.addEventListener('click', () => onBackward());
+  if (forwardArrowBtn) {
+    forwardArrowBtn.addEventListener('click', () => onForward());
+  }
+  if (backwardArrowBtn) {
+    backwardArrowBtn.addEventListener('click', () => onBackward());
+  }
   restartBtn.addEventListener('click', () => onRestart());
+  if (refreshBtn && onRefresh) {
+    refreshBtn.addEventListener('click', () => onRefresh());
+  }
   aspect169Btn.addEventListener('click', () => onAspect169());
   aspect916Btn.addEventListener('click', () => onAspect916());
   fullScreenBtn.addEventListener('click', () => onFullScreen());
@@ -56,7 +69,10 @@ function initializeUI({
     playBtn,
     forwardBtn,
     backwardBtn,
+    forwardArrowBtn,
+    backwardArrowBtn,
     restartBtn,
+    refreshBtn,
     aspect169Btn,
     aspect916Btn,
     fullScreenBtn,

@@ -70,6 +70,16 @@ input {
   transition: background 0.2s;
 }
 
+.icon-button {
+  width: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  font-size: 1.1rem;
+}
+
 button:hover,
 select:hover,
 input:hover {

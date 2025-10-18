@@ -284,6 +284,49 @@ async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPla
   startPlayback();
 }
 
+async function refreshPlaybackAnimation(
+  audioPlayer,
+  stopAnimation,
+  renderFrameFn,
+  startPlayback,
+  { canStart = true, shouldRestart } = {}
+) {
+  if (!audioPlayer || typeof audioPlayer.isPlaying !== 'function') {
+    throw new Error('audioPlayer con método isPlaying es requerido');
+  }
+  if (typeof stopAnimation !== 'function') {
+    throw new Error('stopAnimation debe ser una función');
+  }
+  if (typeof renderFrameFn !== 'function') {
+    throw new Error('renderFrameFn debe ser una función');
+  }
+  if (typeof startPlayback !== 'function') {
+    throw new Error('startPlayback debe ser una función');
+  }
+
+  const wasPlaying = audioPlayer.isPlaying();
+  const restart =
+    typeof shouldRestart === 'boolean' ? shouldRestart : wasPlaying;
+
+  if (wasPlaying && typeof audioPlayer.stop === 'function') {
+    audioPlayer.stop(true);
+  }
+
+  stopAnimation();
+  renderFrameFn();
+
+  if (restart && canStart) {
+    const ctx =
+      typeof audioPlayer.getAudioContext === 'function'
+        ? audioPlayer.getAudioContext()
+        : null;
+    if (ctx && typeof ctx.resume === 'function') {
+      await ctx.resume();
+    }
+    await Promise.resolve(startPlayback());
+  }
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     const titleEl = document.getElementById('app-title');
@@ -1217,6 +1260,17 @@ if (typeof document !== 'undefined') {
       if (wasPlaying) startPlayback();
     }
 
+    async function refreshAnimation() {
+      const canResume = audioPlayer.canStart(notes);
+      await refreshPlaybackAnimation(
+        audioPlayer,
+        stopAnimation,
+        () => renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000),
+        () => startPlayback(),
+        { canStart: canResume }
+      );
+    }
+
     loadBtn.addEventListener('click', () => fileInput.click());
     loadWavBtn.addEventListener('click', () => wavInput.click());
 
@@ -1275,6 +1329,9 @@ if (typeof document !== 'undefined') {
       onBackward: () => seek(-3),
       onRestart: () => {
         restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback);
+      },
+      onRefresh: () => {
+        refreshAnimation().catch((err) => console.error(err));
       },
       onAspect169: () => {
         currentAspect = '16:9';
@@ -2050,6 +2107,7 @@ if (typeof module !== 'undefined') {
     getHeightScale,
     getHeightScaleConfig,
     restartPlayback,
+    refreshPlaybackAnimation,
     FAMILY_LIST,
     computeDynamicBounds,
     computeDiamondBounds,
