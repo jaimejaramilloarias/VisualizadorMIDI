@@ -5,7 +5,6 @@ const {
   FAMILY_PRESETS,
   resetFamilyCustomizations,
 } = require('./script.js');
-const { validateColorRange } = require('./utils.js');
 
 resetFamilyCustomizations();
 
@@ -21,38 +20,28 @@ const notes = tracks.map((t) => ({
 
 setFamilyCustomization(
   'Maderas de timbre "redondo"',
-  { colorBright: '#444444' },
+  { color: '#445566' },
   tracks,
-  notes,
+  notes
 );
+
+assert.strictEqual(
+  FAMILY_PRESETS['Maderas de timbre "redondo"'].color,
+  '#445566'
+);
+assert.strictEqual(notes[0].color, '#445566');
+
 setFamilyCustomization(
   'Maderas de timbre "redondo"',
-  { colorDark: '#444444' },
+  { color: '#778899' },
   tracks,
-  notes,
+  notes
 );
 
-const expected = validateColorRange('#444444', '#444444');
-const preset = FAMILY_PRESETS['Maderas de timbre "redondo"'];
+assert.strictEqual(
+  FAMILY_PRESETS['Maderas de timbre "redondo"'].color,
+  '#778899'
+);
+assert.strictEqual(notes[0].color, '#778899');
 
-function luminance(color) {
-  const num = parseInt(color.slice(1), 16);
-  const r = (num >> 16) & 0xff;
-  const g = (num >> 8) & 0xff;
-  const b = num & 0xff;
-  const srgb = [r, g, b].map((c) => {
-    const chan = c / 255;
-    return chan <= 0.03928
-      ? chan / 12.92
-      : Math.pow((chan + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-}
-
-assert.strictEqual(preset.colorBright, expected.bright);
-assert.strictEqual(preset.colorDark, expected.dark);
-const diff = luminance(preset.colorBright) - luminance(preset.colorDark);
-assert(diff > 0);
-assert(diff >= 0.2);
-
-console.log('Pruebas de validación de rangos de color completadas');
+console.log('Pruebas de actualización de color de familia completadas');

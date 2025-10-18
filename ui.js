@@ -13,8 +13,6 @@ function initializeUI({
   onAspect916,
   onFullScreen,
   onToggleFPS,
-  onMidiLearn,
-  onRangeChange,
 }) {
   const playBtn = document.getElementById('play-stop');
   const forwardBtn = document.getElementById('seek-forward');
@@ -27,8 +25,7 @@ function initializeUI({
   const aspect916Btn = document.getElementById('aspect-9-16');
   const fullScreenBtn = document.getElementById('full-screen');
   const toggleFPSBtn = document.getElementById('toggle-fps');
-  const midiLearnBtn = document.getElementById('midi-learn');
-  const tempoRangeInput = document.getElementById('tempo-range');
+  
 
   playBtn.addEventListener('click', () => {
     if (isPlaying()) {
@@ -56,15 +53,6 @@ function initializeUI({
   if (toggleFPSBtn && onToggleFPS) {
     toggleFPSBtn.addEventListener('click', () => onToggleFPS());
   }
-  if (midiLearnBtn && onMidiLearn) {
-    midiLearnBtn.addEventListener('click', () => onMidiLearn());
-  }
-  if (tempoRangeInput && onRangeChange) {
-    tempoRangeInput.addEventListener('input', (e) =>
-      onRangeChange(parseFloat(e.target.value))
-    );
-  }
-
   return {
     playBtn,
     forwardBtn,
@@ -77,8 +65,6 @@ function initializeUI({
     aspect916Btn,
     fullScreenBtn,
     toggleFPSBtn,
-    midiLearnBtn,
-    tempoRangeInput,
   };
 }
 

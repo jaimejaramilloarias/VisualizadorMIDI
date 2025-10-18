@@ -7,7 +7,6 @@ const {
   computeBumpHeight,
   computeGlowAlpha,
   drawNoteShape,
-  adjustColorBrightness,
   interpolateColor,
   NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
@@ -110,107 +109,6 @@ function setSuperSampling(val) {
 
 function getSuperSampling() {
   return superSampling;
-}
-
-// Variables y funciones para control de tempo mediante MIDI
-let tempoMultiplier = 1;
-let midiLearnMode = false;
-let midiBinding = null;
-let tempoMinMultiplier = 0.9;
-let tempoMaxMultiplier = 1.1;
-let baseBpm = 120;
-let tempoRangeBPM = 20;
-let tempoOffsetBpm = 0;
-
-function startMidiLearn() {
-  midiLearnMode = true;
-}
-
-function getTempoMultiplier() {
-  return tempoMultiplier;
-}
-
-function setBaseBpm(bpm) {
-  const v = parseFloat(bpm);
-  if (!isNaN(v) && v > 0) {
-    baseBpm = v;
-    recomputeTempoBounds();
-  }
-}
-
-function recomputeTempoBounds() {
-  const half = tempoRangeBPM / 2;
-  tempoMinMultiplier = Math.max(0.9, (baseBpm - half) / baseBpm);
-  tempoMaxMultiplier = (baseBpm + half) / baseBpm;
-  applyTempoOffset();
-}
-
-function setTempoRangeBPM(range) {
-  const r = parseFloat(range);
-  if (!isNaN(r) && r > 0) {
-    tempoRangeBPM = r;
-    recomputeTempoBounds();
-  }
-}
-
-function getTempoRangeBPM() {
-  return tempoRangeBPM;
-}
-
-recomputeTempoBounds();
-
-function handleMIDIMessage(event) {
-  const [status, data1, data2] = event.data || [];
-  const type = status & 0xf0;
-  const channel = status & 0x0f;
-  if (type === 0xb0) {
-    if (midiLearnMode) {
-      midiBinding = { controller: data1, channel };
-      midiLearnMode = false;
-    } else if (
-      midiBinding &&
-      midiBinding.controller === data1 &&
-      midiBinding.channel === channel
-    ) {
-      const normalized = data2 / 127;
-      let bpmOffset = (normalized - 0.5) * tempoRangeBPM;
-      const minBpm = baseBpm * tempoMinMultiplier;
-      const maxBpm = baseBpm * tempoMaxMultiplier;
-      let targetBpm = baseBpm + bpmOffset;
-      targetBpm = Math.min(maxBpm, Math.max(minBpm, targetBpm));
-      tempoOffsetBpm = targetBpm - baseBpm;
-      tempoMultiplier = targetBpm / baseBpm;
-    }
-  }
-}
-
-function applyTempoOffset() {
-  const minBpm = baseBpm * tempoMinMultiplier;
-  const maxBpm = baseBpm * tempoMaxMultiplier;
-  let targetBpm = baseBpm + tempoOffsetBpm;
-  targetBpm = Math.min(maxBpm, Math.max(minBpm, targetBpm));
-  tempoOffsetBpm = targetBpm - baseBpm;
-  tempoMultiplier = targetBpm / baseBpm;
-}
-
-function initMIDI() {
-  if (typeof navigator === 'undefined' || !navigator.requestMIDIAccess)
-    return;
-  navigator
-    .requestMIDIAccess()
-    .then((midi) => {
-      midi.inputs.forEach((input) => {
-        input.onmidimessage = handleMIDIMessage;
-      });
-      midi.onstatechange = () => {
-        midi.inputs.forEach((input) => {
-          input.onmidimessage = handleMIDIMessage;
-        });
-      };
-    })
-    .catch((err) => {
-      console.warn('Web MIDI API no disponible', err);
-    });
 }
 
 function setInstrumentEnabled(inst, enabled) {
@@ -363,8 +261,6 @@ if (typeof document !== 'undefined') {
 
     ctx.imageSmoothingEnabled = false;
 
-    // Inicializa el acceso MIDI para controlar el tempo de reproducción
-    initMIDI();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     canvas.style.imageRendering = 'pixelated';
@@ -794,13 +690,13 @@ if (typeof document !== 'undefined') {
       if (track) {
         track.family = fam;
         track.shape = preset.shape;
-        track.color = getInstrumentColor(preset, track.instrument);
+        track.color = getInstrumentColor(preset);
       }
       notes.forEach((n) => {
         if ((n.trackName ?? n.instrument) === trackName) {
           n.family = fam;
           n.shape = preset.shape;
-          n.color = getInstrumentColor(preset, n.instrument);
+          n.color = getInstrumentColor(preset);
         }
       });
     }
@@ -929,37 +825,21 @@ if (typeof document !== 'undefined') {
         colorItem.dataset.family = family;
         const colorLabel = document.createElement('label');
         colorLabel.textContent = family;
-        const brightInput = document.createElement('input');
-        brightInput.type = 'color';
-        brightInput.value =
-          FAMILY_PRESETS[family]?.colorBright ||
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value =
           FAMILY_PRESETS[family]?.color ||
           '#ffffff';
-        const darkInput = document.createElement('input');
-        darkInput.type = 'color';
-        darkInput.value =
-          FAMILY_PRESETS[family]?.colorDark ||
-          FAMILY_PRESETS[family]?.color ||
-          '#000000';
-        brightInput.addEventListener('change', () => {
+        colorInput.addEventListener('change', () => {
           setFamilyCustomization(
             family,
-            { colorBright: brightInput.value },
-            currentTracks,
-            notes,
-          );
-        });
-        darkInput.addEventListener('change', () => {
-          setFamilyCustomization(
-            family,
-            { colorDark: darkInput.value },
+            { color: colorInput.value },
             currentTracks,
             notes,
           );
         });
         colorItem.appendChild(colorLabel);
-        colorItem.appendChild(brightInput);
-        colorItem.appendChild(darkInput);
+        colorItem.appendChild(colorInput);
         colorColumn.appendChild(colorItem);
 
         const shapeItem = document.createElement('div');
@@ -1362,8 +1242,6 @@ if (typeof document !== 'undefined') {
           uiControls.toggleFPSBtn.classList.toggle('active', fixed);
         }
       },
-      onMidiLearn: () => startMidiLearn(),
-      onRangeChange: (range) => setTempoRangeBPM(range),
     });
     if (uiControls.toggleFPSBtn) {
       const fixed = getFPSMode();
@@ -1380,11 +1258,6 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
-      const initialTempo =
-        tempoMapRaw && tempoMapRaw.length
-          ? 60000000 / tempoMapRaw[0].microsecondsPerBeat
-          : 120;
-      setBaseBpm(initialTempo);
       tracks.forEach((track) => {
         track.events.forEach((ev) => {
           if (ev.type === 'note') {
@@ -1526,13 +1399,12 @@ if (typeof document !== 'undefined') {
 
     function startAnimation() {
       if (prefersReducedMotion()) {
-        renderFrame(audioPlayer.getCurrentTime() * tempoMultiplier + audioOffsetMs / 1000);
+        renderFrame(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
         return;
       }
       const loopFn = (dt) => {
         adjustSupersampling(dt);
-        const currentSec =
-          audioPlayer.getCurrentTime() * tempoMultiplier + audioOffsetMs / 1000;
+        const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();
       };
@@ -1653,32 +1525,8 @@ const NORMALIZED_INSTRUMENT_MAP = Object.keys(INSTRUMENT_FAMILIES).reduce(
     return fuzzy ? fuzzy : normalizeAccents(name);
   };
 
-// Variación de tono por instrumento según su registro
-const INSTRUMENT_COLOR_SHIFT = {
-  Flauta: 0,
-  Clarinete: -0.2,
-  Oboe: 0,
-  Fagot: -0.3,
-  Saxofón: -0.1,
-  Trompeta: 0.1,
-  Trombón: -0.1,
-  Tuba: -0.2,
-  'Corno francés': 0,
-  Piano: 0,
-  Violín: 0.1,
-  Viola: 0,
-  Violonchelo: -0.1,
-  Contrabajo: -0.2,
-  Voz: 0,
-};
-
-function getInstrumentColor(preset, instrument) {
-  const shift = INSTRUMENT_COLOR_SHIFT[instrument] || 0;
-  if (preset.colorBright && preset.colorDark) {
-    const t = (shift + 1) / 2; // normaliza -1..1 a 0..1
-    return interpolateColor(preset.colorDark, preset.colorBright, t);
-  }
-  return adjustColorBrightness(preset.color, shift);
+function getInstrumentColor(preset) {
+  return preset.color;
 }
 
 const FAMILY_LIST = [
@@ -1709,21 +1557,26 @@ if (typeof localStorage !== 'undefined') {
 
 let familyCustomizations = {};
 if (typeof localStorage !== 'undefined') {
-  familyCustomizations = JSON.parse(localStorage.getItem('familyCustomizations') || '{}');
-  Object.entries(familyCustomizations).forEach(([fam, cfg]) => {
-    if (FAMILY_PRESETS[fam]) {
-      if (cfg.color) FAMILY_PRESETS[fam].color = cfg.color;
-      if (cfg.shape) FAMILY_PRESETS[fam].shape = cfg.shape;
-      if (cfg.colorBright) FAMILY_PRESETS[fam].colorBright = cfg.colorBright;
-      if (cfg.colorDark) FAMILY_PRESETS[fam].colorDark = cfg.colorDark;
-      if (cfg.colorBright && cfg.colorDark && !cfg.color) {
-        FAMILY_PRESETS[fam].color = interpolateColor(
-          cfg.colorDark,
-          cfg.colorBright,
-          0.5,
-        );
-      }
+  const stored = JSON.parse(localStorage.getItem('familyCustomizations') || '{}');
+  familyCustomizations = {};
+  Object.entries(stored).forEach(([fam, cfg]) => {
+    if (!FAMILY_PRESETS[fam]) return;
+    const preset = { ...FAMILY_PRESETS[fam] };
+    if (cfg.shape) preset.shape = cfg.shape;
+    let resolvedColor = cfg.color;
+    if (!resolvedColor && cfg.colorBright && cfg.colorDark) {
+      const { bright, dark } = validateColorRange(cfg.colorBright, cfg.colorDark);
+      resolvedColor = interpolateColor(dark, bright, 0.5);
+    } else if (!resolvedColor && cfg.colorBright) {
+      resolvedColor = cfg.colorBright;
+    } else if (!resolvedColor && cfg.colorDark) {
+      resolvedColor = cfg.colorDark;
     }
+    if (resolvedColor) {
+      preset.color = resolvedColor;
+    }
+    FAMILY_PRESETS[fam] = { shape: preset.shape, color: preset.color };
+    familyCustomizations[fam] = { color: preset.color, shape: preset.shape };
   });
 }
 
@@ -1735,45 +1588,38 @@ function saveFamilyCustomizations() {
 
 function setFamilyCustomization(
   family,
-  { color, shape, colorBright, colorDark },
+  { color, shape, colorBright, colorDark } = {},
   tracks = [],
   notes = []
 ) {
-  const preset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
-  if (color) {
-    preset.color = color;
+  const basePreset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
+  const preset = { ...basePreset };
+  let resolvedColor = color;
+  if (!resolvedColor && colorBright && colorDark) {
+    const { bright, dark } = validateColorRange(colorBright, colorDark);
+    resolvedColor = interpolateColor(dark, bright, 0.5);
+  } else if (!resolvedColor && colorBright) {
+    resolvedColor = colorBright;
+  } else if (!resolvedColor && colorDark) {
+    resolvedColor = colorDark;
   }
-  if (colorBright) {
-    preset.colorBright = colorBright;
-  }
-  if (colorDark) {
-    preset.colorDark = colorDark;
-  }
-  if (preset.colorBright && preset.colorDark) {
-    const { bright, dark } = validateColorRange(
-      preset.colorBright,
-      preset.colorDark,
-    );
-    preset.colorBright = bright;
-    preset.colorDark = dark;
-    preset.color = interpolateColor(dark, bright, 0.5);
+  if (resolvedColor) {
+    preset.color = resolvedColor;
   }
   if (shape) preset.shape = shape;
-  FAMILY_PRESETS[family] = preset;
+  FAMILY_PRESETS[family] = { shape: preset.shape, color: preset.color };
   familyCustomizations[family] = { color: preset.color, shape: preset.shape };
-  if (preset.colorBright) familyCustomizations[family].colorBright = preset.colorBright;
-  if (preset.colorDark) familyCustomizations[family].colorDark = preset.colorDark;
   saveFamilyCustomizations();
   tracks.forEach((t) => {
     if (t.family === family) {
       t.shape = preset.shape;
-      t.color = getInstrumentColor(preset, t.instrument);
+      t.color = getInstrumentColor(preset);
     }
   });
   notes.forEach((n) => {
     if (n.family === family) {
       n.shape = preset.shape;
-      n.color = getInstrumentColor(preset, n.instrument);
+      n.color = getInstrumentColor(preset);
     }
   });
 }
@@ -1789,12 +1635,12 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   tracks.forEach((t) => {
     const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
     t.shape = preset.shape;
-    t.color = getInstrumentColor(preset, t.instrument);
+    t.color = getInstrumentColor(preset);
   });
   notes.forEach((n) => {
     const preset = FAMILY_PRESETS[n.family] || { shape: 'square', color: '#ffffff' };
     n.shape = preset.shape;
-    n.color = getInstrumentColor(preset, n.instrument);
+    n.color = getInstrumentColor(preset);
   });
 }
 
@@ -1817,7 +1663,7 @@ function importConfiguration(json, tracks = [], notes = []) {
   const data = typeof json === 'string' ? JSON.parse(json) : json;
   assignedFamilies = { ...((data.assignedFamilies || {})) };
   const famCustoms = data.familyCustomizations || {};
-  familyCustomizations = famCustoms;
+  familyCustomizations = {};
   Object.assign(enabledInstruments, data.enabledInstruments || {});
   if (typeof data.velocityBase === 'number') {
     setVelocityBase(data.velocityBase);
@@ -1859,16 +1705,23 @@ function importConfiguration(json, tracks = [], notes = []) {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
   });
   Object.entries(famCustoms).forEach(([fam, cfg]) => {
-    if (FAMILY_PRESETS[fam]) {
-      FAMILY_PRESETS[fam] = { ...FAMILY_PRESETS[fam], ...cfg };
-      if (cfg.colorBright && cfg.colorDark && !cfg.color) {
-        FAMILY_PRESETS[fam].color = interpolateColor(
-          cfg.colorDark,
-          cfg.colorBright,
-          0.5,
-        );
-      }
+    if (!FAMILY_PRESETS[fam]) return;
+    const preset = { ...FAMILY_PRESETS[fam] };
+    if (cfg.shape) preset.shape = cfg.shape;
+    let resolvedColor = cfg.color;
+    if (!resolvedColor && cfg.colorBright && cfg.colorDark) {
+      const { bright, dark } = validateColorRange(cfg.colorBright, cfg.colorDark);
+      resolvedColor = interpolateColor(dark, bright, 0.5);
+    } else if (!resolvedColor && cfg.colorBright) {
+      resolvedColor = cfg.colorBright;
+    } else if (!resolvedColor && cfg.colorDark) {
+      resolvedColor = cfg.colorDark;
     }
+    if (resolvedColor) {
+      preset.color = resolvedColor;
+    }
+    FAMILY_PRESETS[fam] = { shape: preset.shape, color: preset.color };
+    familyCustomizations[fam] = { color: preset.color, shape: preset.shape };
   });
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
@@ -1881,7 +1734,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const preset =
       FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
     t.shape = preset.shape;
-    t.color = getInstrumentColor(preset, t.instrument);
+    t.color = getInstrumentColor(preset);
   });
   notes.forEach((n) => {
     const key = n.trackName ?? n.instrument;
@@ -1890,7 +1743,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const preset =
       FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
     n.shape = preset.shape;
-    n.color = getInstrumentColor(preset, n.instrument);
+    n.color = getInstrumentColor(preset);
   });
 }
 
@@ -1926,7 +1779,7 @@ function assignTrackInfo(tracks) {
     const instrument = resolveInstrumentName(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
-    const color = getInstrumentColor(preset, instrument);
+    const color = getInstrumentColor(preset);
     return { ...t, instrument, family, shape: preset.shape, color };
   });
 }
@@ -2058,8 +1911,6 @@ if (typeof module !== 'undefined') {
     FAMILY_PRESETS,
     FAMILY_DEFAULTS,
     INSTRUMENT_FAMILIES,
-    INSTRUMENT_COLOR_SHIFT,
-    adjustColorBrightness,
     computeOpacity,
     computeBumpHeight,
     computeGlowAlpha,
@@ -2071,24 +1922,24 @@ if (typeof module !== 'undefined') {
     computeNoteWidth,
     calculateCanvasSize,
     NON_STRETCHED_SHAPES,
-      startFixedFPSLoop,
-      startAutoFPSLoop,
-      computeVelocityHeight,
-      setVelocityBase,
-      getVelocityBase,
-      setOpacityScale,
-      getOpacityScale,
-      setGlowStrength,
-      getGlowStrength,
-      setBumpControl,
-      getBumpControl,
-      setFixedFPS,
-      getFixedFPS,
-      setFPSMode,
-      getFPSMode,
-      setFrameWindow,
-      getFrameWindow,
-      setSuperSampling,
+    startFixedFPSLoop,
+    startAutoFPSLoop,
+    computeVelocityHeight,
+    setVelocityBase,
+    getVelocityBase,
+    setOpacityScale,
+    getOpacityScale,
+    setGlowStrength,
+    getGlowStrength,
+    setBumpControl,
+    getBumpControl,
+    setFixedFPS,
+    getFixedFPS,
+    setFPSMode,
+    getFPSMode,
+    setFrameWindow,
+    getFrameWindow,
+    setSuperSampling,
     getSuperSampling,
     preprocessTempoMap,
     ticksToSeconds,
@@ -2114,11 +1965,5 @@ if (typeof module !== 'undefined') {
     setShapeExtension,
     getShapeExtension,
     getShapeExtensions,
-    startMidiLearn,
-    getTempoMultiplier,
-    setTempoRangeBPM,
-    getTempoRangeBPM,
-    handleMIDIMessage,
-    setBaseBpm,
   };
 }

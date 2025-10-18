@@ -5,31 +5,26 @@ const {
   exportConfiguration,
   importConfiguration,
   FAMILY_PRESETS,
-  INSTRUMENT_COLOR_SHIFT,
   resetFamilyCustomizations,
 } = require('./script.js');
-const { interpolateColor, validateColorRange } = require('./utils.js');
 
 resetFamilyCustomizations();
 
 const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
 setFamilyCustomization(
   'Maderas de timbre "redondo"',
-  { colorBright: '#0000ff', colorDark: '#000044' },
-  tracks,
+  { color: '#112233' },
+  tracks
 );
 
-const { bright, dark } = validateColorRange('#0000ff', '#000044');
-
-const exported = exportConfiguration();
-const parsed = JSON.parse(exported);
+const exported = JSON.parse(exportConfiguration());
 assert.strictEqual(
-  parsed.familyCustomizations['Maderas de timbre "redondo"'].colorBright,
-  bright,
+  exported.familyCustomizations['Maderas de timbre "redondo"'].color,
+  '#112233'
 );
 assert.strictEqual(
-  parsed.familyCustomizations['Maderas de timbre "redondo"'].colorDark,
-  dark,
+  FAMILY_PRESETS['Maderas de timbre "redondo"'].color,
+  '#112233'
 );
 
 resetFamilyCustomizations();
@@ -37,8 +32,6 @@ resetFamilyCustomizations();
 const newTracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
 importConfiguration(exported, newTracks);
 
-const factor = (INSTRUMENT_COLOR_SHIFT['Flauta'] + 1) / 2;
-const expectedColor = interpolateColor(dark, bright, factor);
-assert.strictEqual(newTracks[0].color, expectedColor);
+assert.strictEqual(newTracks[0].color, '#112233');
 
-console.log('Pruebas de exportación e importación de rangos de color completadas');
+console.log('Pruebas de exportación e importación de colores de familia completadas');
