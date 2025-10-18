@@ -68,14 +68,31 @@ function initializeUI({
   };
 }
 
-function initializeDeveloperMode({ button, panel }) {
+function initializeDeveloperMode({ button, panel, onToggle } = {}) {
   let active = false;
-  button.addEventListener('click', () => {
-    active = !active;
-    panel.classList.toggle('hidden', !active);
-  });
+
+  const updateState = (next) => {
+    active = !!next;
+    if (panel) {
+      panel.classList.toggle('hidden', !active);
+    }
+    if (button) {
+      button.classList.toggle('active', active);
+    }
+    if (typeof onToggle === 'function') {
+      onToggle(active);
+    }
+  };
+
+  if (button) {
+    button.addEventListener('click', () => {
+      updateState(!active);
+    });
+  }
+
   return {
     isActive: () => active,
+    setActive: (value) => updateState(value),
     button,
     panel,
   };
