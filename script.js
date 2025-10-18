@@ -296,6 +296,10 @@ if (typeof document !== 'undefined') {
     const addMarkerBtn = document.getElementById('tap-marker-add');
     const deleteMarkerBtn = document.getElementById('tap-marker-delete');
     const tapTooltip = document.getElementById('tap-tooltip');
+    const windowsModeBtn = document.getElementById('windows-optimized-mode');
+    const windowsSettings = document.getElementById('windows-optimized-settings');
+    const windowsFpsSelect = document.getElementById('windows-fps-select');
+    const windowsStatsLabel = document.getElementById('windows-optimized-stats');
 
     let velocityBase = getVelocityBase();
     let tapTempoActive = false;
@@ -1532,6 +1536,229 @@ if (typeof document !== 'undefined') {
     let stopLoop = null;
     let tempoMap = [];
     let timeDivision = 1;
+    const WINDOWS_FPS_OPTIONS = [30, 45, 60, 90];
+    let windowsModeActive = false;
+    const windowsActiveNotes = new Map();
+    let windowsEventQueue = [];
+    let windowsEventIndex = 0;
+    let windowsLastEventTime = 0;
+    const windowsLoopStats = { drops: 0, frames: 0, averageMs: 0, lastFrameMs: 0 };
+    let windowsTargetFPS = 60;
+    if (typeof localStorage !== 'undefined') {
+      const storedFps = parseInt(localStorage.getItem('windowsTargetFPS') || '60', 10);
+      if (WINDOWS_FPS_OPTIONS.includes(storedFps)) {
+        windowsTargetFPS = storedFps;
+      }
+    }
+
+    function resetWindowsFrameStats() {
+      windowsLoopStats.drops = 0;
+      windowsLoopStats.frames = 0;
+      windowsLoopStats.averageMs = 0;
+      windowsLoopStats.lastFrameMs = 0;
+    }
+
+    function updateWindowsStatsDisplay(forceReset = false) {
+      if (!windowsStatsLabel) return;
+      if (!windowsModeActive) {
+        windowsStatsLabel.textContent = '';
+        return;
+      }
+      const frames = windowsLoopStats.frames;
+      const avg = frames > 0 ? windowsLoopStats.averageMs / frames : 0;
+      const actualFps = avg > 0 ? (1000 / avg).toFixed(1) : '0.0';
+      const drops = windowsLoopStats.drops;
+      const active = windowsActiveNotes.size;
+      if (forceReset && frames === 0) {
+        windowsStatsLabel.textContent = `Objetivo: ${windowsTargetFPS} · Drops: ${drops} · Activas: ${active}`;
+        return;
+      }
+      windowsStatsLabel.textContent = `Objetivo: ${windowsTargetFPS} · Real: ${actualFps} · Drops: ${drops} · Activas: ${active}`;
+    }
+
+    function applyWindowsModeUI() {
+      if (windowsModeBtn) {
+        windowsModeBtn.classList.toggle('active', windowsModeActive);
+        windowsModeBtn.setAttribute('aria-pressed', windowsModeActive ? 'true' : 'false');
+      }
+      if (windowsSettings) {
+        if (windowsModeActive) {
+          windowsSettings.classList.remove('hidden');
+          windowsSettings.classList.add('active');
+        } else {
+          windowsSettings.classList.add('hidden');
+          windowsSettings.classList.remove('active');
+        }
+      }
+      updateWindowsStatsDisplay(true);
+    }
+
+    function buildWindowsEventQueueFromNotes() {
+      windowsEventQueue = [];
+      windowsEventIndex = 0;
+      windowsLastEventTime = 0;
+      windowsActiveNotes.clear();
+      if (!Array.isArray(notes)) return;
+      notes.forEach((note, idx) => {
+        const id = `${idx}-${note.start}-${note.end}`;
+        windowsEventQueue.push({ type: 'noteon', time: note.start, note, id });
+        windowsEventQueue.push({ type: 'noteoff', time: note.end, note, id });
+      });
+      windowsEventQueue.sort((a, b) => {
+        if (a.time === b.time) {
+          if (a.type === b.type) return 0;
+          return a.type === 'noteoff' ? 1 : -1;
+        }
+        return a.time - b.time;
+      });
+    }
+
+    function syncWindowsEventIndex(currentSec = 0) {
+      windowsEventIndex = 0;
+      windowsActiveNotes.clear();
+      if (!Array.isArray(windowsEventQueue) || windowsEventQueue.length === 0) {
+        windowsLastEventTime = currentSec;
+        return;
+      }
+      for (let i = 0; i < windowsEventQueue.length; i++) {
+        const evt = windowsEventQueue[i];
+        if (evt.time > currentSec) {
+          windowsEventIndex = i;
+          break;
+        }
+        if (evt.type === 'noteon') {
+          windowsActiveNotes.set(evt.id, evt);
+        } else {
+          windowsActiveNotes.delete(evt.id);
+        }
+        windowsEventIndex = i + 1;
+      }
+      windowsLastEventTime = currentSec;
+    }
+
+    function processWindowsEvents(currentSec) {
+      if (!windowsModeActive) return;
+      if (!Number.isFinite(currentSec)) return;
+      if (currentSec + BACKWARD_TOLERANCE < windowsLastEventTime) {
+        syncWindowsEventIndex(currentSec);
+      }
+      windowsLastEventTime = currentSec;
+      while (
+        windowsEventIndex < windowsEventQueue.length &&
+        windowsEventQueue[windowsEventIndex].time <= currentSec + 1e-6
+      ) {
+        const evt = windowsEventQueue[windowsEventIndex];
+        if (evt.type === 'noteon') {
+          windowsActiveNotes.set(evt.id, evt);
+        } else {
+          windowsActiveNotes.delete(evt.id);
+        }
+        windowsEventIndex += 1;
+      }
+    }
+
+    function updateWindowsFrameStats(effectiveDt) {
+      if (!windowsModeActive) return;
+      windowsLoopStats.frames += 1;
+      windowsLoopStats.averageMs += effectiveDt;
+      windowsLoopStats.lastFrameMs = effectiveDt;
+      if (windowsLoopStats.frames > 600) {
+        windowsLoopStats.frames = Math.round(windowsLoopStats.frames / 2);
+        windowsLoopStats.averageMs = windowsLoopStats.averageMs / 2;
+      }
+      const expected = 1000 / windowsTargetFPS;
+      if (effectiveDt > expected * 1.35) {
+        windowsLoopStats.drops += 1;
+      }
+    }
+
+    function startWindowsOptimizedLoop(callback) {
+      if (prefersReducedMotion()) {
+        callback(FRAME_DT_MIN, performance.now());
+        return () => {};
+      }
+      let rafId = null;
+      let running = true;
+      let lastNow = performance.now();
+      let accumulator = 0;
+      const targetInterval = 1000 / windowsTargetFPS;
+      resetWindowsFrameStats();
+      updateWindowsStatsDisplay(true);
+
+      const step = (now) => {
+        if (!running) return;
+        let delta = now - lastNow;
+        lastNow = now;
+        if (!Number.isFinite(delta) || delta <= 0) {
+          rafId = requestAnimationFrame(step);
+          return;
+        }
+        accumulator += delta;
+        if (accumulator + 0.1 < targetInterval) {
+          rafId = requestAnimationFrame(step);
+          return;
+        }
+        const effectiveDt = accumulator;
+        accumulator = accumulator % targetInterval;
+        updateWindowsFrameStats(effectiveDt);
+        const clamped = Math.min(Math.max(effectiveDt, FRAME_DT_MIN), FRAME_DT_MAX);
+        callback(clamped, now);
+        const dpr = window.devicePixelRatio || 1;
+        if (Math.abs(dpr - currentDPR) > 0.001) {
+          currentDPR = dpr;
+          applyCanvasSize(!!document.fullscreenElement);
+        }
+        updateWindowsStatsDisplay();
+        rafId = requestAnimationFrame(step);
+      };
+
+      rafId = requestAnimationFrame(step);
+      return () => {
+        running = false;
+        if (rafId !== null) cancelAnimationFrame(rafId);
+      };
+    }
+
+    function setWindowsOptimizedMode(nextActive) {
+      const desired = !!nextActive;
+      if (windowsModeActive === desired) return windowsModeActive;
+      windowsModeActive = desired;
+      applyWindowsModeUI();
+      if (windowsModeActive) {
+        syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
+      }
+      if (stopLoop) {
+        stopLoop();
+        stopLoop = null;
+      }
+      const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
+      if (audioPlayer.isPlaying()) {
+        startAnimation();
+      } else {
+        renderFrame(currentSec);
+      }
+      return windowsModeActive;
+    }
+
+    function handleWindowsFpsChange(value) {
+      const parsed = parseInt(value, 10);
+      if (!WINDOWS_FPS_OPTIONS.includes(parsed)) return;
+      windowsTargetFPS = parsed;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('windowsTargetFPS', String(windowsTargetFPS));
+      }
+      resetWindowsFrameStats();
+      updateWindowsStatsDisplay(true);
+      if (windowsModeActive) {
+        if (stopLoop) {
+          stopLoop();
+          stopLoop = null;
+        }
+        if (audioPlayer.isPlaying()) {
+          startAnimation();
+        }
+      }
+    }
 
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
@@ -2804,7 +3031,15 @@ if (typeof document !== 'undefined') {
           canvas.style.cursor = 'default';
         }
       },
+      onToggleWindowsMode: () => setWindowsOptimizedMode(!windowsModeActive),
     });
+    if (windowsFpsSelect) {
+      windowsFpsSelect.value = String(windowsTargetFPS);
+      windowsFpsSelect.addEventListener('change', (e) =>
+        handleWindowsFpsChange(e.target.value),
+      );
+    }
+    applyWindowsModeUI();
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -2853,6 +3088,11 @@ if (typeof document !== 'undefined') {
       startIndex = 0;
       endIndex = 0;
       lastTime = 0;
+      buildWindowsEventQueueFromNotes();
+      if (windowsModeActive) {
+        syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
+        updateWindowsStatsDisplay(true);
+      }
     }
 
     function renderFrame(currentSec) {
@@ -2867,6 +3107,11 @@ if (typeof document !== 'undefined') {
         currentSec = lastTime;
       }
       lastTime = currentSec;
+
+      if (windowsModeActive) {
+        processWindowsEvents(currentSec);
+        updateWindowsStatsDisplay();
+      }
 
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
@@ -3104,6 +3349,11 @@ if (typeof document !== 'undefined') {
         startIndex = 0;
         endIndex = 0;
         lastTime = 0;
+        buildWindowsEventQueueFromNotes();
+        if (windowsModeActive) {
+          syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
+          updateWindowsStatsDisplay(true);
+        }
       };
     }
 
@@ -3128,13 +3378,23 @@ if (typeof document !== 'undefined') {
         renderFrame(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
         return;
       }
-      const loopFn = (dt) => {
+      const loopFn = (dt, _now, forcedCurrentSec) => {
+        const currentSec =
+          typeof forcedCurrentSec === 'number'
+            ? forcedCurrentSec
+            : audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
         adjustSupersampling(dt);
-        const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();
       };
-      stopLoop = startAutoFPSLoop(loopFn, FRAME_DT_MIN, FRAME_DT_MAX);
+      if (windowsModeActive) {
+        stopLoop = startWindowsOptimizedLoop((dt, now) => {
+          const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
+          loopFn(dt, now, currentSec);
+        });
+      } else {
+        stopLoop = startAutoFPSLoop(loopFn, FRAME_DT_MIN, FRAME_DT_MAX);
+      }
     }
 
     function stopAnimation() {
