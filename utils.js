@@ -209,7 +209,7 @@ function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5, famil
 }
 
 // Referencia de velocidad MIDI para altura 100%
-let velocityBase = 67;
+let velocityBase = 127;
 
 // Permite definir una nueva velocidad base
 function setVelocityBase(value) {
@@ -287,7 +287,7 @@ function getHeightScaleConfig() {
 loadHeightScale();
 
 // Escala global o por familia para el grosor del contorno tras el NOTE OFF
-let contourWidthScale = 1;
+let contourWidthScale = 0.6;
 let familyContourWidthScale = {};
 
 function persistContourWidthScale() {
@@ -698,7 +698,7 @@ function isExtensionEnabledForFamily(shape, family) {
 
 loadShapeExtensions();
 
-const DEFAULT_LINE_SETTINGS = { enabled: false, opacity: 0.45, width: 1.5 };
+const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.3, width: 8 };
 let familyLineSettings = {};
 let familyTravelSettings = {};
 const DEFAULT_TRAVEL_EFFECT = true;
