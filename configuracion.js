@@ -261,7 +261,7 @@ window.DEFAULT_CONFIG = {
   "velocityBase": 127,
   "opacityScale": {
     "edge": 0,
-    "mid": 0.48
+    "mid": 0.5
   },
   "glowStrength": 1,
   "bumpControl": 1.2,

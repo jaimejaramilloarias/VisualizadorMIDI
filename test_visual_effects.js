@@ -4,6 +4,7 @@ const {
   computeBumpHeight,
   computeGlowAlpha,
   applyGlowEffect,
+  setOpacityScale,
   setGlowStrength,
 } = require('./script');
 
@@ -12,9 +13,13 @@ function approx(actual, expected, eps = 1e-6) {
 }
 
 // Pruebas para computeOpacity
-approx(computeOpacity(250, 350, 600), 1); // Nota cruzando el centro
-approx(computeOpacity(-50, 50, 600), 0.05); // Nota lejos del centro
-approx(computeOpacity(125, 175, 600), 0.375); // Nota a mitad de distancia
+approx(computeOpacity(250, 350, 600), 0.5); // Nota cruzando el centro con escala por defecto
+approx(computeOpacity(-50, 50, 600), 0); // Nota lejos del centro
+approx(computeOpacity(125, 175, 600), 0.25); // Nota a mitad de distancia
+setOpacityScale(0, 1);
+approx(computeOpacity(250, 350, 600), 1); // Centro al 100%
+approx(computeOpacity(125, 175, 600), 0.5); // Gradiente progresivo
+setOpacityScale(0, 0.5);
 
 // Pruebas para computeBumpHeight
 const base = 10;

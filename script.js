@@ -43,6 +43,7 @@ const {
   getFamilyExtension,
   getFamilyExtensionConfig,
   clearFamilyExtension,
+  clearAllFamilyExtensions,
   isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,
@@ -85,7 +86,7 @@ const enabledInstruments =
 // Parámetros de fluidez de animación
 const FRAME_DT_MIN = 8;
 const FRAME_DT_MAX = 32;
-let superSampling = 1.25;
+let superSampling = 2;
 
 function setSuperSampling(val) {
   if (typeof val === 'number' && val >= 1 && val <= 2) {
@@ -328,6 +329,22 @@ if (typeof document !== 'undefined') {
     syncWaveformCanvasSize();
 
     const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value);
+    const COLOR_SWATCHES = [
+      '#0000ff',
+      '#8a2be2',
+      '#a0522d',
+      '#ffff00',
+      '#808080',
+      '#ff0000',
+      '#4b0082',
+      '#ffa500',
+      '#008000',
+      '#ffffff',
+      '#000000',
+      '#00bcd4',
+      '#ff6b6b',
+      '#ffd93d',
+    ];
 
     function requestImmediateRender() {
       if (typeof renderFrame === 'function') {
@@ -1378,28 +1395,6 @@ if (typeof document !== 'undefined') {
         'Opacidad de las notas antes de cruzar la línea de presente.';
       developerControls.appendChild(midItem);
 
-      const SHAPE_LABELS = SHAPE_OPTIONS.reduce((acc, opt) => {
-        acc[opt.value] = opt.label;
-        return acc;
-      }, {});
-      STRETCHABLE_SHAPES.forEach((shape) => {
-        const labelName = SHAPE_LABELS[shape] || shape;
-        const label = document.createElement('label');
-        label.textContent = `Extensión ${labelName}:`;
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = getShapeExtension(shape);
-        checkbox.addEventListener('change', () =>
-          setShapeExtension(shape, checkbox.checked),
-        );
-        const item = document.createElement('div');
-        item.className = 'dev-control';
-        item.appendChild(label);
-        item.appendChild(checkbox);
-        item.dataset.help = `Habilita la extensión progresiva de la figura ${labelName}.`;
-        developerControls.appendChild(item);
-      });
-
       // Control para supersampling inicial
       const ssLabel = document.createElement('label');
       ssLabel.textContent = 'Supersampling:';
@@ -1649,10 +1644,11 @@ if (typeof document !== 'undefined') {
           }
         });
         if (enabled === null) {
-          enabled = true;
-          opacity = 0.45;
-          width = 1.5;
-          travel = false;
+          const defaults = getFamilyLineSettings('');
+          enabled = defaults.enabled;
+          opacity = defaults.opacity;
+          width = defaults.width;
+          travel = isTravelEffectEnabled();
         }
         return {
           enabled,
@@ -1902,34 +1898,73 @@ if (typeof document !== 'undefined') {
       colorControl.className = 'family-config-item family-config-group';
       const colorLabel = document.createElement('label');
       colorLabel.textContent = 'Color de familia:';
-      const colorInput = document.createElement('input');
-      colorInput.type = 'color';
+      const colorPalette = document.createElement('div');
+      colorPalette.className = 'color-palette';
+      colorPalette.setAttribute('role', 'group');
+      colorPalette.setAttribute('aria-label', 'Selección rápida de color');
       const colorHint = document.createElement('span');
       colorHint.className = 'control-hint';
 
-      const updateColorControl = () => {
-        const { color, mixed } = getColorState(familyTargetSelect.value);
-        colorInput.value = color;
-        colorHint.textContent = mixed ? 'Valores variados' : color.toUpperCase();
-        colorHint.classList.toggle('hint-active', mixed);
-      };
+      const swatches = [];
 
-      colorInput.addEventListener('change', () => {
-        const color = colorInput.value;
-        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
+      const applyColor = (hex) => {
+        const targetFamilies = familiesFromSelection(familyTargetSelect.value);
+        targetFamilies.forEach((family) =>
           setFamilyCustomization(
             family,
-            { color },
+            { color: hex },
             currentTracks,
             notes,
           ),
         );
         renderFrame(lastTime);
         updateColorControl();
+      };
+
+      COLOR_SWATCHES.forEach((hex) => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'color-swatch';
+        swatch.dataset.color = hex.toLowerCase();
+        swatch.style.setProperty('--swatch-color', hex);
+        swatch.setAttribute('aria-label', `Color ${hex.toUpperCase()}`);
+        swatch.title = hex.toUpperCase();
+        swatch.setAttribute('aria-pressed', 'false');
+        swatch.addEventListener('click', () => applyColor(hex));
+        colorPalette.appendChild(swatch);
+        swatches.push(swatch);
       });
 
+      const customPreview = document.createElement('div');
+      customPreview.className = 'color-swatch custom-preview';
+      customPreview.setAttribute('aria-hidden', 'true');
+      customPreview.title = 'Color personalizado';
+      colorPalette.appendChild(customPreview);
+
+      const updateColorControl = () => {
+        const { color, mixed } = getColorState(familyTargetSelect.value);
+        const normalized = color.toLowerCase();
+        let matched = false;
+        swatches.forEach((swatch) => {
+          const isMatch = !mixed && swatch.dataset.color === normalized;
+          swatch.classList.toggle('selected', isMatch);
+          swatch.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+          if (isMatch) matched = true;
+        });
+        if (!mixed && !matched) {
+          customPreview.style.setProperty('--swatch-color', color);
+          customPreview.classList.add('visible');
+          colorHint.textContent = `Personalizado: ${color.toUpperCase()}`;
+          colorHint.classList.remove('hint-active');
+        } else {
+          customPreview.classList.remove('visible');
+          colorHint.textContent = mixed ? 'Valores variados' : color.toUpperCase();
+          colorHint.classList.toggle('hint-active', mixed);
+        }
+      };
+
       colorControl.appendChild(colorLabel);
-      colorControl.appendChild(colorInput);
+      colorControl.appendChild(colorPalette);
       colorControl.appendChild(colorHint);
       familyPanel.appendChild(colorControl);
 
@@ -2155,15 +2190,21 @@ if (typeof document !== 'undefined') {
           const values = STRETCHABLE_SHAPES.map((shape) => config[shape] !== false);
           const allTrue = values.every(Boolean);
           const allFalse = values.every((val) => !val);
+          const hasOverrides = Object.keys(getFamilyExtensionConfig()).length > 0;
           extensionToggle.disabled = false;
           extensionToggle.checked = allTrue;
-          extensionToggle.indeterminate = !allTrue && !allFalse;
-          extensionHint.textContent = allTrue
-            ? 'Activa en todas las figuras'
-            : allFalse
-            ? 'Desactivada globalmente'
-            : 'Valores variados';
-          extensionHint.classList.toggle('hint-active', !allTrue && !allFalse);
+          extensionToggle.indeterminate = hasOverrides || (!allTrue && !allFalse);
+          if (hasOverrides) {
+            extensionHint.textContent = 'Con personalizaciones por familia';
+            extensionHint.classList.add('hint-active');
+          } else {
+            extensionHint.textContent = allTrue
+              ? 'Activa en todas las figuras'
+              : allFalse
+              ? 'Desactivada globalmente'
+              : 'Valores variados';
+            extensionHint.classList.toggle('hint-active', !allTrue && !allFalse);
+          }
         } else {
           extensionToggle.indeterminate = false;
           const shape = getEffectiveFamilyShape(target);
@@ -2196,6 +2237,7 @@ if (typeof document !== 'undefined') {
         const enabled = extensionToggle.checked;
         extensionToggle.indeterminate = false;
         if (!target) {
+          clearAllFamilyExtensions();
           STRETCHABLE_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
         } else {
           const shape = getEffectiveFamilyShape(target);
@@ -3366,7 +3408,7 @@ function importConfiguration(json, tracks = [], notes = []) {
   }
 
   if (data.familyExtensions && typeof data.familyExtensions === 'object') {
-    Object.keys(getFamilyExtensionConfig()).forEach((fam) => clearFamilyExtension(fam));
+    clearAllFamilyExtensions();
     Object.entries(data.familyExtensions).forEach(([fam, enabled]) => {
       if (typeof enabled === 'boolean') {
         setFamilyExtension(fam, enabled);
@@ -3636,6 +3678,7 @@ if (typeof module !== 'undefined') {
     getFamilyExtension,
     getFamilyExtensionConfig,
     clearFamilyExtension,
+    clearAllFamilyExtensions,
     isExtensionEnabledForFamily,
   };
 }

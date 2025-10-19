@@ -85,7 +85,7 @@ function validateColorRange(bright, dark) {
 }
 
 // Parámetros configurables de opacidad
-let opacityScale = { edge: 0.05, mid: 0.7 };
+let opacityScale = { edge: 0, mid: 0.5 };
 
 function setOpacityScale(edge, mid) {
   opacityScale = { edge, mid };
@@ -117,7 +117,6 @@ getOpacityScale();
 // Calcula opacidad según la distancia de la nota a la línea de presente
 function computeOpacity(xStart, xEnd, canvasWidth) {
   const center = canvasWidth / 2;
-  if (xStart <= center && xEnd >= center) return 1;
   const noteCenter = (xStart + xEnd) / 2;
   const dist = Math.abs(noteCenter - center);
   const maxDist = canvasWidth / 2;
@@ -173,6 +172,7 @@ function setBumpControl(value, family) {
     familyBumpControl[family] = value;
   } else {
     bumpControl = value;
+    familyBumpControl = {};
   }
   persistBumpControl();
 }
@@ -254,6 +254,7 @@ function setHeightScale(value, family) {
     familyHeightScale[family] = value;
   } else {
     heightScale = value;
+    familyHeightScale = {};
   }
   persistHeightScale();
 }
@@ -333,6 +334,7 @@ function setGlowStrength(value, family) {
     familyGlowStrength[family] = value;
   } else {
     glowStrength = value;
+    familyGlowStrength = {};
   }
   persistGlowStrength();
 }
@@ -571,6 +573,12 @@ function clearFamilyExtension(family) {
   setFamilyExtension(family, null);
 }
 
+function clearAllFamilyExtensions() {
+  loadShapeExtensions();
+  familyShapeExtensions = {};
+  persistFamilyShapeExtensions();
+}
+
 function getFamilyExtension(family) {
   loadShapeExtensions();
   if (!family) return null;
@@ -595,9 +603,10 @@ function isExtensionEnabledForFamily(shape, family) {
 
 loadShapeExtensions();
 
-const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.45, width: 1.5 };
+const DEFAULT_LINE_SETTINGS = { enabled: false, opacity: 0.45, width: 1.5 };
 let familyLineSettings = {};
 let familyTravelSettings = {};
+const DEFAULT_TRAVEL_EFFECT = true;
 
 function sanitizeLineSettings(config = {}) {
   const sanitized = { ...DEFAULT_LINE_SETTINGS };
@@ -692,10 +701,14 @@ function persistFamilyTravelSettings() {
 
 function isTravelEffectEnabled(family) {
   if (!Object.keys(familyTravelSettings).length) loadFamilyTravelSettings();
-  return !!familyTravelSettings[family];
+  if (family && Object.prototype.hasOwnProperty.call(familyTravelSettings, family)) {
+    return !!familyTravelSettings[family];
+  }
+  return DEFAULT_TRAVEL_EFFECT;
 }
 
 function setTravelEffectEnabled(family, enabled) {
+  if (!family) return;
   familyTravelSettings[family] = !!enabled;
   persistFamilyTravelSettings();
 }
@@ -960,6 +973,7 @@ const utils = {
   getFamilyExtension,
   getFamilyExtensionConfig,
   clearFamilyExtension,
+  clearAllFamilyExtensions,
   isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,
