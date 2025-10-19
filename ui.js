@@ -12,7 +12,6 @@ function initializeUI({
   onAspect169,
   onAspect916,
   onFullScreen,
-  onToggleWindowsMode,
 }) {
   const playBtn = document.getElementById('play-stop');
   const forwardBtn = document.getElementById('seek-forward');
@@ -24,8 +23,6 @@ function initializeUI({
   const aspect169Btn = document.getElementById('aspect-16-9');
   const aspect916Btn = document.getElementById('aspect-9-16');
   const fullScreenBtn = document.getElementById('full-screen');
-  const windowsModeBtn = document.getElementById('windows-optimized-mode');
-
 
   playBtn.addEventListener('click', () => {
     if (isPlaying()) {
@@ -50,9 +47,6 @@ function initializeUI({
   aspect169Btn.addEventListener('click', () => onAspect169());
   aspect916Btn.addEventListener('click', () => onAspect916());
   fullScreenBtn.addEventListener('click', () => onFullScreen());
-  if (windowsModeBtn && typeof onToggleWindowsMode === 'function') {
-    windowsModeBtn.addEventListener('click', () => onToggleWindowsMode());
-  }
   return {
     playBtn,
     forwardBtn,
@@ -64,7 +58,6 @@ function initializeUI({
     aspect169Btn,
     aspect916Btn,
     fullScreenBtn,
-    windowsModeBtn,
   };
 }
 
