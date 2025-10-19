@@ -286,6 +286,88 @@ function getHeightScaleConfig() {
 
 loadHeightScale();
 
+// Escala global o por familia para el grosor del contorno tras el NOTE OFF
+let contourWidthScale = 1;
+let familyContourWidthScale = {};
+
+function persistContourWidthScale() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(
+      'contourWidthScale',
+      JSON.stringify({
+        global: contourWidthScale,
+        families: familyContourWidthScale,
+      }),
+    );
+  }
+}
+
+function loadContourWidthScale() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('contourWidthScale');
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (typeof parsed === 'number') {
+      contourWidthScale = parsed;
+      familyContourWidthScale = {};
+    } else {
+      if (typeof parsed.global === 'number' && isFinite(parsed.global)) {
+        contourWidthScale = Math.max(parsed.global, 0);
+      }
+      if (parsed.families && typeof parsed.families === 'object') {
+        familyContourWidthScale = Object.entries(parsed.families).reduce(
+          (acc, [family, value]) => {
+            if (typeof value === 'number' && isFinite(value) && value >= 0) {
+              acc[family] = value;
+            }
+            return acc;
+          },
+          {},
+        );
+      }
+    }
+  } catch {
+    const numeric = parseFloat(stored);
+    if (!Number.isNaN(numeric)) {
+      contourWidthScale = Math.max(numeric, 0);
+      familyContourWidthScale = {};
+    }
+  }
+}
+
+function setContourWidthScale(value, family) {
+  if (typeof value !== 'number' || !isFinite(value) || value < 0) return;
+  if (family) {
+    familyContourWidthScale[family] = value;
+  } else {
+    contourWidthScale = value;
+    familyContourWidthScale = {};
+  }
+  persistContourWidthScale();
+}
+
+function getContourWidthScale(family) {
+  loadContourWidthScale();
+  if (family) {
+    const override = familyContourWidthScale[family];
+    if (typeof override === 'number' && isFinite(override) && override >= 0) {
+      return override;
+    }
+  }
+  return contourWidthScale;
+}
+
+function getContourWidthConfig() {
+  loadContourWidthScale();
+  return {
+    global: contourWidthScale,
+    families: { ...familyContourWidthScale },
+  };
+}
+
+loadContourWidthScale();
+
 // Control global y por familia del glow
 let glowStrength = 1;
 let familyGlowStrength = {};
@@ -383,7 +465,7 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   ctx.restore();
 }
 
-function computeNoteStrokeWidth(width, height) {
+function computeNoteStrokeWidth(width, height, family) {
   const minDim = Math.max(Math.min(width, height), 1);
   const maxDim = Math.max(width, height, 1);
   const aspect = maxDim / minDim;
@@ -393,7 +475,8 @@ function computeNoteStrokeWidth(width, height) {
   let strokeWidth = base + elongatedBoost + spanBoost;
   strokeWidth = Math.max(1.35, strokeWidth);
   strokeWidth = Math.min(strokeWidth, minDim * 0.65);
-  return strokeWidth;
+  const scale = Math.max(getContourWidthScale(family), 0);
+  return strokeWidth * (scale || 0);
 }
 
 function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
@@ -976,6 +1059,9 @@ const utils = {
   setBumpControl,
   getBumpControl,
   getBumpControlConfig,
+  setContourWidthScale,
+  getContourWidthScale,
+  getContourWidthConfig,
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,

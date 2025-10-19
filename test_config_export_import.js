@@ -7,6 +7,7 @@ const {
   getOpacityScale,
   getGlowStrength,
   getBumpControl,
+  getContourWidthScale,
   getVisibleSeconds,
   getHeightScaleConfig,
 } = require('./script.js');
@@ -33,6 +34,7 @@ const config = {
   opacityScale: { edge: 0.1, mid: 0.8 },
   glowStrength: { global: 1.5, families: { Metales: 1.2 } },
   bumpControl: { global: 1.2, families: { Metales: 1.1 } },
+  contourWidth: { global: 1.5, families: { Metales: 1.2 } },
   visibleSeconds: 6,
   heightScale: { global: 1, families: {} },
   shapeExtensions: { oval: true, capsule: true, star: true, diamond: true },
@@ -56,6 +58,8 @@ assert.strictEqual(getGlowStrength(), 1.5);
 assert.strictEqual(getGlowStrength('Metales'), 1.2);
 assert.strictEqual(getBumpControl(), 1.2);
 assert.strictEqual(getBumpControl('Metales'), 1.1);
+assert.strictEqual(getContourWidthScale(), 1.5);
+assert.strictEqual(getContourWidthScale('Metales'), 1.2);
 assert.strictEqual(getVisibleSeconds(), 6);
 assert.deepStrictEqual(getHeightScaleConfig(), { global: 1, families: {} });
 
