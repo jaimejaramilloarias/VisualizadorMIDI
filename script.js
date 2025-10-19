@@ -109,7 +109,7 @@ function setInstrumentEnabled(inst, enabled) {
   }
 }
 
-let visibleSeconds = 6;
+let visibleSeconds = 8;
 let canvas = null;
 let pixelsPerSecond = 0;
 let audioOffsetMs = 0;
@@ -1450,7 +1450,7 @@ if (typeof document !== 'undefined') {
     function updateTrackFamily(trackName, fam) {
       const track = currentTracks.find((t) => t.name === trackName);
       const preset =
-        FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+        FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
       if (track) {
         track.family = fam;
         track.shape = preset.shape;
@@ -1530,14 +1530,14 @@ if (typeof document !== 'undefined') {
         let mixed = false;
         families.forEach((family) => {
           const preset = FAMILY_PRESETS[family] || {};
-          const color = preset.color || '#ffffff';
+          const color = preset.color || '#ffa500';
           if (baseColor === null) {
             baseColor = color;
           } else if (baseColor.toLowerCase() !== color.toLowerCase()) {
             mixed = true;
           }
         });
-        if (baseColor === null) baseColor = '#ffffff';
+        if (baseColor === null) baseColor = '#ffa500';
         return { color: baseColor, mixed };
       };
 
@@ -2854,8 +2854,8 @@ if (typeof document !== 'undefined') {
               end,
               noteNumber: ev.noteNumber,
               velocity: ev.velocity,
-              color: track.color || '#ffffff',
-              shape: track.shape || 'square',
+              color: track.color || '#ffa500',
+              shape: track.shape || 'oval',
               family: track.family,
               instrument: track.instrument,
               trackName: track.name,
@@ -3367,7 +3367,7 @@ function setFamilyCustomization(
   tracks = [],
   notes = []
 ) {
-  const basePreset = FAMILY_PRESETS[family] || { shape: 'square', color: '#ffffff' };
+  const basePreset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
   const preset = { ...basePreset };
   let resolvedColor = color;
   if (!resolvedColor && colorBright && colorDark) {
@@ -3410,12 +3410,12 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   resetFamilyLineSettings();
   resetTravelEffectSettings();
   tracks.forEach((t) => {
-    const preset = FAMILY_PRESETS[t.family] || { shape: 'square', color: '#ffffff' };
+    const preset = FAMILY_PRESETS[t.family] || { shape: 'oval', color: '#ffa500' };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
   });
   notes.forEach((n) => {
-    const preset = FAMILY_PRESETS[n.family] || { shape: 'square', color: '#ffffff' };
+    const preset = FAMILY_PRESETS[n.family] || { shape: 'oval', color: '#ffa500' };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
   });
@@ -3557,7 +3557,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const fam = assignedFamilies[t.name] || t.family;
     t.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+      FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
   });
@@ -3566,7 +3566,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const fam = assignedFamilies[key] || n.family;
     n.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'unknown', color: '#ffffff' };
+      FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
   });
@@ -3603,7 +3603,7 @@ function assignTrackInfo(tracks) {
   return tracks.map((t) => {
     const instrument = resolveInstrumentName(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
-    const preset = FAMILY_PRESETS[family] || { shape: 'unknown', color: '#ffffff' };
+    const preset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
     const color = getInstrumentColor(preset);
     return { ...t, instrument, family, shape: preset.shape, color };
   });

@@ -264,22 +264,16 @@ window.DEFAULT_CONFIG = {
     "mid": 0.5
   },
   "glowStrength": 1,
-  "bumpControl": 1.2,
-  "visibleSeconds": 6,
+  "bumpControl": 1,
+  "visibleSeconds": 8,
   "heightScale": {
     "global": 1,
-    "families": {
-      "Cuerdas frotadas": 4,
-      "Cuerdas pulsadas": 1.5,
-      "Dobles cañas": 0.8,
-      "Auxiliares": 0.2,
-      "Percusión menor": 3
-    }
+    "families": {}
   },
   "shapeExtensions": {
-    "oval": false,
-    "capsule": false,
-    "star": false,
+    "oval": true,
+    "capsule": true,
+    "star": true,
     "diamond": true
   }
 };
