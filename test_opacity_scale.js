@@ -13,4 +13,6 @@ approx(scale.mid, 0.8);
 approx(computeOpacity(-50, 50, 600), 0.1);
 approx(computeOpacity(125, 175, 600), 0.45);
 
+setOpacityScale(0, 0.5);
+
 console.log('Pruebas de escala de opacidad configurables completadas');
