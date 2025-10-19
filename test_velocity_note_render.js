@@ -81,10 +81,10 @@ dom.window.__setTestNotes(notes);
 dom.window.__renderFrame(1.1);
 
 const rects = contexts[1].rects;
-assert.strictEqual(rects.length, 4, 'Debe dibujar cuatro rectángulos (relleno y contorno)');
+assert.strictEqual(rects.length, 2, 'Debe dibujar dos rectángulos de contorno tras el note off');
 
 const h1 = rects[0].h;
-const h2 = rects[2].h;
+const h2 = rects[1].h;
 
 assert(Math.abs(h1 - baseHeight) < 1e-6);
 assert(Math.abs(h2 - baseHeight * 2) < 1e-6);

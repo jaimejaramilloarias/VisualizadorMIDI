@@ -427,9 +427,23 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.closePath();
       break;
     }
-    case 'circle':
-      ctx.arc(x + width / 2, y + height / 2, height / 2, 0, Math.PI * 2);
+    case 'circle': {
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const rx = Math.max(width / 2, 0);
+      const ry = Math.max(height / 2, 0);
+      if (Math.abs(rx - ry) < 1e-6) {
+        ctx.arc(cx, cy, rx, 0, Math.PI * 2);
+      } else {
+        ctx.save();
+        ctx.translate(cx, cy);
+        const scaleX = rx > 0 ? rx / Math.max(ry, 1e-6) : 1;
+        ctx.scale(scaleX, 1);
+        ctx.arc(0, 0, ry, 0, Math.PI * 2);
+        ctx.restore();
+      }
       break;
+    }
     case 'square':
       ctx.rect(x, y, width, height);
       break;
@@ -469,8 +483,6 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
   if (stroke) ctx.stroke();
   else ctx.fill();
 }
-
-const NON_STRETCHED_SHAPES = new Set(['circle', 'square', 'star4', 'pentagon']);
 
 const SHAPE_OPTIONS = [
   { value: 'oval', label: 'Óvalo alargado' },
@@ -574,7 +586,6 @@ function getFamilyExtensionConfig() {
 }
 
 function isExtensionEnabledForFamily(shape, family) {
-  if (NON_STRETCHED_SHAPES.has(shape)) return false;
   const override = getFamilyExtension(family);
   if (typeof override === 'boolean') {
     return override;
@@ -725,10 +736,14 @@ function getFamilyModifiers(family) {
 function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
   const { sizeFactor } = getFamilyModifiers(note.family);
   const baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
-  if (NON_STRETCHED_SHAPES.has(note.shape)) {
-    return baseHeight;
+  const durationWidth = Math.max(
+    (note.end - note.start) * pixelsPerSecond,
+    baseHeight,
+  );
+  if (!isExtensionEnabledForFamily(note.shape, note.family)) {
+    return durationWidth;
   }
-  return (note.end - note.start) * pixelsPerSecond;
+  return baseHeight;
 }
 
 // Calcula la posición y el ancho de una figura alargada considerando la línea de presente
@@ -956,7 +971,6 @@ const utils = {
   getTravelEffectSettings,
   setTravelEffectSettings,
   resetTravelEffectSettings,
-  NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
   computeNoteWidth,

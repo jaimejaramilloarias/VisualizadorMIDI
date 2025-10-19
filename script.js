@@ -8,7 +8,6 @@ const {
   computeGlowAlpha,
   drawNoteShape,
   interpolateColor,
-  NON_STRETCHED_SHAPES,
   SHAPE_OPTIONS,
   getFamilyModifiers,
   computeNoteWidth,
@@ -296,10 +295,6 @@ if (typeof document !== 'undefined') {
     const addMarkerBtn = document.getElementById('tap-marker-add');
     const deleteMarkerBtn = document.getElementById('tap-marker-delete');
     const tapTooltip = document.getElementById('tap-tooltip');
-    const windowsModeBtn = document.getElementById('windows-optimized-mode');
-    const windowsSettings = document.getElementById('windows-optimized-settings');
-    const windowsFpsSelect = document.getElementById('windows-fps-select');
-    const windowsStatsLabel = document.getElementById('windows-optimized-stats');
 
     let velocityBase = getVelocityBase();
     let tapTempoActive = false;
@@ -332,7 +327,7 @@ if (typeof document !== 'undefined') {
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
-    const ELONGATED_SHAPES = ['oval', 'capsule', 'star', 'diamond'];
+    const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value);
 
     function requestImmediateRender() {
       if (typeof renderFrame === 'function') {
@@ -1320,54 +1315,6 @@ if (typeof document !== 'undefined') {
         'Retrasa o adelanta el inicio del audio respecto a la animación.';
       developerControls.appendChild(offsetItem);
 
-      // Control para porcentaje de altura (global o por familia)
-      const heightFamLabel = document.createElement('label');
-      heightFamLabel.textContent = 'Familia altura:';
-      const heightFamSelect = document.createElement('select');
-      const globalOption = document.createElement('option');
-      globalOption.value = '';
-      globalOption.textContent = 'Global';
-      heightFamSelect.appendChild(globalOption);
-      Object.keys(FAMILY_PRESETS).forEach((fam) => {
-        const opt = document.createElement('option');
-        opt.value = fam;
-        opt.textContent = fam;
-        heightFamSelect.appendChild(opt);
-      });
-      const heightFamItem = document.createElement('div');
-      heightFamItem.className = 'dev-control';
-      heightFamItem.appendChild(heightFamLabel);
-      heightFamItem.appendChild(heightFamSelect);
-      heightFamItem.dataset.help =
-        'Selecciona la familia a modificar o "Global" para todas las notas.';
-      developerControls.appendChild(heightFamItem);
-
-      const heightLabel = document.createElement('label');
-      heightLabel.textContent = 'Altura (%):';
-      const heightInput = document.createElement('input');
-      heightInput.type = 'number';
-      heightInput.min = '10';
-      heightInput.max = '300';
-      const updateHeightInput = () => {
-        const fam = heightFamSelect.value || null;
-        heightInput.value = Math.round(getHeightScale(fam) * 100);
-      };
-      heightFamSelect.addEventListener('change', updateHeightInput);
-      updateHeightInput();
-      heightInput.addEventListener('change', () => {
-        const val = parseFloat(heightInput.value);
-        if (!isNaN(val) && val > 0) {
-          setHeightScale(val / 100, heightFamSelect.value || null);
-        }
-      });
-      const heightItem = document.createElement('div');
-      heightItem.className = 'dev-control';
-      heightItem.appendChild(heightLabel);
-      heightItem.appendChild(heightInput);
-      heightItem.dataset.help =
-        'Escala de altura aplicada a la familia seleccionada.';
-      developerControls.appendChild(heightItem);
-
       // Control para ajustar la velocidad base de referencia
       const velLabel = document.createElement('label');
       velLabel.textContent = 'Velocidad base:';
@@ -1431,55 +1378,14 @@ if (typeof document !== 'undefined') {
         'Opacidad de las notas antes de cruzar la línea de presente.';
       developerControls.appendChild(midItem);
 
-      // Control para el glow
-      const glowLabel = document.createElement('label');
-      glowLabel.textContent = 'Glow (%):';
-      const glowInput = document.createElement('input');
-      glowInput.type = 'number';
-      glowInput.min = '0';
-      glowInput.max = '300';
-      glowInput.value = Math.round(getGlowStrength() * 100);
-      glowInput.addEventListener('change', () => {
-        const val = parseInt(glowInput.value, 10);
-        if (!isNaN(val)) setGlowStrength(Math.max(0, val) / 100);
-      });
-      const glowItem = document.createElement('div');
-      glowItem.className = 'dev-control';
-      glowItem.appendChild(glowLabel);
-      glowItem.appendChild(glowInput);
-      glowItem.dataset.help =
-        'Intensidad del brillo aplicado al pasar por la línea de presente.';
-      developerControls.appendChild(glowItem);
-
-      // Control para el bump
-      const bumpLabel = document.createElement('label');
-      bumpLabel.textContent = 'Bump (%):';
-      const bumpInput = document.createElement('input');
-      bumpInput.type = 'number';
-      bumpInput.min = '0';
-      bumpInput.max = '300';
-      bumpInput.value = Math.round(getBumpControl() * 100);
-      bumpInput.addEventListener('change', () => {
-        const val = parseInt(bumpInput.value, 10);
-        if (!isNaN(val)) setBumpControl(Math.max(0, val) / 100);
-      });
-      const bumpItem = document.createElement('div');
-      bumpItem.className = 'dev-control';
-      bumpItem.appendChild(bumpLabel);
-      bumpItem.appendChild(bumpInput);
-      bumpItem.dataset.help =
-        'Cantidad de aumento de altura en el efecto bump.';
-      developerControls.appendChild(bumpItem);
-
-      const SHAPE_LABELS = {
-        oval: 'Óvalo',
-        capsule: 'Cápsula',
-        star: 'Estrella',
-        diamond: 'Diamante',
-      };
-      Object.keys(SHAPE_LABELS).forEach((shape) => {
+      const SHAPE_LABELS = SHAPE_OPTIONS.reduce((acc, opt) => {
+        acc[opt.value] = opt.label;
+        return acc;
+      }, {});
+      STRETCHABLE_SHAPES.forEach((shape) => {
+        const labelName = SHAPE_LABELS[shape] || shape;
         const label = document.createElement('label');
-        label.textContent = `Extensión ${SHAPE_LABELS[shape]}:`;
+        label.textContent = `Extensión ${labelName}:`;
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = getShapeExtension(shape);
@@ -1490,7 +1396,7 @@ if (typeof document !== 'undefined') {
         item.className = 'dev-control';
         item.appendChild(label);
         item.appendChild(checkbox);
-        item.dataset.help = `Habilita la extensión progresiva de la figura ${SHAPE_LABELS[shape]}.`;
+        item.dataset.help = `Habilita la extensión progresiva de la figura ${labelName}.`;
         developerControls.appendChild(item);
       });
 
@@ -1536,230 +1442,6 @@ if (typeof document !== 'undefined') {
     let stopLoop = null;
     let tempoMap = [];
     let timeDivision = 1;
-    const WINDOWS_FPS_OPTIONS = [30, 45, 60, 90];
-    let windowsModeActive = false;
-    const windowsActiveNotes = new Map();
-    let windowsEventQueue = [];
-    let windowsEventIndex = 0;
-    let windowsLastEventTime = 0;
-    const windowsLoopStats = { drops: 0, frames: 0, averageMs: 0, lastFrameMs: 0 };
-    let windowsTargetFPS = 60;
-    if (typeof localStorage !== 'undefined') {
-      const storedFps = parseInt(localStorage.getItem('windowsTargetFPS') || '60', 10);
-      if (WINDOWS_FPS_OPTIONS.includes(storedFps)) {
-        windowsTargetFPS = storedFps;
-      }
-    }
-
-    function resetWindowsFrameStats() {
-      windowsLoopStats.drops = 0;
-      windowsLoopStats.frames = 0;
-      windowsLoopStats.averageMs = 0;
-      windowsLoopStats.lastFrameMs = 0;
-    }
-
-    function updateWindowsStatsDisplay(forceReset = false) {
-      if (!windowsStatsLabel) return;
-      if (!windowsModeActive) {
-        windowsStatsLabel.textContent = '';
-        return;
-      }
-      const frames = windowsLoopStats.frames;
-      const avg = frames > 0 ? windowsLoopStats.averageMs / frames : 0;
-      const actualFps = avg > 0 ? (1000 / avg).toFixed(1) : '0.0';
-      const drops = windowsLoopStats.drops;
-      const active = windowsActiveNotes.size;
-      if (forceReset && frames === 0) {
-        windowsStatsLabel.textContent = `Objetivo: ${windowsTargetFPS} · Drops: ${drops} · Activas: ${active}`;
-        return;
-      }
-      windowsStatsLabel.textContent = `Objetivo: ${windowsTargetFPS} · Real: ${actualFps} · Drops: ${drops} · Activas: ${active}`;
-    }
-
-    function applyWindowsModeUI() {
-      if (windowsModeBtn) {
-        windowsModeBtn.classList.toggle('active', windowsModeActive);
-        windowsModeBtn.setAttribute('aria-pressed', windowsModeActive ? 'true' : 'false');
-      }
-      if (windowsSettings) {
-        if (windowsModeActive) {
-          windowsSettings.classList.remove('hidden');
-          windowsSettings.classList.add('active');
-        } else {
-          windowsSettings.classList.add('hidden');
-          windowsSettings.classList.remove('active');
-        }
-      }
-      updateWindowsStatsDisplay(true);
-    }
-
-    function buildWindowsEventQueueFromNotes() {
-      windowsEventQueue = [];
-      windowsEventIndex = 0;
-      windowsLastEventTime = 0;
-      windowsActiveNotes.clear();
-      if (!Array.isArray(notes)) return;
-      notes.forEach((note, idx) => {
-        const id = `${idx}-${note.start}-${note.end}`;
-        windowsEventQueue.push({ type: 'noteon', time: note.start, note, id });
-        windowsEventQueue.push({ type: 'noteoff', time: note.end, note, id });
-      });
-      windowsEventQueue.sort((a, b) => {
-        if (a.time === b.time) {
-          if (a.type === b.type) return 0;
-          return a.type === 'noteoff' ? 1 : -1;
-        }
-        return a.time - b.time;
-      });
-    }
-
-    function syncWindowsEventIndex(currentSec = 0) {
-      windowsEventIndex = 0;
-      windowsActiveNotes.clear();
-      if (!Array.isArray(windowsEventQueue) || windowsEventQueue.length === 0) {
-        windowsLastEventTime = currentSec;
-        return;
-      }
-      for (let i = 0; i < windowsEventQueue.length; i++) {
-        const evt = windowsEventQueue[i];
-        if (evt.time > currentSec) {
-          windowsEventIndex = i;
-          break;
-        }
-        if (evt.type === 'noteon') {
-          windowsActiveNotes.set(evt.id, evt);
-        } else {
-          windowsActiveNotes.delete(evt.id);
-        }
-        windowsEventIndex = i + 1;
-      }
-      windowsLastEventTime = currentSec;
-    }
-
-    function processWindowsEvents(currentSec) {
-      if (!windowsModeActive) return;
-      if (!Number.isFinite(currentSec)) return;
-      if (currentSec + BACKWARD_TOLERANCE < windowsLastEventTime) {
-        syncWindowsEventIndex(currentSec);
-      }
-      windowsLastEventTime = currentSec;
-      while (
-        windowsEventIndex < windowsEventQueue.length &&
-        windowsEventQueue[windowsEventIndex].time <= currentSec + 1e-6
-      ) {
-        const evt = windowsEventQueue[windowsEventIndex];
-        if (evt.type === 'noteon') {
-          windowsActiveNotes.set(evt.id, evt);
-        } else {
-          windowsActiveNotes.delete(evt.id);
-        }
-        windowsEventIndex += 1;
-      }
-    }
-
-    function updateWindowsFrameStats(effectiveDt) {
-      if (!windowsModeActive) return;
-      windowsLoopStats.frames += 1;
-      windowsLoopStats.averageMs += effectiveDt;
-      windowsLoopStats.lastFrameMs = effectiveDt;
-      if (windowsLoopStats.frames > 600) {
-        windowsLoopStats.frames = Math.round(windowsLoopStats.frames / 2);
-        windowsLoopStats.averageMs = windowsLoopStats.averageMs / 2;
-      }
-      const expected = 1000 / windowsTargetFPS;
-      if (effectiveDt > expected * 1.35) {
-        windowsLoopStats.drops += 1;
-      }
-    }
-
-    function startWindowsOptimizedLoop(callback) {
-      if (prefersReducedMotion()) {
-        callback(FRAME_DT_MIN, performance.now());
-        return () => {};
-      }
-      let rafId = null;
-      let running = true;
-      let lastNow = performance.now();
-      let accumulator = 0;
-      const targetInterval = 1000 / windowsTargetFPS;
-      resetWindowsFrameStats();
-      updateWindowsStatsDisplay(true);
-
-      const step = (now) => {
-        if (!running) return;
-        let delta = now - lastNow;
-        lastNow = now;
-        if (!Number.isFinite(delta) || delta <= 0) {
-          rafId = requestAnimationFrame(step);
-          return;
-        }
-        accumulator += delta;
-        if (accumulator + 0.1 < targetInterval) {
-          rafId = requestAnimationFrame(step);
-          return;
-        }
-        const effectiveDt = accumulator;
-        accumulator = accumulator % targetInterval;
-        updateWindowsFrameStats(effectiveDt);
-        const clamped = Math.min(Math.max(effectiveDt, FRAME_DT_MIN), FRAME_DT_MAX);
-        callback(clamped, now);
-        const dpr = window.devicePixelRatio || 1;
-        if (Math.abs(dpr - currentDPR) > 0.001) {
-          currentDPR = dpr;
-          applyCanvasSize(!!document.fullscreenElement);
-        }
-        updateWindowsStatsDisplay();
-        rafId = requestAnimationFrame(step);
-      };
-
-      rafId = requestAnimationFrame(step);
-      return () => {
-        running = false;
-        if (rafId !== null) cancelAnimationFrame(rafId);
-      };
-    }
-
-    function setWindowsOptimizedMode(nextActive) {
-      const desired = !!nextActive;
-      if (windowsModeActive === desired) return windowsModeActive;
-      windowsModeActive = desired;
-      applyWindowsModeUI();
-      if (windowsModeActive) {
-        syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
-      }
-      if (stopLoop) {
-        stopLoop();
-        stopLoop = null;
-      }
-      const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
-      if (audioPlayer.isPlaying()) {
-        startAnimation();
-      } else {
-        renderFrame(currentSec);
-      }
-      return windowsModeActive;
-    }
-
-    function handleWindowsFpsChange(value) {
-      const parsed = parseInt(value, 10);
-      if (!WINDOWS_FPS_OPTIONS.includes(parsed)) return;
-      windowsTargetFPS = parsed;
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('windowsTargetFPS', String(windowsTargetFPS));
-      }
-      resetWindowsFrameStats();
-      updateWindowsStatsDisplay(true);
-      if (windowsModeActive) {
-        if (stopLoop) {
-          stopLoop();
-          stopLoop = null;
-        }
-        if (audioPlayer.isPlaying()) {
-          startAnimation();
-        }
-      }
-    }
-
     function saveAssignments() {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
@@ -2470,14 +2152,14 @@ if (typeof document !== 'undefined') {
         const target = familyTargetSelect.value;
         if (!target) {
           const config = getShapeExtensions();
-          const values = ELONGATED_SHAPES.map((shape) => config[shape] !== false);
+          const values = STRETCHABLE_SHAPES.map((shape) => config[shape] !== false);
           const allTrue = values.every(Boolean);
           const allFalse = values.every((val) => !val);
           extensionToggle.disabled = false;
           extensionToggle.checked = allTrue;
           extensionToggle.indeterminate = !allTrue && !allFalse;
           extensionHint.textContent = allTrue
-            ? 'Activa en todas las figuras alargadas'
+            ? 'Activa en todas las figuras'
             : allFalse
             ? 'Desactivada globalmente'
             : 'Valores variados';
@@ -2485,10 +2167,10 @@ if (typeof document !== 'undefined') {
         } else {
           extensionToggle.indeterminate = false;
           const shape = getEffectiveFamilyShape(target);
-          if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
+          if (!shape) {
             extensionToggle.checked = false;
             extensionToggle.disabled = true;
-            extensionHint.textContent = 'No disponible para esta figura';
+            extensionHint.textContent = 'Sin figura asociada';
             extensionHint.classList.add('hint-active');
           } else {
             extensionToggle.disabled = false;
@@ -2514,10 +2196,10 @@ if (typeof document !== 'undefined') {
         const enabled = extensionToggle.checked;
         extensionToggle.indeterminate = false;
         if (!target) {
-          ELONGATED_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
+          STRETCHABLE_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
         } else {
           const shape = getEffectiveFamilyShape(target);
-          if (!shape || NON_STRETCHED_SHAPES.has(shape)) {
+          if (!shape) {
             updateExtensionControl();
             return;
           }
@@ -3031,15 +2713,7 @@ if (typeof document !== 'undefined') {
           canvas.style.cursor = 'default';
         }
       },
-      onToggleWindowsMode: () => setWindowsOptimizedMode(!windowsModeActive),
     });
-    if (windowsFpsSelect) {
-      windowsFpsSelect.value = String(windowsTargetFPS);
-      windowsFpsSelect.addEventListener('change', (e) =>
-        handleWindowsFpsChange(e.target.value),
-      );
-    }
-    applyWindowsModeUI();
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -3088,11 +2762,6 @@ if (typeof document !== 'undefined') {
       startIndex = 0;
       endIndex = 0;
       lastTime = 0;
-      buildWindowsEventQueueFromNotes();
-      if (windowsModeActive) {
-        syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
-        updateWindowsStatsDisplay(true);
-      }
     }
 
     function renderFrame(currentSec) {
@@ -3107,11 +2776,6 @@ if (typeof document !== 'undefined') {
         currentSec = lastTime;
       }
       lastTime = currentSec;
-
-      if (windowsModeActive) {
-        processWindowsEvents(currentSec);
-        updateWindowsStatsDisplay();
-      }
 
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
@@ -3156,24 +2820,14 @@ if (typeof document !== 'undefined') {
         const { sizeFactor, bump } = getFamilyModifiers(note.family);
         let baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
         baseHeight = computeVelocityHeight(baseHeight, note.velocity || velocityBase);
-        let xStart;
-        let xEnd;
-        let width;
-        if (NON_STRETCHED_SHAPES.has(note.shape)) {
-          width = baseHeight;
-          const xCenter = canvas.width / 2 + (note.start - time) * pixelsPerSecond;
-          xStart = xCenter - width / 2;
-          xEnd = xStart + width;
-        } else {
-          ({ xStart, xEnd, width } = computeDynamicBounds(
-            note,
-            time,
-            canvas.width,
-            pixelsPerSecond,
-            baseHeight,
-            note.shape,
-          ));
-        }
+        const { xStart, xEnd, width } = computeDynamicBounds(
+          note,
+          time,
+          canvas.width,
+          pixelsPerSecond,
+          baseHeight,
+          note.shape,
+        );
         const clamped = Math.min(Math.max(note.noteNumber, NOTE_MIN), NOTE_MAX);
         const height = computeBumpHeight(
           baseHeight,
@@ -3198,7 +2852,7 @@ if (typeof document !== 'undefined') {
         const metrics = computeLayoutAt(note, currentSec);
         if (metrics.xEnd < -margin || metrics.xStart > canvas.width + margin) continue;
 
-        const layout = { note, metrics, drawBase: true };
+        const layout = { note, metrics, released: currentSec >= note.end };
         layouts.push(layout);
 
         const lineConfig = getFamilyLineSettings(note.family);
@@ -3215,7 +2869,7 @@ if (typeof document !== 'undefined') {
           if (travelDuration > 0) {
             const travelProgress = (currentSec - note.start) / travelDuration;
             if (travelProgress >= 0) {
-              layout.drawBase = currentSec < note.end;
+              layout.released = currentSec >= note.end;
               if (travelProgress <= 1) {
                 activeTravels.push({ note, progress: travelProgress, layout });
               }
@@ -3259,16 +2913,24 @@ if (typeof document !== 'undefined') {
       });
 
       for (const layout of layouts) {
-        if (!layout.drawBase) continue;
-        const { note, metrics } = layout;
+        const { note, metrics, released } = layout;
         const alpha = metrics.alpha;
         if (alpha <= 0) continue;
 
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = alpha;
-        offscreenCtx.fillStyle = note.color;
-        drawNoteShape(offscreenCtx, note.shape, metrics.xStart, metrics.y, metrics.width, metrics.height);
-        offscreenCtx.restore();
+        if (!released) {
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = alpha;
+          offscreenCtx.fillStyle = note.color;
+          drawNoteShape(
+            offscreenCtx,
+            note.shape,
+            metrics.xStart,
+            metrics.y,
+            metrics.width,
+            metrics.height,
+          );
+          offscreenCtx.restore();
+        }
 
         offscreenCtx.save();
         offscreenCtx.globalAlpha = alpha;
@@ -3284,7 +2946,9 @@ if (typeof document !== 'undefined') {
         );
         offscreenCtx.restore();
 
-        const glowAlpha = computeGlowAlpha(currentSec, note.start, 0.2, note.family);
+        const glowAlpha = !released
+          ? computeGlowAlpha(currentSec, note.start, 0.2, note.family)
+          : 0;
         if (glowAlpha > 0) {
           applyGlowEffect(
             offscreenCtx,
@@ -3324,11 +2988,13 @@ if (typeof document !== 'undefined') {
         const drawY = posY - height / 2;
         if (drawX > canvas.width || drawX + width < 0) return;
 
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = alpha;
-        offscreenCtx.fillStyle = note.color;
-        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height);
-        offscreenCtx.restore();
+        if (currentSec < note.end) {
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = alpha;
+          offscreenCtx.fillStyle = note.color;
+          drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height);
+          offscreenCtx.restore();
+        }
 
         offscreenCtx.save();
         offscreenCtx.globalAlpha = alpha;
@@ -3349,11 +3015,6 @@ if (typeof document !== 'undefined') {
         startIndex = 0;
         endIndex = 0;
         lastTime = 0;
-        buildWindowsEventQueueFromNotes();
-        if (windowsModeActive) {
-          syncWindowsEventIndex(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
-          updateWindowsStatsDisplay(true);
-        }
       };
     }
 
@@ -3387,14 +3048,7 @@ if (typeof document !== 'undefined') {
         renderFrame(currentSec);
         if (!audioPlayer.isPlaying()) stopAnimation();
       };
-      if (windowsModeActive) {
-        stopLoop = startWindowsOptimizedLoop((dt, now) => {
-          const currentSec = audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
-          loopFn(dt, now, currentSec);
-        });
-      } else {
-        stopLoop = startAutoFPSLoop(loopFn, FRAME_DT_MIN, FRAME_DT_MAX);
-      }
+      stopLoop = startAutoFPSLoop(loopFn, FRAME_DT_MIN, FRAME_DT_MAX);
     }
 
     function stopAnimation() {
@@ -3940,7 +3594,6 @@ if (typeof module !== 'undefined') {
     getFamilyModifiers,
     computeNoteWidth,
     calculateCanvasSize,
-    NON_STRETCHED_SHAPES,
     startAutoFPSLoop,
     computeVelocityHeight,
     setVelocityBase,
