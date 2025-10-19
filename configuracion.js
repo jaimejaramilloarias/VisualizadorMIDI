@@ -90,7 +90,7 @@ window.DEFAULT_CONFIG = {
     },
     "Cuerdas pulsadas": {
       "color": "#1abeb4",
-      "shape": "star4"
+      "shape": "circle"
     },
     "Voces": {
       "color": "#bebebe",
@@ -102,7 +102,7 @@ window.DEFAULT_CONFIG = {
     },
     "Percusión menor": {
       "color": "#a78269",
-      "shape": "pentagon"
+      "shape": "square"
     }
   },
   "enabledInstruments": {

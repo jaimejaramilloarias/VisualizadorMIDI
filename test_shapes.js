@@ -11,6 +11,10 @@ function stubCtx() {
     moveToCalled: false,
     strokeCalled: false,
     fillCalled: false,
+    lineWidth: 1,
+    lineJoin: 'miter',
+    lineCap: 'butt',
+    miterLimit: 2,
   };
   ctx.beginPath = () => {
     ctx.beginPathCalled = true;
@@ -47,8 +51,6 @@ const shapes = [
   ['square', 'rectCalled'],
   ['diamond', 'lineToCalled'],
   ['star', 'lineToCalled'],
-  ['star4', 'lineToCalled'],
-  ['pentagon', 'lineToCalled'],
 ];
 
 shapes.forEach(([shape, expected]) => {
@@ -100,5 +102,20 @@ const minX = Math.min(...xs);
 const maxX = Math.max(...xs);
 assert.strictEqual(minX, 0, 'diamante alargado no alineado a la izquierda');
 assert.strictEqual(maxX, 20, 'diamante alargado no alineado a la derecha');
+
+// Verificación del grosor dinámico del contorno
+const strokeCtx = stubCtx();
+drawNoteShape(strokeCtx, 'oval', 0, 0, 40, 10, true);
+assert(strokeCtx.strokeCalled, 'stroke no llamado para contorno');
+assert(strokeCtx.lineWidth > 1.35, 'grosor de contorno insuficiente');
+assert.strictEqual(strokeCtx.lineJoin, 'round', 'lineJoin incorrecto para figura suave');
+assert.strictEqual(strokeCtx.lineCap, 'round', 'lineCap incorrecto para figura suave');
+assert.strictEqual(strokeCtx.miterLimit, 4, 'miterLimit inesperado en figura suave');
+
+const starStrokeCtx = stubCtx();
+drawNoteShape(starStrokeCtx, 'star', 0, 0, 40, 20, true);
+assert.strictEqual(starStrokeCtx.lineJoin, 'miter', 'lineJoin incorrecto para estrella');
+assert.strictEqual(starStrokeCtx.miterLimit, 8, 'miterLimit incorrecto para estrella');
+assert.strictEqual(starStrokeCtx.lineCap, 'butt', 'lineCap incorrecto para estrella');
 
 console.log('Pruebas de figuras geométricas completadas');

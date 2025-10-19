@@ -7,6 +7,7 @@ const {
   computeBumpHeight,
   computeGlowAlpha,
   drawNoteShape,
+  computeNoteStrokeWidth,
   interpolateColor,
   SHAPE_OPTIONS,
   getFamilyModifiers,
@@ -2959,6 +2960,8 @@ if (typeof document !== 'undefined') {
         const alpha = metrics.alpha;
         if (alpha <= 0) continue;
 
+        const strokeWidth = computeNoteStrokeWidth(metrics.width, metrics.height);
+
         if (!released) {
           offscreenCtx.save();
           offscreenCtx.globalAlpha = alpha;
@@ -2985,6 +2988,7 @@ if (typeof document !== 'undefined') {
           metrics.width,
           metrics.height,
           true,
+          strokeWidth,
         );
         offscreenCtx.restore();
 
@@ -3030,6 +3034,8 @@ if (typeof document !== 'undefined') {
         const drawY = posY - height / 2;
         if (drawX > canvas.width || drawX + width < 0) return;
 
+        const strokeWidth = computeNoteStrokeWidth(width, height);
+
         if (currentSec < note.end) {
           offscreenCtx.save();
           offscreenCtx.globalAlpha = alpha;
@@ -3041,7 +3047,7 @@ if (typeof document !== 'undefined') {
         offscreenCtx.save();
         offscreenCtx.globalAlpha = alpha;
         offscreenCtx.strokeStyle = note.color;
-        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height, true);
+        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height, true, strokeWidth);
         offscreenCtx.restore();
       });
 
@@ -3109,13 +3115,13 @@ const FAMILY_DEFAULTS = {
   'Saxofones': { shape: 'star', color: '#a0522d' },
   Metales: { shape: 'capsule', color: '#ffff00' },
   Cornos: { shape: 'capsule', color: '#ffff00' },
-  'Percusión menor': { shape: 'pentagon', color: '#808080' },
+  'Percusión menor': { shape: 'square', color: '#808080' },
   Tambores: { shape: 'circle', color: '#808080' },
   Platillos: { shape: 'circle', color: '#808080' },
   Placas: { shape: 'square', color: '#ff0000' },
   Auxiliares: { shape: 'circle', color: '#4b0082' },
   'Cuerdas frotadas': { shape: 'diamond', color: '#ffa500' },
-  'Cuerdas pulsadas': { shape: 'star4', color: '#008000' },
+  'Cuerdas pulsadas': { shape: 'circle', color: '#008000' },
   Voces: { shape: 'capsule', color: '#808080' },
   'Custom 1': { shape: 'square', color: '#ffffff' },
   'Custom 2': { shape: 'square', color: '#ffffff' },
@@ -3630,6 +3636,7 @@ if (typeof module !== 'undefined') {
     computeBumpHeight,
     computeGlowAlpha,
     applyGlowEffect,
+    computeNoteStrokeWidth,
     computeSeekOffset,
     resetStartOffset,
     drawNoteShape,
