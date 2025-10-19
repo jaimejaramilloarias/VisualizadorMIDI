@@ -2960,8 +2960,6 @@ if (typeof document !== 'undefined') {
         const alpha = metrics.alpha;
         if (alpha <= 0) continue;
 
-        const strokeWidth = computeNoteStrokeWidth(metrics.width, metrics.height);
-
         if (!released) {
           offscreenCtx.save();
           offscreenCtx.globalAlpha = alpha;
@@ -2977,20 +2975,23 @@ if (typeof document !== 'undefined') {
           offscreenCtx.restore();
         }
 
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = alpha;
-        offscreenCtx.strokeStyle = note.color;
-        drawNoteShape(
-          offscreenCtx,
-          note.shape,
-          metrics.xStart,
-          metrics.y,
-          metrics.width,
-          metrics.height,
-          true,
-          strokeWidth,
-        );
-        offscreenCtx.restore();
+        if (released) {
+          const strokeWidth = computeNoteStrokeWidth(metrics.width, metrics.height);
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = alpha;
+          offscreenCtx.strokeStyle = note.color;
+          drawNoteShape(
+            offscreenCtx,
+            note.shape,
+            metrics.xStart,
+            metrics.y,
+            metrics.width,
+            metrics.height,
+            true,
+            strokeWidth,
+          );
+          offscreenCtx.restore();
+        }
 
         const glowAlpha = !released
           ? computeGlowAlpha(currentSec, note.start, 0.2, note.family)
@@ -3034,9 +3035,9 @@ if (typeof document !== 'undefined') {
         const drawY = posY - height / 2;
         if (drawX > canvas.width || drawX + width < 0) return;
 
-        const strokeWidth = computeNoteStrokeWidth(width, height);
+        const isReleased = currentSec >= note.end;
 
-        if (currentSec < note.end) {
+        if (!isReleased) {
           offscreenCtx.save();
           offscreenCtx.globalAlpha = alpha;
           offscreenCtx.fillStyle = note.color;
@@ -3044,11 +3045,23 @@ if (typeof document !== 'undefined') {
           offscreenCtx.restore();
         }
 
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = alpha;
-        offscreenCtx.strokeStyle = note.color;
-        drawNoteShape(offscreenCtx, note.shape, drawX, drawY, width, height, true, strokeWidth);
-        offscreenCtx.restore();
+        if (isReleased) {
+          const strokeWidth = computeNoteStrokeWidth(width, height);
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = alpha;
+          offscreenCtx.strokeStyle = note.color;
+          drawNoteShape(
+            offscreenCtx,
+            note.shape,
+            drawX,
+            drawY,
+            width,
+            height,
+            true,
+            strokeWidth,
+          );
+          offscreenCtx.restore();
+        }
       });
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
