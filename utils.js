@@ -383,8 +383,39 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   ctx.restore();
 }
 
+function computeNoteStrokeWidth(width, height) {
+  const minDim = Math.max(Math.min(width, height), 1);
+  const maxDim = Math.max(width, height, 1);
+  const aspect = maxDim / minDim;
+  const base = minDim * 0.25;
+  const elongatedBoost = Math.min(minDim * 0.2, Math.log2(aspect + 1) * minDim * 0.1);
+  const spanBoost = Math.min(minDim * 0.15, maxDim * 0.005);
+  let strokeWidth = base + elongatedBoost + spanBoost;
+  strokeWidth = Math.max(1.35, strokeWidth);
+  strokeWidth = Math.min(strokeWidth, minDim * 0.65);
+  return strokeWidth;
+}
+
+function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
+  const widthToUse =
+    typeof strokeWidth === 'number' && !Number.isNaN(strokeWidth)
+      ? strokeWidth
+      : computeNoteStrokeWidth(width, height);
+  ctx.lineWidth = widthToUse;
+  if (shape === 'star' || shape === 'diamond') {
+    ctx.lineJoin = 'miter';
+    ctx.miterLimit = 8;
+    ctx.lineCap = 'butt';
+  } else {
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.miterLimit = 4;
+  }
+  return widthToUse;
+}
+
 // Dibuja una figura en el contexto del canvas según el tipo especificado
-function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
+function drawNoteShape(ctx, shape, x, y, width, height, stroke = false, strokeWidth) {
   ctx.beginPath();
   switch (shape) {
     case 'oval':
@@ -401,6 +432,7 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       ctx.arc(x + r, y + height - r, r, Math.PI / 2, Math.PI);
       ctx.lineTo(x, y + r);
       ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2);
+      ctx.closePath();
       break;
     }
     case 'star': {
@@ -408,14 +440,24 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
       const cy = y + height / 2;
       const w = width / 2;
       const h = height / 2;
+      const innerW = w * 0.32;
+      const innerH = h * 0.32;
       ctx.moveTo(cx, y);
-      ctx.lineTo(cx + w * 0.2, cy - h * 0.2);
+      ctx.lineTo(cx + innerW, cy - innerH);
+      ctx.lineTo(cx + w, cy - h * 0.15);
+      ctx.lineTo(cx + innerW * 1.1, cy);
       ctx.lineTo(x + width, cy);
-      ctx.lineTo(cx + w * 0.2, cy + h * 0.2);
+      ctx.lineTo(cx + innerW * 1.1, cy + innerH * 0.95);
+      ctx.lineTo(cx + w, cy + h * 0.15);
+      ctx.lineTo(cx + innerW, cy + innerH);
       ctx.lineTo(cx, y + height);
-      ctx.lineTo(cx - w * 0.2, cy + h * 0.2);
+      ctx.lineTo(cx - innerW, cy + innerH);
+      ctx.lineTo(cx - w, cy + h * 0.15);
+      ctx.lineTo(cx - innerW * 1.1, cy + innerH * 0.95);
       ctx.lineTo(x, cy);
-      ctx.lineTo(cx - w * 0.2, cy - h * 0.2);
+      ctx.lineTo(cx - innerW * 1.1, cy);
+      ctx.lineTo(cx - w, cy - h * 0.15);
+      ctx.lineTo(cx - innerW, cy - innerH);
       ctx.closePath();
       break;
     }
@@ -449,41 +491,13 @@ function drawNoteShape(ctx, shape, x, y, width, height, stroke = false) {
     case 'square':
       ctx.rect(x, y, width, height);
       break;
-    case 'star4': {
-      const cx = x + width / 2;
-      const cy = y + height / 2;
-      const w = width / 2;
-      const h = height / 2;
-      ctx.moveTo(cx, y);
-      ctx.lineTo(cx + w * 0.3, cy);
-      ctx.lineTo(x + width, cy);
-      ctx.lineTo(cx, cy + h * 0.3);
-      ctx.lineTo(cx, y + height);
-      ctx.lineTo(cx - w * 0.3, cy);
-      ctx.lineTo(x, cy);
-      ctx.lineTo(cx, cy - h * 0.3);
-      ctx.closePath();
-      break;
-    }
-    case 'pentagon': {
-      const cx = x + width / 2;
-      const cy = y + height / 2;
-      const r = Math.min(width, height) / 2;
-      for (let i = 0; i < 5; i++) {
-        const angle = -Math.PI / 2 + (i * (2 * Math.PI)) / 5;
-        const px = cx + r * Math.cos(angle);
-        const py = cy + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      break;
-    }
     default:
       ctx.rect(x, y, width, height);
   }
-  if (stroke) ctx.stroke();
-  else ctx.fill();
+  if (stroke) {
+    configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth);
+    ctx.stroke();
+  } else ctx.fill();
 }
 
 const SHAPE_OPTIONS = [
@@ -493,8 +507,6 @@ const SHAPE_OPTIONS = [
   { value: 'diamond', label: 'Diamante alargado' },
   { value: 'circle', label: 'Círculo' },
   { value: 'square', label: 'Cuadrado' },
-  { value: 'star4', label: 'Estrella 4 puntas' },
-  { value: 'pentagon', label: 'Pentágono' },
 ];
 
 // Estado de alargamiento progresivo por figura alargada
@@ -948,6 +960,7 @@ const utils = {
   computeGlowAlpha,
   applyGlowEffect,
   drawNoteShape,
+  computeNoteStrokeWidth,
   adjustColorBrightness,
   interpolateColor,
   getLuminance,
