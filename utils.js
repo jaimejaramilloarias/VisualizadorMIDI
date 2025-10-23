@@ -566,9 +566,11 @@ function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
       ? strokeWidth
       : computeNoteStrokeWidth(width, height);
   ctx.lineWidth = widthToUse;
-  if (shape === 'star' || shape === 'diamond') {
+  const meta = SHAPE_METADATA[shape];
+  const isSharp = !!(meta && meta.sharp);
+  if (isSharp) {
     ctx.lineJoin = 'miter';
-    ctx.miterLimit = 8;
+    ctx.miterLimit = meta && meta.miterLimit ? meta.miterLimit : 8;
     ctx.lineCap = 'butt';
   } else {
     ctx.lineJoin = 'round';
@@ -578,110 +580,345 @@ function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
   return widthToUse;
 }
 
-// Dibuja una figura en el contexto del canvas según el tipo especificado
-function drawNoteShape(ctx, shape, x, y, width, height, stroke = false, strokeWidth) {
-  ctx.beginPath();
-  switch (shape) {
-    case 'oval':
-      ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
-      break;
-    case 'capsule': {
-      const r = Math.min(width, height) * 0.25;
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + width - r, y);
-      ctx.arc(x + width - r, y + r, r, -Math.PI / 2, 0);
-      ctx.lineTo(x + width, y + height - r);
-      ctx.arc(x + width - r, y + height - r, r, 0, Math.PI / 2);
-      ctx.lineTo(x + r, y + height);
-      ctx.arc(x + r, y + height - r, r, Math.PI / 2, Math.PI);
-      ctx.lineTo(x, y + r);
-      ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2);
-      ctx.closePath();
-      break;
-    }
-    case 'star': {
-      const cx = x + width / 2;
-      const cy = y + height / 2;
-      const w = width / 2;
-      const h = height / 2;
-      const innerW = w * 0.32;
-      const innerH = h * 0.32;
-      ctx.moveTo(cx, y);
-      ctx.lineTo(cx + innerW, cy - innerH);
-      ctx.lineTo(cx + w, cy - h * 0.15);
-      ctx.lineTo(cx + innerW * 1.1, cy);
-      ctx.lineTo(x + width, cy);
-      ctx.lineTo(cx + innerW * 1.1, cy + innerH * 0.95);
-      ctx.lineTo(cx + w, cy + h * 0.15);
-      ctx.lineTo(cx + innerW, cy + innerH);
-      ctx.lineTo(cx, y + height);
-      ctx.lineTo(cx - innerW, cy + innerH);
-      ctx.lineTo(cx - w, cy + h * 0.15);
-      ctx.lineTo(cx - innerW * 1.1, cy + innerH * 0.95);
-      ctx.lineTo(x, cy);
-      ctx.lineTo(cx - innerW * 1.1, cy);
-      ctx.lineTo(cx - w, cy - h * 0.15);
-      ctx.lineTo(cx - innerW, cy - innerH);
-      ctx.closePath();
-      break;
-    }
-    case 'diamond': {
-      const midX = x + width / 2;
-      const midY = y + height / 2;
-      ctx.moveTo(x, midY);
-      ctx.lineTo(midX, y);
-      ctx.lineTo(x + width, midY);
-      ctx.lineTo(midX, y + height);
-      ctx.closePath();
-      break;
-    }
-    case 'circle': {
-      const cx = x + width / 2;
-      const cy = y + height / 2;
-      const rx = Math.max(width / 2, 0);
-      const ry = Math.max(height / 2, 0);
-      if (Math.abs(rx - ry) < 1e-6) {
-        ctx.arc(cx, cy, rx, 0, Math.PI * 2);
-      } else {
-        ctx.save();
-        ctx.translate(cx, cy);
-        const scaleX = rx > 0 ? rx / Math.max(ry, 1e-6) : 1;
-        ctx.scale(scaleX, 1);
-        ctx.arc(0, 0, ry, 0, Math.PI * 2);
-        ctx.restore();
-      }
-      break;
-    }
-    case 'square':
-      ctx.rect(x, y, width, height);
-      break;
-    default:
-      ctx.rect(x, y, width, height);
+// Factores de control para generar figuras estilizadas con bezier y líneas
+function traceArabesque(ctx, x, y, width, height, scale = 1, offsetX = 0, offsetY = 0) {
+  const left = x + offsetX + (width * (1 - scale)) / 2;
+  const top = y + offsetY + (height * (1 - scale)) / 2;
+  const w = width * scale;
+  const h = height * scale;
+  const cx = left + w / 2;
+  const cy = top + h / 2;
+  const controlX = w * 0.35;
+  const controlY = h * 0.45;
+  ctx.moveTo(left, cy);
+  ctx.bezierCurveTo(left, top + h * 0.05, cx - controlX, top + h * 0.05, cx, top + h * 0.35);
+  ctx.bezierCurveTo(
+    cx + controlX,
+    top + h * 0.75,
+    left + w,
+    top + h * 0.15,
+    left + w,
+    cy,
+  );
+  ctx.bezierCurveTo(
+    left + w,
+    top + h * 0.95,
+    cx + controlX * 0.5,
+    top + h,
+    cx,
+    top + h * 0.7,
+  );
+  ctx.bezierCurveTo(
+    cx - controlX,
+    top + h * 0.3,
+    left,
+    top + h * 0.85,
+    left,
+    cy,
+  );
+  ctx.closePath();
+}
+
+function traceRoundedSquare(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  const right = x + width;
+  const bottom = y + height;
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(right - r, y);
+  ctx.quadraticCurveTo(right, y, right, y + r);
+  ctx.lineTo(right, bottom - r);
+  ctx.quadraticCurveTo(right, bottom, right - r, bottom);
+  ctx.lineTo(x + r, bottom);
+  ctx.quadraticCurveTo(x, bottom, x, bottom - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function traceDiamond(ctx, x, y, width, height, inset = 0) {
+  const left = x + inset;
+  const top = y + inset;
+  const right = x + width - inset;
+  const bottom = y + height - inset;
+  const midX = (left + right) / 2;
+  const midY = (top + bottom) / 2;
+  ctx.moveTo(left, midY);
+  ctx.lineTo(midX, top);
+  ctx.lineTo(right, midY);
+  ctx.lineTo(midX, bottom);
+  ctx.closePath();
+}
+
+function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const outerTop = y + inset;
+  const outerBottom = y + height - inset;
+  const outerLeft = x + inset;
+  const outerRight = x + width - inset;
+  const innerOffsetX = width * 0.18;
+  const innerOffsetY = height * 0.18;
+  ctx.moveTo(cx, outerTop);
+  ctx.lineTo(cx + innerOffsetX, cy - innerOffsetY);
+  ctx.lineTo(outerRight, cy - innerOffsetY * 0.35);
+  ctx.lineTo(cx + innerOffsetX * 0.8, cy);
+  ctx.lineTo(outerRight, cy + innerOffsetY * 0.35);
+  ctx.lineTo(cx + innerOffsetX, cy + innerOffsetY);
+  ctx.lineTo(cx, outerBottom);
+  ctx.lineTo(cx - innerOffsetX, cy + innerOffsetY);
+  ctx.lineTo(outerLeft, cy + innerOffsetY * 0.35);
+  ctx.lineTo(cx - innerOffsetX * 0.8, cy);
+  ctx.lineTo(outerLeft, cy - innerOffsetY * 0.35);
+  ctx.lineTo(cx - innerOffsetX, cy - innerOffsetY);
+  ctx.closePath();
+}
+
+function traceSixPointStar(ctx, x, y, width, height, inset = 0) {
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const outerX = width / 2 - inset;
+  const outerY = height / 2 - inset;
+  const innerX = outerX * 0.45;
+  const innerY = outerY * 0.45;
+  for (let i = 0; i < 12; i++) {
+    const angle = (Math.PI / 6) * i - Math.PI / 2;
+    const useOuter = i % 2 === 0;
+    const radiusX = useOuter ? outerX : innerX;
+    const radiusY = useOuter ? outerY : innerY;
+    const px = cx + Math.cos(angle) * radiusX;
+    const py = cy + Math.sin(angle) * radiusY;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
+  ctx.closePath();
+}
+
+function traceMill(ctx, x, y, width, height, inset = 0) {
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const armX = width / 2 - inset;
+  const armY = height / 2 - inset;
+  const tipInset = 0.38;
+  const offsetX = armX * tipInset;
+  const offsetY = armY * tipInset;
+  ctx.moveTo(cx, y + inset);
+  ctx.lineTo(cx + offsetX, cy - offsetY);
+  ctx.lineTo(x + width - inset, cy);
+  ctx.lineTo(cx + offsetX, cy + offsetY);
+  ctx.lineTo(cx, y + height - inset);
+  ctx.lineTo(cx - offsetX, cy + offsetY);
+  ctx.lineTo(x + inset, cy);
+  ctx.lineTo(cx - offsetX, cy - offsetY);
+  ctx.closePath();
+}
+
+const SHAPE_METADATA = {
+  arabesque: {
+    label: 'Arabesco estilizado',
+    draw(ctx, x, y, width, height) {
+      traceArabesque(ctx, x, y, width, height);
+    },
+  },
+  arabesqueDouble: {
+    label: 'Arabesco doble calado',
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      traceArabesque(ctx, x, y, width, height);
+      traceArabesque(ctx, x, y, width, height, 0.55, width * 0.02, height * 0.04);
+    },
+  },
+  circle: {
+    label: 'Círculo clásico',
+    draw(ctx, x, y, width, height) {
+      ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+    },
+  },
+  circleDouble: {
+    label: 'Círculo doble',
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const rx = width / 2;
+      const ry = height / 2;
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.moveTo(cx + rx * 0.55, cy);
+      ctx.ellipse(cx, cy, rx * 0.55, ry * 0.55, 0, 0, Math.PI * 2, true);
+    },
+  },
+  square: {
+    label: 'Cuadrado sólido',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      ctx.rect(x, y, width, height);
+    },
+  },
+  squareDouble: {
+    label: 'Marco cuadrado doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      ctx.rect(x, y, width, height);
+      ctx.rect(x + width * 0.2, y + height * 0.2, width * 0.6, height * 0.6);
+    },
+  },
+  roundedSquare: {
+    label: 'Cuadrado redondeado',
+    draw(ctx, x, y, width, height) {
+      traceRoundedSquare(ctx, x, y, width, height, Math.min(width, height) * 0.25);
+    },
+  },
+  roundedSquareDouble: {
+    label: 'Cuadrado redondeado doble',
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      const radius = Math.min(width, height) * 0.25;
+      traceRoundedSquare(ctx, x, y, width, height, radius);
+      traceRoundedSquare(
+        ctx,
+        x + width * 0.2,
+        y + height * 0.2,
+        width * 0.6,
+        height * 0.6,
+        radius * 0.6,
+      );
+    },
+  },
+  diamond: {
+    label: 'Diamante facetado',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      traceDiamond(ctx, x, y, width, height);
+    },
+  },
+  diamondDouble: {
+    label: 'Diamante doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      traceDiamond(ctx, x, y, width, height);
+      traceDiamond(ctx, x + width * 0.2, y + height * 0.2, width * 0.6, height * 0.6);
+    },
+  },
+  fourPointStar: {
+    label: 'Estrella de 4 puntas',
+    sharp: true,
+    miterLimit: 6,
+    draw(ctx, x, y, width, height) {
+      traceFourPointStar(ctx, x, y, width, height);
+    },
+  },
+  fourPointStarDouble: {
+    label: 'Estrella de 4 puntas doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    miterLimit: 6,
+    draw(ctx, x, y, width, height) {
+      traceFourPointStar(ctx, x, y, width, height);
+      traceFourPointStar(ctx, x + width * 0.18, y + height * 0.18, width * 0.64, height * 0.64);
+    },
+  },
+  sixPointStar: {
+    label: 'Estrella de 6 puntas',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      traceSixPointStar(ctx, x, y, width, height);
+    },
+  },
+  sixPointStarDouble: {
+    label: 'Estrella de 6 puntas doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      traceSixPointStar(ctx, x, y, width, height);
+      traceSixPointStar(ctx, x + width * 0.18, y + height * 0.18, width * 0.64, height * 0.64);
+    },
+  },
+  mill: {
+    label: 'Molino',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      traceMill(ctx, x, y, width, height);
+    },
+  },
+  millDouble: {
+    label: 'Molino doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      traceMill(ctx, x, y, width, height);
+      traceMill(ctx, x + width * 0.2, y + height * 0.2, width * 0.6, height * 0.6);
+    },
+  },
+  triangle: {
+    label: 'Triángulo',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      ctx.moveTo(x + width / 2, y);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.closePath();
+    },
+  },
+  triangleDouble: {
+    label: 'Triángulo doble',
+    sharp: true,
+    fillRule: 'evenodd',
+    draw(ctx, x, y, width, height) {
+      ctx.moveTo(x + width / 2, y);
+      ctx.lineTo(x + width, y + height);
+      ctx.lineTo(x, y + height);
+      ctx.closePath();
+      ctx.moveTo(x + width / 2, y + height * 0.28);
+      ctx.lineTo(x + width * 0.78, y + height * 0.82);
+      ctx.lineTo(x + width * 0.22, y + height * 0.82);
+      ctx.closePath();
+    },
+  },
+};
+
+const SHAPE_ORDER = [
+  'arabesque',
+  'arabesqueDouble',
+  'circle',
+  'circleDouble',
+  'square',
+  'squareDouble',
+  'roundedSquare',
+  'roundedSquareDouble',
+  'diamond',
+  'diamondDouble',
+  'fourPointStar',
+  'fourPointStarDouble',
+  'sixPointStar',
+  'sixPointStarDouble',
+  'mill',
+  'millDouble',
+  'triangle',
+  'triangleDouble',
+];
+
+const SHAPE_OPTIONS = SHAPE_ORDER.map((value) => ({ value, label: SHAPE_METADATA[value].label }));
+
+// Dibuja cualquiera de las figuras declaradas anteriormente respetando reglas de relleno
+function drawNoteShape(ctx, shape, x, y, width, height, stroke = false, strokeWidth) {
+  const meta = SHAPE_METADATA[shape] || SHAPE_METADATA.arabesque;
+  ctx.beginPath();
+  meta.draw(ctx, x, y, width, height);
   if (stroke) {
     configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth);
     ctx.stroke();
-  } else ctx.fill();
+    return;
+  }
+  if (meta.fillRule === 'evenodd') ctx.fill('evenodd');
+  else ctx.fill();
 }
 
-const SHAPE_OPTIONS = [
-  { value: 'oval', label: 'Óvalo alargado' },
-  { value: 'capsule', label: 'Cápsula alargada' },
-  { value: 'star', label: 'Estrella alargada' },
-  { value: 'diamond', label: 'Diamante alargado' },
-  { value: 'circle', label: 'Círculo' },
-  { value: 'square', label: 'Cuadrado' },
-];
-
 // Estado de alargamiento progresivo por figura alargada
-const SHAPE_EXTENSION_DEFAULTS = {
-  oval: true,
-  capsule: true,
-  star: true,
-  diamond: true,
-  circle: true,
-  square: true,
-};
+const SHAPE_EXTENSION_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
+  acc[value] = true;
+  return acc;
+}, {});
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
 let familyShapeExtensions = {};
 

@@ -58,43 +58,43 @@ window.DEFAULT_CONFIG = {
   "familyCustomizations": {
     "Metales": {
       "color": "#edd113",
-      "shape": "capsule"
+      "shape": "roundedSquare"
     },
     "Cornos": {
       "color": "#edbe13",
-      "shape": "capsule"
+      "shape": "roundedSquareDouble"
     },
     "Maderas de timbre \"redondo\"": {
       "color": "#769df3",
-      "shape": "oval"
+      "shape": "arabesque"
     },
     "Dobles cañas": {
       "color": "#c23afd",
-      "shape": "star"
+      "shape": "sixPointStar"
     },
     "Saxofones": {
       "color": "#ce8767",
-      "shape": "star"
+      "shape": "fourPointStar"
     },
     "Placas": {
       "color": "#ff0000",
-      "shape": "square"
+      "shape": "diamondDouble"
     },
     "Auxiliares": {
       "color": "#347875",
-      "shape": "circle"
+      "shape": "arabesqueDouble"
     },
     "Cuerdas frotadas": {
       "color": "#41e342",
-      "shape": "circle"
+      "shape": "diamond"
     },
     "Cuerdas pulsadas": {
       "color": "#1abeb4",
-      "shape": "circle"
+      "shape": "triangle"
     },
     "Voces": {
       "color": "#bebebe",
-      "shape": "capsule"
+      "shape": "mill"
     },
     "Custom 1": {
       "color": "#d52b2b",
@@ -271,11 +271,23 @@ window.DEFAULT_CONFIG = {
     "families": {}
   },
   "shapeExtensions": {
-    "oval": true,
-    "capsule": true,
-    "star": true,
-    "diamond": true,
+    "arabesque": true,
+    "arabesqueDouble": true,
     "circle": true,
-    "square": true
+    "circleDouble": true,
+    "square": true,
+    "squareDouble": true,
+    "roundedSquare": true,
+    "roundedSquareDouble": true,
+    "diamond": true,
+    "diamondDouble": true,
+    "fourPointStar": true,
+    "fourPointStarDouble": true,
+    "sixPointStar": true,
+    "sixPointStarDouble": true,
+    "mill": true,
+    "millDouble": true,
+    "triangle": true,
+    "triangleDouble": true
   }
 };
