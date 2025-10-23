@@ -199,6 +199,11 @@ input:hover {
   width: 100%;
 }
 
+.color-palette.palette-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .color-swatch {
   --swatch-color: #ffffff;
   width: 28px;

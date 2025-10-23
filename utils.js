@@ -289,6 +289,8 @@ loadHeightScale();
 // Escala global o por familia para el grosor del contorno tras el NOTE OFF
 let contourWidthScale = 0.6;
 let familyContourWidthScale = {};
+let contourOpacity = 1;
+let familyContourOpacity = {};
 
 function persistContourWidthScale() {
   if (typeof localStorage !== 'undefined') {
@@ -367,6 +369,85 @@ function getContourWidthConfig() {
 }
 
 loadContourWidthScale();
+
+function persistContourOpacity() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(
+      'contourOpacity',
+      JSON.stringify({
+        global: contourOpacity,
+        families: familyContourOpacity,
+      }),
+    );
+  }
+}
+
+function loadContourOpacity() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('contourOpacity');
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (typeof parsed === 'number') {
+      contourOpacity = Math.min(Math.max(parsed, 0), 1);
+      familyContourOpacity = {};
+    } else {
+      if (typeof parsed.global === 'number' && isFinite(parsed.global)) {
+        contourOpacity = Math.min(Math.max(parsed.global, 0), 1);
+      }
+      if (parsed.families && typeof parsed.families === 'object') {
+        familyContourOpacity = Object.entries(parsed.families).reduce(
+          (acc, [family, value]) => {
+            if (typeof value === 'number' && isFinite(value)) {
+              acc[family] = Math.min(Math.max(value, 0), 1);
+            }
+            return acc;
+          },
+          {},
+        );
+      }
+    }
+  } catch {
+    const numeric = parseFloat(stored);
+    if (!Number.isNaN(numeric)) {
+      contourOpacity = Math.min(Math.max(numeric, 0), 1);
+      familyContourOpacity = {};
+    }
+  }
+}
+
+function setContourOpacity(value, family) {
+  if (typeof value !== 'number' || !isFinite(value)) return;
+  const clamped = Math.min(Math.max(value, 0), 1);
+  if (family) {
+    familyContourOpacity[family] = clamped;
+  } else {
+    contourOpacity = clamped;
+    familyContourOpacity = {};
+  }
+  persistContourOpacity();
+}
+
+function getContourOpacity(family) {
+  loadContourOpacity();
+  if (family) {
+    const override = familyContourOpacity[family];
+    if (typeof override === 'number' && isFinite(override)) {
+      return Math.min(Math.max(override, 0), 1);
+    }
+  }
+  return contourOpacity;
+}
+
+function getContourOpacityConfig() {
+  loadContourOpacity();
+  return {
+    global: contourOpacity,
+    families: { ...familyContourOpacity },
+  };
+}
+
+loadContourOpacity();
 
 // Control global y por familia del glow
 let glowStrength = 1;
@@ -598,6 +679,8 @@ const SHAPE_EXTENSION_DEFAULTS = {
   capsule: true,
   star: true,
   diamond: true,
+  circle: true,
+  square: true,
 };
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
 let familyShapeExtensions = {};
@@ -1062,6 +1145,9 @@ const utils = {
   setContourWidthScale,
   getContourWidthScale,
   getContourWidthConfig,
+  setContourOpacity,
+  getContourOpacity,
+  getContourOpacityConfig,
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,

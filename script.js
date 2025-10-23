@@ -11,6 +11,9 @@ const {
   setContourWidthScale,
   getContourWidthScale,
   getContourWidthConfig,
+  setContourOpacity,
+  getContourOpacity,
+  getContourOpacityConfig,
   interpolateColor,
   SHAPE_OPTIONS,
   getFamilyModifiers,
@@ -333,22 +336,6 @@ if (typeof document !== 'undefined') {
     syncWaveformCanvasSize();
 
     const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value);
-    const COLOR_SWATCHES = [
-      '#0000ff',
-      '#8a2be2',
-      '#a0522d',
-      '#ffff00',
-      '#808080',
-      '#ff0000',
-      '#4b0082',
-      '#ffa500',
-      '#008000',
-      '#ffffff',
-      '#000000',
-      '#00bcd4',
-      '#ff6b6b',
-      '#ffd93d',
-    ];
 
     function requestImmediateRender() {
       if (typeof renderFrame === 'function') {
@@ -1447,19 +1434,35 @@ if (typeof document !== 'undefined') {
       }
     }
 
-    function updateTrackFamily(trackName, fam) {
+    function updateTrackFamily(trackName, fam, { fromTime = 0 } = {}) {
+      if (!trackName) return;
       const track = currentTracks.find((t) => t.name === trackName);
+      if (!track) return;
+      const targetFamily = fam || track.detectedFamily || track.family || fam;
       const preset =
-        FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
-      if (track) {
-        track.family = fam;
+        FAMILY_PRESETS[targetFamily] ||
+        FAMILY_DEFAULTS[targetFamily] ||
+        { shape: 'oval', color: '#ffa500' };
+      track.family = targetFamily;
+      const override = instrumentCustomizations[trackName] || null;
+      if (!override || !override.shape) {
         track.shape = preset.shape;
+      }
+      if (!override || !override.color) {
         track.color = getInstrumentColor(preset);
       }
+      if (override) {
+        override.family = targetFamily;
+      }
+      const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
       notes.forEach((n) => {
-        if ((n.trackName ?? n.instrument) === trackName) {
-          n.family = fam;
+        if ((n.trackName ?? n.instrument) !== trackName) return;
+        if (n.start < effectiveFrom) return;
+        n.family = targetFamily;
+        if (!override || !override.shape) {
           n.shape = preset.shape;
+        }
+        if (!override || !override.color) {
           n.color = getInstrumentColor(preset);
         }
       });
@@ -1483,8 +1486,11 @@ if (typeof document !== 'undefined') {
       let updateGlowControl = () => {};
       let updateBumpControl = () => {};
       let updateContourControl = () => {};
+      let updateContourOpacityControl = () => {};
       let updateExtensionControl = () => {};
       let updateParameterControls = () => {};
+      let updateInstrumentColorControl = () => {};
+      const paletteUpdaters = [];
 
       const toHex = (val) => {
         if (!val) return '#000000';
@@ -1513,9 +1519,34 @@ if (typeof document !== 'undefined') {
         return select;
       };
 
+      const createInstrumentFamilySelector = () => {
+        const select = document.createElement('select');
+        const autoOption = document.createElement('option');
+        autoOption.value = '';
+        autoOption.textContent = 'Familia detectada';
+        select.appendChild(autoOption);
+        FAMILY_LIST.forEach((family) => {
+          if (!FAMILY_PRESETS[family]) return;
+          const option = document.createElement('option');
+          option.value = family;
+          option.textContent = family;
+          select.appendChild(option);
+        });
+        return select;
+      };
+
       const familiesFromSelection = (value) => {
         const list = value ? [value] : FAMILY_LIST;
         return list.filter((family) => !!FAMILY_PRESETS[family]);
+      };
+
+      const getEditStartTime = () => {
+        if (audioPlayer && typeof audioPlayer.isPlaying === 'function') {
+          if (audioPlayer.isPlaying()) {
+            return 0;
+          }
+        }
+        return Math.max(0, lastTime || 0);
       };
 
       const getEffectiveFamilyShape = (family) => {
@@ -1628,6 +1659,24 @@ if (typeof document !== 'undefined') {
         });
         if (base === null) {
           base = Math.round(getContourWidthScale(null) * 100);
+        }
+        return { value: base, mixed };
+      };
+
+      const getContourOpacityState = (targetFamily) => {
+        const families = familiesFromSelection(targetFamily);
+        let base = null;
+        let mixed = false;
+        families.forEach((family) => {
+          const value = Math.round(getContourOpacity(family) * 100);
+          if (base === null) {
+            base = value;
+          } else if (Math.abs(base - value) > 0.5) {
+            mixed = true;
+          }
+        });
+        if (base === null) {
+          base = Math.round(getContourOpacity(null) * 100);
         }
         return { value: base, mixed };
       };
@@ -1904,6 +1953,277 @@ if (typeof document !== 'undefined') {
         }
       });
 
+      const instrumentConfig = document.createElement('div');
+      instrumentConfig.className = 'inst-config-section';
+      const instrumentConfigTitle = document.createElement('h4');
+      instrumentConfigTitle.textContent = 'Personalización de instrumento';
+      instrumentConfig.appendChild(instrumentConfigTitle);
+
+      const instrumentSelectControl = document.createElement('div');
+      instrumentSelectControl.className = 'family-config-item family-config-group';
+      const instrumentSelectLabel = document.createElement('label');
+      instrumentSelectLabel.textContent = 'Instrumento:';
+      instrumentSelectLabel.setAttribute('for', 'instrument-custom-select');
+      const instrumentSelect = document.createElement('select');
+      instrumentSelect.id = 'instrument-custom-select';
+      const instrumentPlaceholder = document.createElement('option');
+      instrumentPlaceholder.value = '';
+      instrumentPlaceholder.textContent = 'Selecciona un instrumento';
+      instrumentSelect.appendChild(instrumentPlaceholder);
+      currentTracks.forEach((t) => {
+        const option = document.createElement('option');
+        option.value = t.name;
+        option.textContent = t.name;
+        instrumentSelect.appendChild(option);
+      });
+      instrumentSelectControl.appendChild(instrumentSelectLabel);
+      instrumentSelectControl.appendChild(instrumentSelect);
+      instrumentConfig.appendChild(instrumentSelectControl);
+
+      const instrumentFamilyControl = document.createElement('div');
+      instrumentFamilyControl.className = 'family-config-item family-config-group';
+      const instrumentFamilyLabel = document.createElement('label');
+      instrumentFamilyLabel.textContent = 'Familia destino:';
+      const instrumentFamilySelect = createInstrumentFamilySelector();
+      const instrumentFamilyHint = document.createElement('span');
+      instrumentFamilyHint.className = 'control-hint';
+      instrumentFamilyControl.appendChild(instrumentFamilyLabel);
+      instrumentFamilyControl.appendChild(instrumentFamilySelect);
+      instrumentFamilyControl.appendChild(instrumentFamilyHint);
+      instrumentConfig.appendChild(instrumentFamilyControl);
+
+      const instrumentColorControl = document.createElement('div');
+      instrumentColorControl.className = 'family-config-item family-config-group';
+      const instrumentColorLabel = document.createElement('label');
+      instrumentColorLabel.textContent = 'Color del instrumento:';
+      const instrumentColorPalette = document.createElement('div');
+      instrumentColorPalette.className = 'color-palette';
+      instrumentColorPalette.setAttribute('role', 'group');
+      instrumentColorPalette.setAttribute('aria-label', 'Colores por instrumento');
+      const instrumentColorHint = document.createElement('span');
+      instrumentColorHint.className = 'control-hint';
+      const instrumentSwatches = [];
+      const applyInstrumentColor = (hex) => {
+        if (typeof hex !== 'string') return;
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        setInstrumentCustomization(
+          trackName,
+          { color: hex },
+          currentTracks,
+          notes,
+          getEditStartTime(),
+        );
+        requestImmediateRender();
+        updateInstrumentColorControl();
+      };
+      const instrumentPaletteColors = getToneShiftedPalette();
+      instrumentPaletteColors.forEach((hex, index) => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        swatch.className = 'color-swatch';
+        swatch.dataset.index = String(index);
+        swatch.dataset.color = hex.toLowerCase();
+        swatch.style.setProperty('--swatch-color', hex);
+        swatch.setAttribute('aria-label', `Color ${hex.toUpperCase()}`);
+        swatch.title = hex.toUpperCase();
+        swatch.setAttribute('aria-pressed', 'false');
+        swatch.addEventListener('click', () => applyInstrumentColor(swatch.dataset.color));
+        instrumentColorPalette.appendChild(swatch);
+        instrumentSwatches.push(swatch);
+      });
+      const instrumentCustomPreview = document.createElement('div');
+      instrumentCustomPreview.className = 'color-swatch custom-preview';
+      instrumentCustomPreview.setAttribute('aria-hidden', 'true');
+      instrumentCustomPreview.title = 'Color personalizado';
+      instrumentColorPalette.appendChild(instrumentCustomPreview);
+      const refreshInstrumentPaletteColors = () => {
+        const palette = getToneShiftedPalette();
+        instrumentSwatches.forEach((swatch, idx) => {
+          const colorHex = palette[idx % palette.length];
+          swatch.dataset.color = colorHex.toLowerCase();
+          swatch.style.setProperty('--swatch-color', colorHex);
+          swatch.title = colorHex.toUpperCase();
+          swatch.setAttribute('aria-label', `Color ${colorHex.toUpperCase()}`);
+        });
+      };
+      paletteUpdaters.push(refreshInstrumentPaletteColors);
+      instrumentColorControl.appendChild(instrumentColorLabel);
+      instrumentColorControl.appendChild(instrumentColorPalette);
+      instrumentColorControl.appendChild(instrumentColorHint);
+      instrumentConfig.appendChild(instrumentColorControl);
+
+      const instrumentShapeControl = document.createElement('div');
+      instrumentShapeControl.className = 'family-config-item family-config-group';
+      const instrumentShapeLabel = document.createElement('label');
+      instrumentShapeLabel.textContent = 'Figura del instrumento:';
+      const instrumentShapeSelect = document.createElement('select');
+      SHAPE_OPTIONS.forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        instrumentShapeSelect.appendChild(option);
+      });
+      const instrumentShapeHint = document.createElement('span');
+      instrumentShapeHint.className = 'control-hint';
+      instrumentShapeControl.appendChild(instrumentShapeLabel);
+      instrumentShapeControl.appendChild(instrumentShapeSelect);
+      instrumentShapeControl.appendChild(instrumentShapeHint);
+      instrumentConfig.appendChild(instrumentShapeControl);
+
+      const instrumentResetControl = document.createElement('div');
+      instrumentResetControl.className = 'family-config-item family-config-group';
+      const instrumentResetBtn = document.createElement('button');
+      instrumentResetBtn.type = 'button';
+      instrumentResetBtn.textContent = 'Restablecer instrumento';
+      instrumentResetControl.appendChild(instrumentResetBtn);
+      instrumentConfig.appendChild(instrumentResetControl);
+
+      const setInstrumentControlsEnabled = (enabled) => {
+        const disabled = !enabled;
+        instrumentFamilySelect.disabled = disabled;
+        instrumentShapeSelect.disabled = disabled;
+        instrumentResetBtn.disabled = disabled;
+        instrumentColorPalette.classList.toggle('palette-disabled', disabled);
+        instrumentSwatches.forEach((swatch) => {
+          swatch.disabled = disabled;
+        });
+      };
+
+      instrumentSelect.addEventListener('change', () => {
+        updateInstrumentColorControl();
+      });
+
+      instrumentFamilySelect.addEventListener('change', () => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        const selectedFamily = instrumentFamilySelect.value;
+        const fromTime = getEditStartTime();
+        updateTrackFamily(trackName, selectedFamily, { fromTime });
+        if (selectedFamily) {
+          assignedFamilies[trackName] = selectedFamily;
+        } else {
+          delete assignedFamilies[trackName];
+        }
+        saveAssignments();
+        requestImmediateRender();
+        updateInstrumentColorControl();
+        updateColorControl();
+      });
+
+      instrumentShapeSelect.addEventListener('change', () => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        const shape = instrumentShapeSelect.value;
+        if (!shape) return;
+        setInstrumentCustomization(
+          trackName,
+          { shape },
+          currentTracks,
+          notes,
+          getEditStartTime(),
+        );
+        requestImmediateRender();
+        updateInstrumentColorControl();
+      });
+
+      instrumentResetBtn.addEventListener('click', () => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        clearInstrumentCustomization(
+          trackName,
+          currentTracks,
+          notes,
+          getEditStartTime(),
+        );
+        requestImmediateRender();
+        updateInstrumentColorControl();
+        updateColorControl();
+      });
+
+      updateInstrumentColorControl = () => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) {
+          setInstrumentControlsEnabled(false);
+          instrumentColorHint.textContent = 'Selecciona un instrumento';
+          instrumentColorHint.classList.add('hint-active');
+          instrumentCustomPreview.classList.remove('visible');
+          instrumentShapeHint.textContent = '';
+          instrumentShapeHint.classList.add('hint-active');
+          instrumentFamilyHint.textContent = '';
+          instrumentFamilyHint.classList.add('hint-active');
+          instrumentSwatches.forEach((swatch) => {
+            swatch.classList.remove('selected');
+            swatch.setAttribute('aria-pressed', 'false');
+          });
+          return;
+        }
+        setInstrumentControlsEnabled(true);
+        const track = currentTracks.find((t) => t.name === trackName);
+        const override = instrumentCustomizations[trackName] || {};
+        const assignedFamily = assignedFamilies[trackName] || '';
+        const detectedFamily = track ? track.detectedFamily || track.family : '';
+        if (instrumentFamilySelect.value !== (assignedFamily || '')) {
+          instrumentFamilySelect.value = assignedFamily || '';
+        }
+        if (assignedFamily) {
+          instrumentFamilyHint.textContent = `Asignada: ${assignedFamily}`;
+          instrumentFamilyHint.classList.remove('hint-active');
+        } else if (detectedFamily) {
+          instrumentFamilyHint.textContent = `Detectada: ${detectedFamily}`;
+          instrumentFamilyHint.classList.add('hint-active');
+        } else {
+          instrumentFamilyHint.textContent = '';
+          instrumentFamilyHint.classList.add('hint-active');
+        }
+        let color = override.color;
+        if (!color && track) {
+          color = track.color;
+        }
+        if (!color) {
+          const preset = track
+            ? FAMILY_PRESETS[track.family] || FAMILY_DEFAULTS[track.family]
+            : null;
+          color = preset ? preset.color : '#ffa500';
+        }
+        const normalized = (color || '#ffa500').toLowerCase();
+        let matched = false;
+        instrumentSwatches.forEach((swatch) => {
+          const isMatch = swatch.dataset.color === normalized;
+          swatch.classList.toggle('selected', isMatch);
+          swatch.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+          if (isMatch) matched = true;
+        });
+        if (matched) {
+          instrumentCustomPreview.classList.remove('visible');
+          instrumentColorHint.textContent = color.toUpperCase();
+          instrumentColorHint.classList.remove('hint-active');
+        } else {
+          instrumentCustomPreview.style.setProperty('--swatch-color', color);
+          instrumentCustomPreview.classList.add('visible');
+          instrumentColorHint.textContent = `Personalizado: ${color.toUpperCase()}`;
+          instrumentColorHint.classList.remove('hint-active');
+        }
+        if (track) {
+          const currentShape = override.shape || track.shape;
+          if (currentShape) {
+            instrumentShapeSelect.value = currentShape;
+          }
+          if (override.shape) {
+            instrumentShapeHint.textContent = 'Figura personalizada';
+            instrumentShapeHint.classList.remove('hint-active');
+          } else {
+            instrumentShapeHint.textContent = 'Usa figura de familia';
+            instrumentShapeHint.classList.add('hint-active');
+          }
+        } else {
+          instrumentShapeHint.textContent = '';
+          instrumentShapeHint.classList.add('hint-active');
+        }
+      };
+
+      familyPanel.appendChild(instrumentConfig);
+
       const targetControl = document.createElement('div');
       targetControl.className = 'family-config-item family-target-control';
       const targetLabel = document.createElement('label');
@@ -1916,6 +2236,38 @@ if (typeof document !== 'undefined') {
       targetControl.dataset.help =
         'Elige si los ajustes afectan a todas las familias o solo a una.';
       familyPanel.appendChild(targetControl);
+
+      const toneControl = document.createElement('div');
+      toneControl.className = 'family-config-item family-config-group';
+      const toneLabel = document.createElement('label');
+      toneLabel.textContent = 'Tono (°):';
+      const toneSlider = document.createElement('input');
+      toneSlider.type = 'range';
+      toneSlider.min = '-180';
+      toneSlider.max = '180';
+      toneSlider.step = '1';
+      toneSlider.value = String(getColorToneShift());
+      const toneHint = document.createElement('span');
+      toneHint.className = 'control-hint';
+
+      const updateToneHint = () => {
+        toneHint.textContent = `${getColorToneShift()}°`;
+      };
+
+      toneSlider.addEventListener('input', () => {
+        const value = parseInt(toneSlider.value, 10);
+        setColorToneShiftValue(Number.isFinite(value) ? value : 0);
+        paletteUpdaters.forEach((fn) => fn());
+        updateColorControl();
+        updateInstrumentColorControl();
+        updateToneHint();
+      });
+
+      updateToneHint();
+      toneControl.appendChild(toneLabel);
+      toneControl.appendChild(toneSlider);
+      toneControl.appendChild(toneHint);
+      familyPanel.appendChild(toneControl);
 
       const colorControl = document.createElement('div');
       colorControl.className = 'family-config-item family-config-group';
@@ -1931,6 +2283,7 @@ if (typeof document !== 'undefined') {
       const swatches = [];
 
       const applyColor = (hex) => {
+        if (typeof hex !== 'string') return;
         const targetFamilies = familiesFromSelection(familyTargetSelect.value);
         targetFamilies.forEach((family) =>
           setFamilyCustomization(
@@ -1938,25 +2291,41 @@ if (typeof document !== 'undefined') {
             { color: hex },
             currentTracks,
             notes,
+            getEditStartTime(),
           ),
         );
         renderFrame(lastTime);
         updateColorControl();
+        updateInstrumentColorControl();
       };
 
-      COLOR_SWATCHES.forEach((hex) => {
+      const initialPalette = getToneShiftedPalette();
+      initialPalette.forEach((hex, index) => {
         const swatch = document.createElement('button');
         swatch.type = 'button';
         swatch.className = 'color-swatch';
+        swatch.dataset.index = String(index);
         swatch.dataset.color = hex.toLowerCase();
         swatch.style.setProperty('--swatch-color', hex);
         swatch.setAttribute('aria-label', `Color ${hex.toUpperCase()}`);
         swatch.title = hex.toUpperCase();
         swatch.setAttribute('aria-pressed', 'false');
-        swatch.addEventListener('click', () => applyColor(hex));
+        swatch.addEventListener('click', () => applyColor(swatch.dataset.color));
         colorPalette.appendChild(swatch);
         swatches.push(swatch);
       });
+
+      const refreshPaletteColors = () => {
+        const palette = getToneShiftedPalette();
+        swatches.forEach((swatch, idx) => {
+          const colorHex = palette[idx % palette.length];
+          swatch.dataset.color = colorHex.toLowerCase();
+          swatch.style.setProperty('--swatch-color', colorHex);
+          swatch.title = colorHex.toUpperCase();
+          swatch.setAttribute('aria-label', `Color ${colorHex.toUpperCase()}`);
+        });
+      };
+      paletteUpdaters.push(refreshPaletteColors);
 
       const customPreview = document.createElement('div');
       customPreview.className = 'color-swatch custom-preview';
@@ -2029,11 +2398,13 @@ if (typeof document !== 'undefined') {
             { shape },
             currentTracks,
             notes,
+            getEditStartTime(),
           ),
         );
         renderFrame(lastTime);
         updateShapeControl();
         updateParameterControls();
+        updateInstrumentColorControl();
       });
 
       shapeControl.appendChild(shapeLabel);
@@ -2197,7 +2568,7 @@ if (typeof document !== 'undefined') {
       const contourControl = document.createElement('div');
       contourControl.className = 'family-config-item family-config-group';
       const contourLabel = document.createElement('label');
-      contourLabel.textContent = 'Contorno (%):';
+      contourLabel.textContent = 'Grosor contorno (%):';
       const contourInput = document.createElement('input');
       contourInput.type = 'number';
       contourInput.min = '0';
@@ -2244,6 +2615,57 @@ if (typeof document !== 'undefined') {
       contourControl.appendChild(contourInput);
       contourControl.appendChild(contourHint);
       familyPanel.appendChild(contourControl);
+
+      const contourOpacityControl = document.createElement('div');
+      contourOpacityControl.className = 'family-config-item family-config-group';
+      const contourOpacityLabel = document.createElement('label');
+      contourOpacityLabel.textContent = 'Opacidad contorno (%):';
+      const contourOpacityInput = document.createElement('input');
+      contourOpacityInput.type = 'number';
+      contourOpacityInput.min = '0';
+      contourOpacityInput.max = '100';
+      contourOpacityInput.step = '1';
+      const contourOpacityHint = document.createElement('span');
+      contourOpacityHint.className = 'control-hint';
+
+      updateContourOpacityControl = () => {
+        const { value, mixed } = getContourOpacityState(familyTargetSelect.value);
+        if (mixed) {
+          contourOpacityInput.value = '';
+          contourOpacityInput.placeholder = '—';
+          contourOpacityHint.textContent = 'Valores variados';
+          contourOpacityHint.classList.add('hint-active');
+        } else {
+          contourOpacityInput.placeholder = '';
+          const rounded = Math.round(value);
+          contourOpacityInput.value = String(rounded);
+          contourOpacityHint.textContent = `${rounded}%`;
+          contourOpacityHint.classList.remove('hint-active');
+        }
+      };
+
+      contourOpacityInput.addEventListener('change', () => {
+        let value = parseFloat(contourOpacityInput.value);
+        if (!isFinite(value)) {
+          updateContourOpacityControl();
+          return;
+        }
+        value = Math.max(0, Math.min(100, value));
+        contourOpacityInput.value = String(Math.round(value));
+        const target = familyTargetSelect.value;
+        if (target) {
+          setContourOpacity(value / 100, target);
+        } else {
+          setContourOpacity(value / 100);
+        }
+        requestImmediateRender();
+        updateContourOpacityControl();
+      });
+
+      contourOpacityControl.appendChild(contourOpacityLabel);
+      contourOpacityControl.appendChild(contourOpacityInput);
+      contourOpacityControl.appendChild(contourOpacityHint);
+      familyPanel.appendChild(contourOpacityControl);
 
       const extensionControl = document.createElement('div');
       extensionControl.className = 'family-config-item family-config-group';
@@ -2339,6 +2761,7 @@ if (typeof document !== 'undefined') {
         updateGlowControl();
         updateBumpControl();
         updateContourControl();
+        updateContourOpacityControl();
         updateExtensionControl();
       };
 
@@ -2477,6 +2900,7 @@ if (typeof document !== 'undefined') {
         updateShapeControl();
         updateParameterControls();
         updateLineControl();
+        updateInstrumentColorControl();
       };
 
       refreshFamilyControls();
@@ -2841,6 +3265,7 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       trackNoteSequences = new Map();
+      instrumentCustomizations = {};
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         const sequence = [];
@@ -3056,7 +3481,11 @@ if (typeof document !== 'undefined') {
             note.family,
           );
           offscreenCtx.save();
-          offscreenCtx.globalAlpha = alpha;
+          const contourAlpha = getContourOpacity(note.family);
+          offscreenCtx.globalAlpha = Math.max(
+            0,
+            Math.min(1, alpha * contourAlpha),
+          );
           offscreenCtx.strokeStyle = note.color;
           drawNoteShape(
             offscreenCtx,
@@ -3126,7 +3555,11 @@ if (typeof document !== 'undefined') {
         if (isReleased) {
           const strokeWidth = computeNoteStrokeWidth(width, height, note.family);
           offscreenCtx.save();
-          offscreenCtx.globalAlpha = alpha;
+          const contourAlpha = getContourOpacity(note.family);
+          offscreenCtx.globalAlpha = Math.max(
+            0,
+            Math.min(1, alpha * contourAlpha),
+          );
           offscreenCtx.strokeStyle = note.color;
           drawNoteShape(
             offscreenCtx,
@@ -3355,6 +3788,156 @@ if (typeof localStorage !== 'undefined') {
   });
 }
 
+let instrumentCustomizations = {};
+
+const BASE_COLOR_SWATCHES = [
+  '#1abc9c',
+  '#2ecc71',
+  '#3498db',
+  '#9b59b6',
+  '#34495e',
+  '#16a085',
+  '#27ae60',
+  '#2980b9',
+  '#8e44ad',
+  '#2c3e50',
+  '#f1c40f',
+  '#e67e22',
+  '#e74c3c',
+  '#ecf0f1',
+  '#95a5a6',
+  '#ff6f61',
+  '#ff9f1c',
+  '#ffbe0b',
+  '#8338ec',
+  '#3a86ff',
+  '#00b4d8',
+  '#48cae4',
+  '#6d597a',
+  '#4cc9f0',
+];
+
+let colorToneShift = 0;
+
+function loadColorToneShift() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('colorToneShift');
+  if (!stored) return;
+  const value = parseInt(stored, 10);
+  if (!Number.isNaN(value)) {
+    colorToneShift = Math.min(180, Math.max(-180, value));
+  }
+}
+
+function saveColorToneShift() {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem('colorToneShift', String(colorToneShift));
+}
+
+function setColorToneShiftValue(value) {
+  const numeric = Number.isFinite(value) ? Math.round(value) : 0;
+  colorToneShift = Math.min(180, Math.max(-180, numeric));
+  saveColorToneShift();
+}
+
+function getColorToneShift() {
+  return colorToneShift;
+}
+
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '');
+  const num = parseInt(normalized, 16);
+  return {
+    r: (num >> 16) & 0xff,
+    g: (num >> 8) & 0xff,
+    b: num & 0xff,
+  };
+}
+
+function rgbToHsl(r, g, b) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rn:
+        h = (gn - bn) / d + (gn < bn ? 6 : 0);
+        break;
+      case gn:
+        h = (bn - rn) / d + 2;
+        break;
+      default:
+        h = (rn - gn) / d + 4;
+        break;
+    }
+    h *= 60;
+  }
+  return { h, s, l };
+}
+
+function hslToRgb(h, s, l) {
+  const hue = ((h % 360) + 360) % 360;
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const segment = hue / 60;
+  const x = chroma * (1 - Math.abs((segment % 2) - 1));
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (segment >= 0 && segment < 1) {
+    r = chroma;
+    g = x;
+  } else if (segment >= 1 && segment < 2) {
+    r = x;
+    g = chroma;
+  } else if (segment >= 2 && segment < 3) {
+    g = chroma;
+    b = x;
+  } else if (segment >= 3 && segment < 4) {
+    g = x;
+    b = chroma;
+  } else if (segment >= 4 && segment < 5) {
+    r = x;
+    b = chroma;
+  } else {
+    r = chroma;
+    b = x;
+  }
+  const m = l - chroma / 2;
+  const to255 = (val) => Math.round((val + m) * 255);
+  return {
+    r: to255(r),
+    g: to255(g),
+    b: to255(b),
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const clamp = (val) => Math.min(255, Math.max(0, Math.round(val)));
+  return `#${clamp(r).toString(16).padStart(2, '0')}${clamp(g)
+    .toString(16)
+    .padStart(2, '0')}${clamp(b).toString(16).padStart(2, '0')}`;
+}
+
+function shiftHexHue(hex, shiftDegrees) {
+  const rgb = hexToRgb(hex);
+  const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const shifted = hslToRgb(h + shiftDegrees, s, l);
+  return rgbToHex(shifted);
+}
+
+function getToneShiftedPalette() {
+  return BASE_COLOR_SWATCHES.map((hex) => shiftHexHue(hex, colorToneShift));
+}
+
+loadColorToneShift();
+
 function saveFamilyCustomizations() {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('familyCustomizations', JSON.stringify(familyCustomizations));
@@ -3365,7 +3948,8 @@ function setFamilyCustomization(
   family,
   { color, shape, colorBright, colorDark } = {},
   tracks = [],
-  notes = []
+  notes = [],
+  fromTime = 0,
 ) {
   const basePreset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
   const preset = { ...basePreset };
@@ -3391,11 +3975,74 @@ function setFamilyCustomization(
       t.color = getInstrumentColor(preset);
     }
   });
+  const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
   notes.forEach((n) => {
-    if (n.family === family) {
+    if (n.family !== family) return;
+    if (n.start < effectiveFrom) return;
+    const override = instrumentCustomizations[n.trackName ?? n.instrument] || {};
+    if (shape && !override.shape) {
       n.shape = preset.shape;
+    }
+    if (resolvedColor && !override.color) {
       n.color = getInstrumentColor(preset);
     }
+  });
+}
+
+function setInstrumentCustomization(
+  trackName,
+  { color, shape } = {},
+  tracks = [],
+  notes = [],
+  fromTime = 0,
+) {
+  if (!trackName) return;
+  const track = tracks.find((t) => t.name === trackName);
+  if (!track) return;
+  const existing = instrumentCustomizations[trackName] || {};
+  const next = { ...existing };
+  if (typeof color === 'string') {
+    next.color = color;
+    track.color = color;
+  }
+  if (typeof shape === 'string') {
+    next.shape = shape;
+    track.shape = shape;
+  }
+  instrumentCustomizations[trackName] = next;
+  const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
+  notes.forEach((note) => {
+    if ((note.trackName ?? note.instrument) !== trackName) return;
+    if (note.start < effectiveFrom) return;
+    if (typeof color === 'string') {
+      note.color = color;
+    }
+    if (typeof shape === 'string') {
+      note.shape = shape;
+    }
+  });
+}
+
+function clearInstrumentCustomization(
+  trackName,
+  tracks = [],
+  notes = [],
+  fromTime = 0,
+) {
+  if (!trackName) return;
+  const track = tracks.find((t) => t.name === trackName);
+  if (!track) return;
+  delete instrumentCustomizations[trackName];
+  const preset =
+    FAMILY_PRESETS[track.family] || FAMILY_DEFAULTS[track.family] || { shape: 'oval', color: '#ffa500' };
+  track.shape = preset.shape;
+  track.color = getInstrumentColor(preset);
+  const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
+  notes.forEach((note) => {
+    if ((note.trackName ?? note.instrument) !== trackName) return;
+    if (note.start < effectiveFrom) return;
+    note.shape = preset.shape;
+    note.color = getInstrumentColor(preset);
   });
 }
 
@@ -3404,6 +4051,7 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
     FAMILY_PRESETS[fam] = { ...FAMILY_DEFAULTS[fam] };
   });
   familyCustomizations = {};
+  instrumentCustomizations = {};
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('familyCustomizations');
   }
@@ -3434,6 +4082,7 @@ function exportConfiguration() {
     glowStrength: getGlowStrengthConfig(),
     bumpControl: getBumpControlConfig(),
     contourWidth: getContourWidthConfig(),
+    contourOpacity: getContourOpacityConfig(),
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
     shapeExtensions: getShapeExtensions(),
@@ -3494,6 +4143,21 @@ function importConfiguration(json, tracks = [], notes = []) {
     if (data.contourWidth.families && typeof data.contourWidth.families === 'object') {
       Object.entries(data.contourWidth.families).forEach(([fam, val]) => {
         if (typeof val === 'number') setContourWidthScale(val, fam);
+      });
+    }
+  }
+  if (typeof data.contourOpacity === 'number') {
+    setContourOpacity(data.contourOpacity);
+  } else if (data.contourOpacity && typeof data.contourOpacity === 'object') {
+    if (typeof data.contourOpacity.global === 'number') {
+      setContourOpacity(data.contourOpacity.global);
+    }
+    if (
+      data.contourOpacity.families &&
+      typeof data.contourOpacity.families === 'object'
+    ) {
+      Object.entries(data.contourOpacity.families).forEach(([fam, val]) => {
+        if (typeof val === 'number') setContourOpacity(val, fam);
       });
     }
   }
@@ -3605,7 +4269,16 @@ function assignTrackInfo(tracks) {
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
     const color = getInstrumentColor(preset);
-    return { ...t, instrument, family, shape: preset.shape, color };
+    return {
+      ...t,
+      instrument,
+      family,
+      shape: preset.shape,
+      color,
+      detectedFamily: family,
+      detectedShape: preset.shape,
+      detectedColor: color,
+    };
   });
 }
 
@@ -3744,6 +4417,9 @@ if (typeof module !== 'undefined') {
     setContourWidthScale,
     getContourWidthScale,
     getContourWidthConfig,
+    setContourOpacity,
+    getContourOpacity,
+    getContourOpacityConfig,
     computeSeekOffset,
     resetStartOffset,
     drawNoteShape,
@@ -3767,6 +4443,8 @@ if (typeof module !== 'undefined') {
     preprocessTempoMap,
     ticksToSeconds,
     setFamilyCustomization,
+    setInstrumentCustomization,
+    clearInstrumentCustomization,
     resetFamilyCustomizations,
     exportConfiguration,
     importConfiguration,
