@@ -6,9 +6,9 @@
   const normalizeAudioBuffer = wavApi?.normalizeAudioBuffer || ((buffer) => buffer);
 
   const DEFAULT_API_BASES = [
+    'https://piped.video/api/v1/streams/{{id}}?local=true&client=android',
+    'https://piped.video/api/v1/streams/{{id}}?local=true',
     'https://piped.video/api/v1/streams/',
-    'https://piped.garudalinux.org/api/v1/streams/',
-    'https://watch.leptons.xyz/api/v1/streams/',
   ];
   const DEFAULT_API_BASE = DEFAULT_API_BASES[0];
   const DEFAULT_AUDIO_MIME_PREFERENCE = ['audio/mp4', 'audio/webm'];
@@ -85,11 +85,31 @@
     return null;
   }
 
-  function normalizeBaseUrl(base) {
-    if (!base || typeof base !== 'string') return null;
-    const trimmed = base.trim();
+  function createUrlBuilder(entry) {
+    if (!entry) return null;
+    if (typeof entry === 'function') return entry;
+
+    if (typeof entry === 'object') {
+      if (typeof entry.build === 'function') {
+        return entry.build;
+      }
+      if (typeof entry.url === 'string') {
+        return createUrlBuilder(entry.url);
+      }
+    }
+
+    if (typeof entry !== 'string') return null;
+
+    const trimmed = entry.trim();
     if (!trimmed) return null;
-    return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+
+    if (trimmed.includes('{{id}}')) {
+      return (videoId) =>
+        trimmed.replace(/\{\{id\}\}/g, encodeURIComponent(videoId));
+    }
+
+    const normalized = trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+    return (videoId) => `${normalized}${encodeURIComponent(videoId)}`;
   }
 
   function buildApiBaseList(options = {}, { allowFallbacks = true } = {}) {
@@ -106,15 +126,30 @@
     }
 
     const seen = new Set();
-    const normalized = [];
-    for (const base of provided) {
-      const normalizedBase = normalizeBaseUrl(base);
-      if (normalizedBase && !seen.has(normalizedBase)) {
-        seen.add(normalizedBase);
-        normalized.push(normalizedBase);
+    const builders = [];
+    for (const entry of provided) {
+      const builder = createUrlBuilder(entry);
+      if (!builder) continue;
+      const key = builder(DEFAULT_API_VIDEO_ID_KEY);
+      if (typeof key === 'string' && !seen.has(key)) {
+        seen.add(key);
+        builders.push(builder);
       }
     }
-    return normalized;
+    return builders;
+  }
+
+  const DEFAULT_API_VIDEO_ID_KEY = '__YOUTUBE_VIDEO_ID_PLACEHOLDER__';
+
+  function createFetchOptions() {
+    return {
+      mode: 'cors',
+      credentials: 'omit',
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+      referrerPolicy: 'no-referrer',
+    };
   }
 
   function createInvalidDataError(rawText) {
@@ -138,8 +173,9 @@
     return error;
   }
 
-  async function fetchVideoInfo(fetcher, baseUrl, videoId) {
-    const response = await fetcher(`${baseUrl}${videoId}`);
+  async function fetchVideoInfo(fetcher, urlBuilder, videoId) {
+    const targetUrl = urlBuilder(videoId);
+    const response = await fetcher(targetUrl, createFetchOptions());
     if (!response || !response.ok) {
       throw createFetchError(response);
     }
