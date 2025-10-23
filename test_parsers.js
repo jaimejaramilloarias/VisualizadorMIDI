@@ -45,7 +45,7 @@ function testAssignTrackInfo() {
   const enriched = assignTrackInfo(tracks);
   const flute = enriched.find((t) => t.name === 'Flauta');
   assert.strictEqual(flute.family, 'Maderas de timbre "redondo"');
-  assert.strictEqual(flute.shape, 'oval');
+  assert.strictEqual(flute.shape, 'arabesque');
   const unknown = enriched.find((t) => t.name === 'Desconocido');
   assert.strictEqual(unknown.family, 'Desconocida');
   console.log('assignTrackInfo OK');

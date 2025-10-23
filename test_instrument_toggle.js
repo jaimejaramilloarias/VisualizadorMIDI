@@ -2,7 +2,15 @@ const assert = require('assert');
 const { getVisibleNotes, setInstrumentEnabled } = require('./script');
 
 const notes = [
-  { instrument: 'Flauta', start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'oval', family: 'Maderas de timbre "redondo"' },
+  {
+    instrument: 'Flauta',
+    start: 0,
+    end: 1,
+    noteNumber: 60,
+    color: '#fff',
+    shape: 'arabesque',
+    family: 'Maderas de timbre "redondo"',
+  },
   { instrument: 'Violín', start: 0, end: 1, noteNumber: 65, color: '#fff', shape: 'diamond', family: 'Cuerdas frotadas' },
 ];
 

@@ -216,7 +216,7 @@ dom.window.__setTestNotes([
     noteNumber: 60,
     velocity: 90,
     color: '#ffffff',
-    shape: 'oval',
+    shape: 'roundedSquare',
     family: 'Metales',
   },
 ]);

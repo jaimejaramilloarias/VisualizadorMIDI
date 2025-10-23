@@ -11,7 +11,16 @@ global.localStorage = {
 let { setInstrumentEnabled, getVisibleNotes } = require('./script');
 
 const notes = [
-  { instrument: 'Flauta', start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'oval', family: 'Maderas de timbre "redondo"', velocity: 67 },
+  {
+    instrument: 'Flauta',
+    start: 0,
+    end: 1,
+    noteNumber: 60,
+    color: '#fff',
+    shape: 'arabesque',
+    family: 'Maderas de timbre "redondo"',
+    velocity: 67,
+  },
   { instrument: 'Violín', start: 0, end: 1, noteNumber: 65, color: '#fff', shape: 'diamond', family: 'Cuerdas frotadas', velocity: 67 },
 ];
 

@@ -1442,7 +1442,7 @@ if (typeof document !== 'undefined') {
       const preset =
         FAMILY_PRESETS[targetFamily] ||
         FAMILY_DEFAULTS[targetFamily] ||
-        { shape: 'oval', color: '#ffa500' };
+        { shape: 'arabesque', color: '#ffa500' };
       track.family = targetFamily;
       const override = instrumentCustomizations[trackName] || null;
       if (!override || !override.shape) {
@@ -3280,7 +3280,7 @@ if (typeof document !== 'undefined') {
               noteNumber: ev.noteNumber,
               velocity: ev.velocity,
               color: track.color || '#ffa500',
-              shape: track.shape || 'oval',
+              shape: track.shape || 'arabesque',
               family: track.family,
               instrument: track.instrument,
               trackName: track.name,
@@ -3634,19 +3634,19 @@ if (typeof document !== 'undefined') {
 
 // Datos de familias con formas y colores predeterminados
 const FAMILY_DEFAULTS = {
-  'Maderas de timbre "redondo"': { shape: 'oval', color: '#0000ff' },
-  'Dobles cañas': { shape: 'star', color: '#8a2be2' },
-  'Saxofones': { shape: 'star', color: '#a0522d' },
-  Metales: { shape: 'capsule', color: '#ffff00' },
-  Cornos: { shape: 'capsule', color: '#ffff00' },
+  'Maderas de timbre "redondo"': { shape: 'arabesque', color: '#0000ff' },
+  'Dobles cañas': { shape: 'sixPointStar', color: '#8a2be2' },
+  'Saxofones': { shape: 'fourPointStar', color: '#a0522d' },
+  Metales: { shape: 'roundedSquare', color: '#ffff00' },
+  Cornos: { shape: 'roundedSquareDouble', color: '#ffff00' },
   'Percusión menor': { shape: 'square', color: '#808080' },
   Tambores: { shape: 'circle', color: '#808080' },
-  Platillos: { shape: 'circle', color: '#808080' },
-  Placas: { shape: 'square', color: '#ff0000' },
-  Auxiliares: { shape: 'circle', color: '#4b0082' },
+  Platillos: { shape: 'circleDouble', color: '#808080' },
+  Placas: { shape: 'diamondDouble', color: '#ff0000' },
+  Auxiliares: { shape: 'arabesqueDouble', color: '#4b0082' },
   'Cuerdas frotadas': { shape: 'diamond', color: '#ffa500' },
-  'Cuerdas pulsadas': { shape: 'circle', color: '#008000' },
-  Voces: { shape: 'capsule', color: '#808080' },
+  'Cuerdas pulsadas': { shape: 'triangle', color: '#008000' },
+  Voces: { shape: 'mill', color: '#808080' },
   'Custom 1': { shape: 'square', color: '#ffffff' },
   'Custom 2': { shape: 'square', color: '#ffffff' },
   'Custom 3': { shape: 'square', color: '#ffffff' },
@@ -3951,7 +3951,7 @@ function setFamilyCustomization(
   notes = [],
   fromTime = 0,
 ) {
-  const basePreset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
+  const basePreset = FAMILY_PRESETS[family] || { shape: 'arabesque', color: '#ffa500' };
   const preset = { ...basePreset };
   let resolvedColor = color;
   if (!resolvedColor && colorBright && colorDark) {
@@ -4034,7 +4034,8 @@ function clearInstrumentCustomization(
   if (!track) return;
   delete instrumentCustomizations[trackName];
   const preset =
-    FAMILY_PRESETS[track.family] || FAMILY_DEFAULTS[track.family] || { shape: 'oval', color: '#ffa500' };
+    FAMILY_PRESETS[track.family] ||
+    FAMILY_DEFAULTS[track.family] || { shape: 'arabesque', color: '#ffa500' };
   track.shape = preset.shape;
   track.color = getInstrumentColor(preset);
   const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
@@ -4058,12 +4059,12 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   resetFamilyLineSettings();
   resetTravelEffectSettings();
   tracks.forEach((t) => {
-    const preset = FAMILY_PRESETS[t.family] || { shape: 'oval', color: '#ffa500' };
+    const preset = FAMILY_PRESETS[t.family] || { shape: 'arabesque', color: '#ffa500' };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
   });
   notes.forEach((n) => {
-    const preset = FAMILY_PRESETS[n.family] || { shape: 'oval', color: '#ffa500' };
+    const preset = FAMILY_PRESETS[n.family] || { shape: 'arabesque', color: '#ffa500' };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
   });
@@ -4221,7 +4222,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const fam = assignedFamilies[t.name] || t.family;
     t.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
+      FAMILY_PRESETS[fam] || { shape: 'arabesque', color: '#ffa500' };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
   });
@@ -4230,7 +4231,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     const fam = assignedFamilies[key] || n.family;
     n.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'oval', color: '#ffa500' };
+      FAMILY_PRESETS[fam] || { shape: 'arabesque', color: '#ffa500' };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
   });
@@ -4267,7 +4268,7 @@ function assignTrackInfo(tracks) {
   return tracks.map((t) => {
     const instrument = resolveInstrumentName(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
-    const preset = FAMILY_PRESETS[family] || { shape: 'oval', color: '#ffa500' };
+    const preset = FAMILY_PRESETS[family] || { shape: 'arabesque', color: '#ffa500' };
     const color = getInstrumentColor(preset);
     return {
       ...t,

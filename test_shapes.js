@@ -4,13 +4,10 @@ const { drawNoteShape } = require('./script.js');
 function stubCtx() {
   const ctx = {
     beginPathCalled: false,
-    ellipseCalled: false,
-    arcCalled: false,
-    rectCalled: false,
-    lineToCalled: false,
-    moveToCalled: false,
+    operations: new Set(),
     strokeCalled: false,
     fillCalled: false,
+    fillRule: 'nonzero',
     lineWidth: 1,
     lineJoin: 'miter',
     lineCap: 'butt',
@@ -19,24 +16,31 @@ function stubCtx() {
   ctx.beginPath = () => {
     ctx.beginPathCalled = true;
   };
-  ctx.ellipse = () => {
-    ctx.ellipseCalled = true;
-  };
-  ctx.arc = () => {
-    ctx.arcCalled = true;
-  };
-  ctx.rect = () => {
-    ctx.rectCalled = true;
+  ctx.moveTo = () => {
+    ctx.operations.add('moveTo');
   };
   ctx.lineTo = () => {
-    ctx.lineToCalled = true;
+    ctx.operations.add('lineTo');
   };
-  ctx.moveTo = () => {
-    ctx.moveToCalled = true;
+  ctx.bezierCurveTo = () => {
+    ctx.operations.add('bezierCurveTo');
+  };
+  ctx.quadraticCurveTo = () => {
+    ctx.operations.add('quadraticCurveTo');
+  };
+  ctx.ellipse = () => {
+    ctx.operations.add('ellipse');
+  };
+  ctx.rect = () => {
+    ctx.operations.add('rect');
+  };
+  ctx.arc = () => {
+    ctx.operations.add('arc');
   };
   ctx.closePath = () => {};
-  ctx.fill = () => {
+  ctx.fill = (rule) => {
     ctx.fillCalled = true;
+    ctx.fillRule = rule || 'nonzero';
   };
   ctx.stroke = () => {
     ctx.strokeCalled = true;
@@ -44,21 +48,40 @@ function stubCtx() {
   return ctx;
 }
 
-const shapes = [
-  ['oval', 'ellipseCalled'],
-  ['capsule', 'arcCalled'],
-  ['circle', 'arcCalled'],
-  ['square', 'rectCalled'],
-  ['diamond', 'lineToCalled'],
-  ['star', 'lineToCalled'],
+const shapeExpectations = [
+  ['arabesque', ['bezierCurveTo']],
+  ['arabesqueDouble', ['bezierCurveTo'], 'evenodd'],
+  ['circle', ['ellipse']],
+  ['circleDouble', ['ellipse'], 'evenodd'],
+  ['square', ['rect']],
+  ['squareDouble', ['rect'], 'evenodd'],
+  ['roundedSquare', ['quadraticCurveTo']],
+  ['roundedSquareDouble', ['quadraticCurveTo'], 'evenodd'],
+  ['diamond', ['moveTo', 'lineTo']],
+  ['diamondDouble', ['moveTo', 'lineTo'], 'evenodd'],
+  ['fourPointStar', ['lineTo']],
+  ['fourPointStarDouble', ['lineTo'], 'evenodd'],
+  ['sixPointStar', ['lineTo']],
+  ['sixPointStarDouble', ['lineTo'], 'evenodd'],
+  ['mill', ['lineTo']],
+  ['millDouble', ['lineTo'], 'evenodd'],
+  ['triangle', ['lineTo']],
+  ['triangleDouble', ['lineTo'], 'evenodd'],
 ];
 
-shapes.forEach(([shape, expected]) => {
+shapeExpectations.forEach(([shape, requiredOps, expectedFillRule]) => {
   const ctx = stubCtx();
-  drawNoteShape(ctx, shape, 0, 0, 10, 10);
-  assert(ctx[expected], `esperado ${expected} para ${shape}`);
-  assert(ctx.beginPathCalled, 'beginPath no llamado');
-  assert(ctx.fillCalled, 'fill no llamado');
+  drawNoteShape(ctx, shape, 0, 0, 12, 10);
+  assert(ctx.beginPathCalled, `beginPath no llamado para ${shape}`);
+  assert(ctx.fillCalled, `fill no llamado para ${shape}`);
+  requiredOps.forEach((op) => {
+    assert(ctx.operations.has(op), `se esperaba operación ${op} en ${shape}`);
+  });
+  if (expectedFillRule === 'evenodd') {
+    assert.strictEqual(ctx.fillRule, 'evenodd', `se esperaba relleno evenodd en ${shape}`);
+  } else {
+    assert.notStrictEqual(ctx.fillRule, 'evenodd', `relleno evenodd inesperado en ${shape}`);
+  }
 });
 
 // Verificación de vértices centrados y extremos alineados con NOTE ON/OFF
@@ -105,7 +128,7 @@ assert.strictEqual(maxX, 20, 'diamante alargado no alineado a la derecha');
 
 // Verificación del grosor dinámico del contorno
 const strokeCtx = stubCtx();
-drawNoteShape(strokeCtx, 'oval', 0, 0, 40, 10, true);
+drawNoteShape(strokeCtx, 'arabesque', 0, 0, 40, 10, true);
 assert(strokeCtx.strokeCalled, 'stroke no llamado para contorno');
 assert(strokeCtx.lineWidth > 1.35, 'grosor de contorno insuficiente');
 assert.strictEqual(strokeCtx.lineJoin, 'round', 'lineJoin incorrecto para figura suave');
@@ -113,9 +136,9 @@ assert.strictEqual(strokeCtx.lineCap, 'round', 'lineCap incorrecto para figura s
 assert.strictEqual(strokeCtx.miterLimit, 4, 'miterLimit inesperado en figura suave');
 
 const starStrokeCtx = stubCtx();
-drawNoteShape(starStrokeCtx, 'star', 0, 0, 40, 20, true);
-assert.strictEqual(starStrokeCtx.lineJoin, 'miter', 'lineJoin incorrecto para estrella');
-assert.strictEqual(starStrokeCtx.miterLimit, 8, 'miterLimit incorrecto para estrella');
+drawNoteShape(starStrokeCtx, 'fourPointStar', 0, 0, 40, 20, true);
+assert.strictEqual(starStrokeCtx.lineJoin, 'miter', 'lineJoin incorrecto para figura angulosa');
+assert.strictEqual(starStrokeCtx.miterLimit, 6, 'miterLimit incorrecto para estrella');
 assert.strictEqual(starStrokeCtx.lineCap, 'butt', 'lineCap incorrecto para estrella');
 
 console.log('Pruebas de figuras geométricas completadas');
