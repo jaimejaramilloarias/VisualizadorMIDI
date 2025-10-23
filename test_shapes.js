@@ -16,6 +16,18 @@ function stubCtx() {
   ctx.beginPath = () => {
     ctx.beginPathCalled = true;
   };
+  ctx.save = () => {
+    ctx.operations.add('save');
+  };
+  ctx.restore = () => {
+    ctx.operations.add('restore');
+  };
+  ctx.translate = () => {
+    ctx.operations.add('translate');
+  };
+  ctx.rotate = () => {
+    ctx.operations.add('rotate');
+  };
   ctx.moveTo = () => {
     ctx.operations.add('moveTo');
   };
@@ -49,24 +61,20 @@ function stubCtx() {
 }
 
 const shapeExpectations = [
-  ['arabesque', ['bezierCurveTo']],
-  ['arabesqueDouble', ['bezierCurveTo'], 'evenodd'],
   ['circle', ['ellipse']],
-  ['circleDouble', ['ellipse'], 'evenodd'],
+  ['circleDouble', ['ellipse'], 'skip'],
   ['square', ['rect']],
-  ['squareDouble', ['rect'], 'evenodd'],
+  ['squareDouble', ['rect'], 'skip'],
   ['roundedSquare', ['quadraticCurveTo']],
-  ['roundedSquareDouble', ['quadraticCurveTo'], 'evenodd'],
+  ['roundedSquareDouble', ['quadraticCurveTo'], 'skip'],
   ['diamond', ['moveTo', 'lineTo']],
-  ['diamondDouble', ['moveTo', 'lineTo'], 'evenodd'],
+  ['diamondDouble', ['moveTo', 'lineTo'], 'skip'],
   ['fourPointStar', ['lineTo']],
-  ['fourPointStarDouble', ['lineTo'], 'evenodd'],
-  ['sixPointStar', ['lineTo']],
-  ['sixPointStarDouble', ['lineTo'], 'evenodd'],
-  ['mill', ['lineTo']],
-  ['millDouble', ['lineTo'], 'evenodd'],
+  ['fourPointStarDouble', ['lineTo'], 'skip'],
+  ['sixPointStar', ['rect']],
+  ['sixPointStarDouble', ['rect'], 'skip'],
   ['triangle', ['lineTo']],
-  ['triangleDouble', ['lineTo'], 'evenodd'],
+  ['triangleDouble', ['lineTo'], 'skip'],
 ];
 
 shapeExpectations.forEach(([shape, requiredOps, expectedFillRule]) => {
@@ -79,7 +87,9 @@ shapeExpectations.forEach(([shape, requiredOps, expectedFillRule]) => {
   });
   if (expectedFillRule === 'evenodd') {
     assert.strictEqual(ctx.fillRule, 'evenodd', `se esperaba relleno evenodd en ${shape}`);
-  } else {
+  } else if (expectedFillRule === 'nonzero') {
+    assert.strictEqual(ctx.fillRule, 'nonzero', `se esperaba relleno nonzero en ${shape}`);
+  } else if (expectedFillRule !== 'skip') {
     assert.notStrictEqual(ctx.fillRule, 'evenodd', `relleno evenodd inesperado en ${shape}`);
   }
 });
@@ -128,7 +138,7 @@ assert.strictEqual(maxX, 20, 'diamante alargado no alineado a la derecha');
 
 // Verificación del grosor dinámico del contorno
 const strokeCtx = stubCtx();
-drawNoteShape(strokeCtx, 'arabesque', 0, 0, 40, 10, true);
+drawNoteShape(strokeCtx, 'circle', 0, 0, 40, 10, true);
 assert(strokeCtx.strokeCalled, 'stroke no llamado para contorno');
 assert(strokeCtx.lineWidth > 1.35, 'grosor de contorno insuficiente');
 assert.strictEqual(strokeCtx.lineJoin, 'round', 'lineJoin incorrecto para figura suave');

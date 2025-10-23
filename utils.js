@@ -580,86 +580,6 @@ function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
   return widthToUse;
 }
 
-// Factores de control para generar figuras estilizadas con bezier y líneas
-function traceArabesque(ctx, x, y, width, height, scale = 1, offsetX = 0, offsetY = 0) {
-  const left = x + offsetX + (width * (1 - scale)) / 2;
-  const top = y + offsetY + (height * (1 - scale)) / 2;
-  const w = width * scale;
-  const h = height * scale;
-  const cy = top + h / 2;
-  const leftCenterX = left + w * 0.32;
-  const rightCenterX = left + w * 0.68;
-  const radiusX = w * 0.28;
-  const radiusY = h * 0.32;
-
-  ctx.moveTo(leftCenterX + radiusX, cy);
-  ctx.bezierCurveTo(
-    leftCenterX + radiusX * 0.6,
-    top + h * 0.02,
-    leftCenterX - radiusX * 0.9,
-    top + h * 0.08,
-    leftCenterX - radiusX * 0.4,
-    cy - radiusY * 0.35,
-  );
-  ctx.bezierCurveTo(
-    leftCenterX + radiusX * 0.25,
-    cy - radiusY * 0.8,
-    leftCenterX + radiusX * 0.55,
-    cy - radiusY * 0.1,
-    leftCenterX,
-    cy,
-  );
-  ctx.bezierCurveTo(
-    leftCenterX - radiusX * 0.65,
-    cy + radiusY * 0.55,
-    leftCenterX + radiusX * 0.15,
-    cy + radiusY * 0.95,
-    leftCenterX + radiusX,
-    cy + radiusY * 0.3,
-  );
-  ctx.bezierCurveTo(
-    leftCenterX + radiusX * 1.3,
-    cy - radiusY * 0.25,
-    rightCenterX - radiusX * 1.35,
-    cy - radiusY * 0.45,
-    rightCenterX - radiusX,
-    cy - radiusY * 0.65,
-  );
-  ctx.bezierCurveTo(
-    rightCenterX - radiusX * 0.2,
-    cy - radiusY * 1.15,
-    rightCenterX + radiusX * 0.75,
-    cy - radiusY * 0.85,
-    rightCenterX + radiusX * 0.7,
-    cy - radiusY * 0.05,
-  );
-  ctx.bezierCurveTo(
-    rightCenterX + radiusX * 0.55,
-    cy + radiusY * 0.7,
-    rightCenterX - radiusX * 0.2,
-    cy + radiusY * 0.7,
-    rightCenterX - radiusX * 0.55,
-    cy + radiusY * 0.25,
-  );
-  ctx.bezierCurveTo(
-    rightCenterX + radiusX * 0.85,
-    cy + radiusY * 1,
-    rightCenterX + radiusX * 0.35,
-    cy + radiusY * 1.2,
-    rightCenterX - radiusX * 0.2,
-    cy + radiusY * 0.85,
-  );
-  ctx.bezierCurveTo(
-    rightCenterX - radiusX * 1.25,
-    cy + radiusY * 0.55,
-    leftCenterX + radiusX * 1.2,
-    cy + radiusY * 0.55,
-    leftCenterX + radiusX * 0.6,
-    cy + radiusY * 0.1,
-  );
-  ctx.closePath();
-}
-
 function traceEllipse(ctx, x, y, width, height, scale = 1) {
   const w = width * scale;
   const h = height * scale;
@@ -693,10 +613,12 @@ function traceRoundedSquare(ctx, x, y, width, height, radius) {
 }
 
 function traceDiamond(ctx, x, y, width, height, inset = 0) {
-  const left = x + inset;
-  const top = y + inset;
-  const right = x + width - inset;
-  const bottom = y + height - inset;
+  const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
+  const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
+  const left = x + insetX;
+  const top = y + insetY;
+  const right = x + width - insetX;
+  const bottom = y + height - insetY;
   const midX = (left + right) / 2;
   const midY = (top + bottom) / 2;
   ctx.moveTo(left, midY);
@@ -707,35 +629,16 @@ function traceDiamond(ctx, x, y, width, height, inset = 0) {
 }
 
 function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
-  const left = x + inset;
-  const top = y + inset;
-  const right = x + width - inset;
-  const bottom = y + height - inset;
-  const cx = (left + right) / 2;
-  const cy = (top + bottom) / 2;
-  const innerOffsetX = (right - left) * 0.28;
-  const innerOffsetY = (bottom - top) * 0.28;
-
-  ctx.moveTo(cx, top);
-  ctx.lineTo(cx + innerOffsetX, cy - innerOffsetY);
-  ctx.lineTo(right, cy);
-  ctx.lineTo(cx + innerOffsetX, cy + innerOffsetY);
-  ctx.lineTo(cx, bottom);
-  ctx.lineTo(cx - innerOffsetX, cy + innerOffsetY);
-  ctx.lineTo(left, cy);
-  ctx.lineTo(cx - innerOffsetX, cy - innerOffsetY);
-  ctx.closePath();
-}
-
-function traceSixPointStar(ctx, x, y, width, height, inset = 0) {
+  const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
+  const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
   const cx = x + width / 2;
   const cy = y + height / 2;
-  const outerX = width / 2 - inset;
-  const outerY = height / 2 - inset;
+  const outerX = width / 2 - insetX;
+  const outerY = height / 2 - insetY;
   const innerX = outerX * 0.45;
   const innerY = outerY * 0.45;
-  for (let i = 0; i < 12; i++) {
-    const angle = (Math.PI / 6) * i - Math.PI / 2;
+  for (let i = 0; i < 8; i++) {
+    const angle = (Math.PI / 4) * i - Math.PI / 2;
     const useOuter = i % 2 === 0;
     const radiusX = useOuter ? outerX : innerX;
     const radiusY = useOuter ? outerY : innerY;
@@ -747,84 +650,42 @@ function traceSixPointStar(ctx, x, y, width, height, inset = 0) {
   ctx.closePath();
 }
 
-function traceMill(ctx, x, y, width, height, inset = 0) {
-  const left = x + inset;
-  const top = y + inset;
-  const right = x + width - inset;
-  const bottom = y + height - inset;
-  const cx = (left + right) / 2;
-  const cy = (top + bottom) / 2;
-  const armX = (right - left) / 2;
-  const armY = (bottom - top) / 2;
-  const innerRadius = Math.min(armX, armY) * 0.18;
+function traceSixPointStar(ctx, x, y, width, height, inset = 0) {
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
+  const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
+  const spanX = width - insetX * 2;
+  const spanY = height - insetY * 2;
+  const barThickness = Math.min(spanX, spanY) * 0.28;
 
-  ctx.moveTo(cx, cy - innerRadius);
-  ctx.quadraticCurveTo(cx + armX * 0.6, top + armY * 0.05, right, cy - armY * 0.15);
-  ctx.lineTo(cx + innerRadius * 1.4, cy + innerRadius * 0.25);
-  ctx.quadraticCurveTo(
-    cx + armX * 0.6,
-    bottom - armY * 0.05,
-    cx + armX * 0.15,
-    bottom,
-  );
-  ctx.lineTo(cx - innerRadius * 0.25, cy + innerRadius * 1.4);
-  ctx.quadraticCurveTo(
-    left + armX * 0.05,
-    bottom - armY * 0.6,
-    left,
-    cy + armY * 0.15,
-  );
-  ctx.lineTo(cx - innerRadius * 1.4, cy - innerRadius * 0.25);
-  ctx.quadraticCurveTo(
-    left + armX * 0.05,
-    top + armY * 0.6,
-    cx - armX * 0.15,
-    top,
-  );
-  ctx.closePath();
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const drawBar = (angle) => {
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.rect(-barThickness / 2, -spanY / 2, barThickness, spanY);
+    ctx.restore();
+  };
+
+  drawBar(0);
+  drawBar(Math.PI / 3);
+  drawBar(-Math.PI / 3);
+
+  ctx.restore();
 }
 
 function traceTriangle(ctx, x, y, width, height, inset = 0) {
-  ctx.moveTo(x + width / 2, y + inset);
-  ctx.lineTo(x + width - inset, y + height - inset);
-  ctx.lineTo(x + inset, y + height - inset);
+  const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
+  const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
+  ctx.moveTo(x + width / 2, y + insetY);
+  ctx.lineTo(x + width - insetX, y + height - insetY);
+  ctx.lineTo(x + insetX, y + height - insetY);
   ctx.closePath();
 }
 
 const SHAPE_METADATA = {
-  arabesque: {
-    label: 'Arabesco estilizado',
-    draw(ctx, x, y, width, height) {
-      traceArabesque(ctx, x, y, width, height);
-    },
-  },
-  arabesqueDouble: {
-    label: 'Arabesco doble calado',
-    layers: [
-      {
-        color: 'primary',
-        draw(ctx, x, y, width, height) {
-          traceArabesque(ctx, x, y, width, height);
-        },
-      },
-      {
-        color: 'secondary',
-        draw(ctx, x, y, width, height) {
-          traceArabesque(ctx, x, y, width, height, 0.7, width * 0.015, height * 0.025);
-        },
-      },
-      {
-        color: 'primary',
-        draw(ctx, x, y, width, height) {
-          traceArabesque(ctx, x, y, width, height, 0.45, 0, 0);
-        },
-      },
-    ],
-    secondaryFill: '#000000',
-    draw(ctx, x, y, width, height) {
-      traceArabesque(ctx, x, y, width, height);
-    },
-  },
   circle: {
     label: 'Círculo clásico',
     draw(ctx, x, y, width, height) {
@@ -954,13 +815,19 @@ const SHAPE_METADATA = {
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceDiamond(ctx, x, y, width, height, Math.min(width, height) * 0.16);
+          traceDiamond(ctx, x, y, width, height, {
+            insetX: width * 0.16,
+            insetY: height * 0.16,
+          });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceDiamond(ctx, x, y, width, height, Math.min(width, height) * 0.32);
+          traceDiamond(ctx, x, y, width, height, {
+            insetX: width * 0.32,
+            insetY: height * 0.32,
+          });
         },
       },
     ],
@@ -991,15 +858,19 @@ const SHAPE_METADATA = {
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.16;
-          traceFourPointStar(ctx, x, y, width, height, inset);
+          traceFourPointStar(ctx, x, y, width, height, {
+            insetX: width * 0.16,
+            insetY: height * 0.16,
+          });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.32;
-          traceFourPointStar(ctx, x, y, width, height, inset);
+          traceFourPointStar(ctx, x, y, width, height, {
+            insetX: width * 0.32,
+            insetY: height * 0.32,
+          });
         },
       },
     ],
@@ -1031,56 +902,23 @@ const SHAPE_METADATA = {
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.16;
-          traceSixPointStar(ctx, x, y, width, height, inset);
+          traceSixPointStar(ctx, x, y, width, height, {
+            insetX: width * 0.16,
+            insetY: height * 0.16,
+          });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.32;
-          traceSixPointStar(ctx, x, y, width, height, inset);
+          traceSixPointStar(ctx, x, y, width, height, {
+            insetX: width * 0.32,
+            insetY: height * 0.32,
+          });
         },
       },
     ],
     secondaryFill: '#000000',
-  },
-  mill: {
-    label: 'Molino',
-    sharp: true,
-    draw(ctx, x, y, width, height) {
-      traceMill(ctx, x, y, width, height);
-    },
-  },
-  millDouble: {
-    label: 'Molino doble',
-    sharp: true,
-    layers: [
-      {
-        color: 'primary',
-        draw(ctx, x, y, width, height) {
-          traceMill(ctx, x, y, width, height);
-        },
-      },
-      {
-        color: 'secondary',
-        draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.16;
-          traceMill(ctx, x, y, width, height, inset);
-        },
-      },
-      {
-        color: 'primary',
-        draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.32;
-          traceMill(ctx, x, y, width, height, inset);
-        },
-      },
-    ],
-    secondaryFill: '#000000',
-    draw(ctx, x, y, width, height) {
-      traceMill(ctx, x, y, width, height);
-    },
   },
   triangle: {
     label: 'Triángulo',
@@ -1102,15 +940,19 @@ const SHAPE_METADATA = {
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.18;
-          traceTriangle(ctx, x, y, width, height, inset);
+          traceTriangle(ctx, x, y, width, height, {
+            insetX: width * 0.18,
+            insetY: height * 0.18,
+          });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const inset = Math.min(width, height) * 0.32;
-          traceTriangle(ctx, x, y, width, height, inset);
+          traceTriangle(ctx, x, y, width, height, {
+            insetX: width * 0.32,
+            insetY: height * 0.32,
+          });
         },
       },
     ],
@@ -1122,8 +964,6 @@ const SHAPE_METADATA = {
 };
 
 const SHAPE_ORDER = [
-  'arabesque',
-  'arabesqueDouble',
   'circle',
   'circleDouble',
   'square',
@@ -1136,8 +976,6 @@ const SHAPE_ORDER = [
   'fourPointStarDouble',
   'sixPointStar',
   'sixPointStarDouble',
-  'mill',
-  'millDouble',
   'triangle',
   'triangleDouble',
 ];
@@ -1147,11 +985,23 @@ const SHAPE_OPTIONS = SHAPE_ORDER.map((value) => ({ value, label: SHAPE_METADATA
 const DEFAULT_SECONDARY_LAYER_COLOR = '#000000';
 
 // Dibuja cualquiera de las figuras declaradas anteriormente respetando reglas de relleno
-function drawNoteShape(ctx, shape, x, y, width, height, stroke = false, strokeWidth) {
-  const meta = SHAPE_METADATA[shape] || SHAPE_METADATA.arabesque;
+function drawNoteShape(
+  ctx,
+  shape,
+  x,
+  y,
+  width,
+  height,
+  stroke = false,
+  strokeWidth,
+  options = {},
+) {
+  const meta = SHAPE_METADATA[shape] || SHAPE_METADATA.circle;
+  const { secondaryColor: secondaryOverride } = options || {};
   if (!stroke && Array.isArray(meta.layers) && meta.layers.length > 0) {
     const baseColor = ctx.fillStyle;
-    const secondaryColor = meta.secondaryFill || DEFAULT_SECONDARY_LAYER_COLOR;
+    const secondaryColor =
+      secondaryOverride || meta.secondaryFill || DEFAULT_SECONDARY_LAYER_COLOR;
     for (const layer of meta.layers) {
       const layerColor = layer.color === 'secondary'
         ? layer.fill || secondaryColor

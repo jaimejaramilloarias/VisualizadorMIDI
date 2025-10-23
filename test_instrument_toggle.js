@@ -8,7 +8,7 @@ const notes = [
     end: 1,
     noteNumber: 60,
     color: '#fff',
-    shape: 'arabesque',
+    shape: 'roundedSquare',
     family: 'Maderas de timbre "redondo"',
   },
   { instrument: 'Violín', start: 0, end: 1, noteNumber: 65, color: '#fff', shape: 'diamond', family: 'Cuerdas frotadas' },
