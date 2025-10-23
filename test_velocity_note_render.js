@@ -16,7 +16,6 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <span id="family-bump-value"></span>
 <input type="checkbox" id="family-extension-toggle" />
 <button id="toggle-family-panel"></button>
-<button id="developer-mode"></button>
 <div id="family-config-panel"><div id="developer-controls"></div></div>
 <div id="assignment-modal"></div>
 <div id="modal-instrument-list"></div>

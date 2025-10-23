@@ -29,7 +29,6 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <input type="checkbox" id="family-extension-toggle" />
 <nav id="bottom-menu">
   <button id="toggle-family-panel"></button>
-  <button id="developer-mode"></button>
   <button id="tap-tempo-mode"></button>
 </nav>
 <div id="family-config-panel"><div id="developer-controls"></div></div>

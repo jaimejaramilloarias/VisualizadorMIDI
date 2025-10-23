@@ -48,7 +48,6 @@ body {
   text-align: center;
 }
 
-#developer-mode,
 #tap-tempo-mode {
   flex: 1 1 160px;
   min-width: 150px;
