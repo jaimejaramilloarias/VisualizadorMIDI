@@ -83,10 +83,6 @@ const { loadWavFile } =
   typeof require !== 'undefined' ? require('./wavLoader.js') : window.wavLoader;
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
-const { loadYouTubeMedia } =
-  typeof require !== 'undefined'
-    ? require('./youtubeLoader.js')
-    : window.youtubeLoader;
 
 // Estado de activación de instrumentos
 const enabledInstruments =
@@ -287,9 +283,6 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const youtubeUrlInput = document.getElementById('youtube-url');
-    const youtubeLoadBtn = document.getElementById('load-youtube');
-    const youtubeStatus = document.getElementById('youtube-status');
     const videoOpacityInput = document.getElementById('video-opacity');
     const videoOpacityValue = document.getElementById('video-opacity-value');
     const backgroundVideoElement = document.getElementById('background-video');
@@ -350,7 +343,6 @@ if (typeof document !== 'undefined') {
       }
       return 0.4;
     })();
-    let youtubeMediaInfo = null;
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
@@ -504,67 +496,6 @@ if (typeof document !== 'undefined') {
         const value = parseFloat(videoOpacityInput.value);
         if (!isNaN(value)) {
           setBackgroundVideoOpacity(value / 100);
-        }
-      });
-    }
-
-    async function handleYouTubeLoad() {
-      if (!youtubeLoadBtn || youtubeLoadBtn.disabled) return;
-      const url = youtubeUrlInput ? youtubeUrlInput.value.trim() : '';
-      if (!url) {
-        if (youtubeStatus) {
-          youtubeStatus.textContent = 'Introduce un enlace válido de YouTube.';
-        }
-        return;
-      }
-      youtubeLoadBtn.disabled = true;
-      if (youtubeStatus) {
-        youtubeStatus.textContent = 'Descargando audio y video de YouTube…';
-      }
-      try {
-        const ctx = audioPlayer.getAudioContext();
-        const result = await loadYouTubeMedia(url, { audioCtx: ctx });
-        youtubeMediaInfo = result;
-        audioPlayer.loadBuffer(result.audioBuffer, result.trimOffset || 0);
-        console.log('YouTube cargado, trimOffset =', result.trimOffset);
-        prepareWaveform(result.audioBuffer);
-        resetTapTempoEditor({ preserveStatus: true, preserveMarkers: true });
-        if (result.videoUrl) {
-          prepareBackgroundVideo(result.videoUrl, result.trimOffset || 0);
-        } else {
-          clearBackgroundVideo();
-        }
-        if (youtubeStatus) {
-          const title = result.title || result.videoId || 'YouTube';
-          const author = result.author ? ` · ${result.author}` : '';
-          youtubeStatus.textContent = `Video cargado: ${title}${author}`;
-        }
-        audioPlayer.resetStartOffset();
-        renderFrame(audioOffsetMs / 1000);
-      } catch (err) {
-        console.error(err);
-        if (youtubeStatus) {
-          youtubeStatus.textContent = err?.message
-            ? String(err.message)
-            : 'No se pudo cargar el enlace de YouTube.';
-        }
-        clearBackgroundVideo();
-        youtubeMediaInfo = null;
-      } finally {
-        youtubeLoadBtn.disabled = false;
-      }
-    }
-
-    if (youtubeLoadBtn) {
-      youtubeLoadBtn.addEventListener('click', () => {
-        handleYouTubeLoad();
-      });
-    }
-    if (youtubeUrlInput) {
-      youtubeUrlInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          handleYouTubeLoad();
         }
       });
     }
@@ -3454,11 +3385,6 @@ if (typeof document !== 'undefined') {
         prepareWaveform(result.audioBuffer);
         resetTapTempoEditor({ preserveStatus: true, preserveMarkers: true });
         clearBackgroundVideo();
-        youtubeMediaInfo = null;
-        if (youtubeStatus) {
-          youtubeStatus.textContent =
-            'Audio WAV cargado. El video de YouTube se desactivó.';
-        }
       } catch (err) {
         alert(err.message);
       }
