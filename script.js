@@ -283,9 +283,6 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const videoOpacityInput = document.getElementById('video-opacity');
-    const videoOpacityValue = document.getElementById('video-opacity-value');
-    const backgroundVideoElement = document.getElementById('background-video');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerBtn = document.getElementById('developer-mode');
@@ -335,14 +332,6 @@ if (typeof document !== 'undefined') {
     let backgroundImageUrl = null;
     let backgroundImageName = '';
     let backgroundImageOpacity = 0.6;
-    let backgroundVideoOpacity = (() => {
-      if (typeof localStorage === 'undefined') return 0.4;
-      const stored = parseFloat(localStorage.getItem('backgroundVideoOpacity'));
-      if (!isNaN(stored)) {
-        return Math.max(0, Math.min(1, stored));
-      }
-      return 0.4;
-    })();
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
@@ -352,152 +341,6 @@ if (typeof document !== 'undefined') {
       if (typeof renderFrame === 'function') {
         renderFrame(lastTime);
       }
-    }
-
-    function updateBackgroundVideoOpacityUI() {
-      if (videoOpacityInput) {
-        videoOpacityInput.value = String(Math.round(backgroundVideoOpacity * 100));
-      }
-      if (videoOpacityValue) {
-        videoOpacityValue.textContent = `${Math.round(
-          backgroundVideoOpacity * 100,
-        )}%`;
-      }
-      if (backgroundVideoElement) {
-        const clamped = Math.max(0, Math.min(1, backgroundVideoOpacity));
-        backgroundVideoElement.style.opacity = String(clamped);
-      }
-    }
-
-    function setBackgroundVideoOpacity(value, { skipStorage = false } = {}) {
-      if (typeof value !== 'number' || isNaN(value)) return;
-      backgroundVideoOpacity = Math.max(0, Math.min(1, value));
-      if (!skipStorage && typeof localStorage !== 'undefined') {
-        localStorage.setItem('backgroundVideoOpacity', String(backgroundVideoOpacity));
-      }
-      updateBackgroundVideoOpacityUI();
-      requestImmediateRender();
-    }
-
-    function markBackgroundVideoLoaded(loaded) {
-      if (!backgroundVideoElement) return;
-      if (loaded) {
-        backgroundVideoElement.dataset.loaded = '1';
-        backgroundVideoElement.classList.remove('hidden');
-      } else {
-        backgroundVideoElement.dataset.loaded = '';
-        backgroundVideoElement.classList.add('hidden');
-      }
-    }
-
-    function clearBackgroundVideo() {
-      if (!backgroundVideoElement) return;
-      backgroundVideoElement.pause?.();
-      backgroundVideoElement.removeAttribute('src');
-      backgroundVideoElement.load?.();
-      backgroundVideoElement.onloadedmetadata = null;
-      backgroundVideoElement.onerror = null;
-      markBackgroundVideoLoaded(false);
-      requestImmediateRender();
-    }
-
-    function prepareBackgroundVideo(url, trimOffset = 0) {
-      if (!backgroundVideoElement) return;
-      backgroundVideoElement.pause?.();
-      backgroundVideoElement.onloadedmetadata = null;
-      backgroundVideoElement.onerror = null;
-      if (!url) {
-        clearBackgroundVideo();
-        return;
-      }
-      backgroundVideoElement.removeAttribute('src');
-      backgroundVideoElement.load?.();
-      backgroundVideoElement.crossOrigin = 'anonymous';
-      backgroundVideoElement.preload = 'auto';
-      backgroundVideoElement.loop = false;
-      backgroundVideoElement.muted = true;
-      backgroundVideoElement.playsInline = true;
-      markBackgroundVideoLoaded(false);
-      backgroundVideoElement.onloadedmetadata = () => {
-        backgroundVideoElement.onloadedmetadata = null;
-        markBackgroundVideoLoaded(true);
-        try {
-          backgroundVideoElement.currentTime = Math.max(0, trimOffset || 0);
-        } catch (err) {
-          console.warn('No se pudo ajustar el punto inicial del video:', err);
-        }
-        syncBackgroundVideoTime(true);
-        requestImmediateRender();
-      };
-      backgroundVideoElement.onerror = () => {
-        backgroundVideoElement.onerror = null;
-        markBackgroundVideoLoaded(false);
-        requestImmediateRender();
-      };
-      backgroundVideoElement.src = url;
-      backgroundVideoElement.load?.();
-    }
-
-    function getVideoTargetTime() {
-      const trim =
-        typeof audioPlayer.getTrimOffset === 'function'
-          ? audioPlayer.getTrimOffset()
-          : 0;
-      const current =
-        typeof audioPlayer.getCurrentTime === 'function'
-          ? audioPlayer.getCurrentTime()
-          : 0;
-      return Math.max(0, trim + current);
-    }
-
-    function syncBackgroundVideoTime(force = false) {
-      if (!backgroundVideoElement || backgroundVideoElement.dataset.loaded !== '1') {
-        return;
-      }
-      const target = getVideoTargetTime();
-      const diff = Math.abs((backgroundVideoElement.currentTime || 0) - target);
-      if (!force && diff < 0.03) return;
-      try {
-        backgroundVideoElement.currentTime = target;
-      } catch (err) {
-        console.warn('No se pudo sincronizar el video de fondo:', err);
-      }
-    }
-
-    function pauseBackgroundVideo({ forceSync = true } = {}) {
-      if (!backgroundVideoElement || backgroundVideoElement.dataset.loaded !== '1') {
-        return;
-      }
-      if (forceSync) {
-        syncBackgroundVideoTime(true);
-      }
-      if (typeof backgroundVideoElement.pause === 'function') {
-        backgroundVideoElement.pause();
-      }
-    }
-
-    function playBackgroundVideo() {
-      if (!backgroundVideoElement || backgroundVideoElement.dataset.loaded !== '1') {
-        return;
-      }
-      syncBackgroundVideoTime(true);
-      if (typeof backgroundVideoElement.play === 'function') {
-        const promise = backgroundVideoElement.play();
-        if (promise && typeof promise.catch === 'function') {
-          promise.catch(() => {});
-        }
-      }
-    }
-
-    updateBackgroundVideoOpacityUI();
-
-    if (videoOpacityInput) {
-      videoOpacityInput.addEventListener('input', () => {
-        const value = parseFloat(videoOpacityInput.value);
-        if (!isNaN(value)) {
-          setBackgroundVideoOpacity(value / 100);
-        }
-      });
     }
 
     function getWaveformBaseWidth() {
@@ -3283,14 +3126,12 @@ if (typeof document !== 'undefined') {
     function startPlayback({ onEnded } = {}) {
       const endedHandler = () => {
         stopAnimation();
-        pauseBackgroundVideo({ forceSync: true });
         renderFrame(audioOffsetMs / 1000);
         if (typeof onEnded === 'function') {
           onEnded();
         }
       };
       if (!audioPlayer.start(notes, endedHandler)) return false;
-      playBackgroundVideo();
       startAnimation();
       return true;
     }
@@ -3298,7 +3139,6 @@ if (typeof document !== 'undefined') {
     function stopPlayback(preserveOffset = true) {
       audioPlayer.stop(preserveOffset);
       stopAnimation();
-      pauseBackgroundVideo({ forceSync: true });
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
       if (tapTempoActive) {
         finalizeTapTempoRecording({ canceled: true });
@@ -3310,7 +3150,6 @@ if (typeof document !== 'undefined') {
       const wasPlaying = audioPlayer.isPlaying();
       audioPlayer.stop(true);
       stopAnimation();
-      pauseBackgroundVideo({ forceSync: true });
       const duration = audioPlayer.getAudioBuffer()
         ? audioPlayer.getAudioBuffer().duration
         : notes.length > 0
@@ -3318,7 +3157,6 @@ if (typeof document !== 'undefined') {
         : 0;
       const trim = audioPlayer.getTrimOffset();
       audioPlayer.seek(delta, duration, trim);
-      syncBackgroundVideoTime(true);
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
       if (wasPlaying) startPlayback();
     }
@@ -3326,9 +3164,6 @@ if (typeof document !== 'undefined') {
     async function refreshAnimation() {
       const canResume = audioPlayer.canStart(notes);
       const wasPlaying = audioPlayer.isPlaying();
-      if (wasPlaying) {
-        pauseBackgroundVideo({ forceSync: true });
-      }
       await refreshPlaybackAnimation(
         audioPlayer,
         stopAnimation,
@@ -3336,9 +3171,6 @@ if (typeof document !== 'undefined') {
         () => startPlayback(),
         { canStart: canResume }
       );
-      if (!wasPlaying) {
-        syncBackgroundVideoTime(true);
-      }
     }
 
     loadBtn.addEventListener('click', () => fileInput.click());
@@ -3384,7 +3216,6 @@ if (typeof document !== 'undefined') {
         console.log('WAV cargado, trimOffset =', result.trimOffset);
         prepareWaveform(result.audioBuffer);
         resetTapTempoEditor({ preserveStatus: true, preserveMarkers: true });
-        clearBackgroundVideo();
       } catch (err) {
         alert(err.message);
       }
@@ -3402,20 +3233,12 @@ if (typeof document !== 'undefined') {
       onForward: () => seek(3),
       onBackward: () => seek(-3),
       onRestart: () => {
-        pauseBackgroundVideo({ forceSync: true });
         const result = restartPlayback(
           audioPlayer,
           stopAnimation,
           renderFrame,
           startPlayback,
         );
-        if (result && typeof result.then === 'function') {
-          result
-            .then(() => {
-              playBackgroundVideo();
-            })
-            .catch(() => {});
-        }
       },
       onRefresh: () => {
         refreshAnimation().catch((err) => console.error(err));
@@ -3505,26 +3328,6 @@ if (typeof document !== 'undefined') {
       offscreenCtx.clearRect(0, 0, canvas.width, canvas.height);
       offscreenCtx.fillStyle = canvas.style.backgroundColor || '#000000';
       offscreenCtx.fillRect(0, 0, canvas.width, canvas.height);
-      if (
-        backgroundVideoElement &&
-        backgroundVideoElement.dataset.loaded === '1' &&
-        backgroundVideoOpacity > 0 &&
-        backgroundVideoElement.readyState >= 2
-      ) {
-        offscreenCtx.save();
-        offscreenCtx.globalAlpha = Math.max(
-          0,
-          Math.min(1, backgroundVideoOpacity),
-        );
-        offscreenCtx.drawImage(
-          backgroundVideoElement,
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-        offscreenCtx.restore();
-      }
       if (backgroundImage && backgroundImage.element) {
         const img = backgroundImage.element;
         const imgWidth = backgroundImage.width || img.naturalWidth || img.width;
