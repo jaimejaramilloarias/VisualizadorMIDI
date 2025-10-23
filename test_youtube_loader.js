@@ -80,6 +80,69 @@ const { loadYouTubeMedia, extractYouTubeId } = require('./youtubeLoader.js');
   );
   assert.strictEqual(Math.round(result.duration), 12);
 
+  let attempts = 0;
+  const originalFetch = global.fetch;
+  const fallbackFetcher = async (input) => {
+    const url = typeof input === 'string' ? input : input?.url || '';
+    if (url.includes('api/v1/streams/abcdefghijk')) {
+      attempts += 1;
+      if (attempts < 3) {
+        return {
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          title: 'Fallback track',
+          uploader: 'Backup',
+          duration: 8,
+          audioStreams: [
+            {
+              url: 'https://cdn.example.com/audio-fallback',
+              mimeType: 'audio/webm',
+              bitrate: 96000,
+            },
+          ],
+          videoStreams: [],
+          thumbnails: [],
+        }),
+      };
+    }
+    if (url === 'https://cdn.example.com/audio-fallback') {
+      const buffer = new ArrayBuffer(samples.byteLength);
+      new Float32Array(buffer).set(samples);
+      return {
+        ok: true,
+        arrayBuffer: async () => buffer,
+      };
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  global.fetch = fallbackFetcher;
+  let fallbackResult;
+  try {
+    const fallbackCtx = new MockAudioContext();
+    fallbackResult = await loadYouTubeMedia('https://youtu.be/abcdefghijk', {
+      audioCtx: fallbackCtx,
+    });
+  } finally {
+    global.fetch = originalFetch;
+  }
+
+  assert(
+    attempts >= 3,
+    'Debe intentar múltiples instancias cuando la respuesta sea 401.',
+  );
+  assert.strictEqual(fallbackResult.title, 'Fallback track');
+  assert.strictEqual(
+    fallbackResult.audioStream.url,
+    'https://cdn.example.com/audio-fallback',
+  );
+
   const failingFetcher = async (url) => {
     if (url.startsWith('https://piped.video/api/v1/streams/abcdefghijk')) {
       return {
