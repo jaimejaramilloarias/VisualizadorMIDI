@@ -5,7 +5,12 @@
   const detectTrimOffset = wavApi?.detectTrimOffset || (() => 0);
   const normalizeAudioBuffer = wavApi?.normalizeAudioBuffer || ((buffer) => buffer);
 
-  const DEFAULT_API_BASE = 'https://piped.video/api/v1/streams/';
+  const DEFAULT_API_BASES = [
+    'https://piped.video/api/v1/streams/',
+    'https://piped.garudalinux.org/api/v1/streams/',
+    'https://watch.leptons.xyz/api/v1/streams/',
+  ];
+  const DEFAULT_API_BASE = DEFAULT_API_BASES[0];
   const DEFAULT_AUDIO_MIME_PREFERENCE = ['audio/mp4', 'audio/webm'];
   const DEFAULT_VIDEO_MIME_PREFERENCE = ['video/mp4', 'video/webm'];
 
@@ -80,6 +85,108 @@
     return null;
   }
 
+  function normalizeBaseUrl(base) {
+    if (!base || typeof base !== 'string') return null;
+    const trimmed = base.trim();
+    if (!trimmed) return null;
+    return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+  }
+
+  function buildApiBaseList(options = {}, { allowFallbacks = true } = {}) {
+    const provided = [];
+    if (Array.isArray(options.apiBaseUrls)) {
+      provided.push(...options.apiBaseUrls);
+    }
+    if (options.apiBaseUrl) {
+      provided.push(options.apiBaseUrl);
+    }
+    if (provided.length === 0) {
+      if (allowFallbacks) provided.push(...DEFAULT_API_BASES);
+      else provided.push(DEFAULT_API_BASE);
+    }
+
+    const seen = new Set();
+    const normalized = [];
+    for (const base of provided) {
+      const normalizedBase = normalizeBaseUrl(base);
+      if (normalizedBase && !seen.has(normalizedBase)) {
+        seen.add(normalizedBase);
+        normalized.push(normalizedBase);
+      }
+    }
+    return normalized;
+  }
+
+  function createInvalidDataError(rawText) {
+    const snippet = typeof rawText === 'string'
+      ? rawText.replace(/\s+/g, ' ').trim().slice(0, 200)
+      : '';
+    const detail = snippet ? ` Respuesta: ${snippet}` : '';
+    const error = new Error(`El servicio de YouTube devolvió datos no válidos.${detail}`);
+    error.code = 'YOUTUBE_INVALID_DATA';
+    return error;
+  }
+
+  function createFetchError(response) {
+    const status = response?.status;
+    const statusText = response?.statusText;
+    const statusDetail = typeof status === 'number'
+      ? ` Estado: ${status}${statusText ? ` ${statusText}` : ''}.`
+      : '';
+    const error = new Error(`No se pudo obtener la información del video de YouTube.${statusDetail}`);
+    error.code = 'YOUTUBE_FETCH_FAILED';
+    return error;
+  }
+
+  async function fetchVideoInfo(fetcher, baseUrl, videoId) {
+    const response = await fetcher(`${baseUrl}${videoId}`);
+    if (!response || !response.ok) {
+      throw createFetchError(response);
+    }
+
+    let rawText;
+    if (typeof response.text === 'function') {
+      try {
+        rawText = await response.text();
+      } catch (readErr) {
+        const error = new Error('No se pudo leer la respuesta del servicio de YouTube.');
+        error.code = 'YOUTUBE_READ_FAILED';
+        error.cause = readErr;
+        throw error;
+      }
+
+      if (!rawText) {
+        throw createInvalidDataError(rawText);
+      }
+
+      try {
+        return JSON.parse(rawText);
+      } catch (parseErr) {
+        const error = createInvalidDataError(rawText);
+        error.cause = parseErr;
+        throw error;
+      }
+    }
+
+    if (typeof response.json === 'function') {
+      try {
+        return await response.json();
+      } catch (parseErr) {
+        const message = parseErr?.message
+          ? ` Detalle: ${parseErr.message}`
+          : '';
+        const error = new Error(`El servicio de YouTube devolvió datos no válidos.${message}`);
+        error.code = 'YOUTUBE_INVALID_DATA';
+        error.cause = parseErr;
+        throw error;
+      }
+    }
+
+    const error = new Error('No se pudo interpretar la respuesta del servicio de YouTube.');
+    error.code = 'YOUTUBE_UNSUPPORTED_RESPONSE';
+    throw error;
+  }
+
   async function loadYouTubeMedia(inputUrl, options = {}) {
     const videoId = extractYouTubeId(inputUrl);
     if (!videoId) {
@@ -94,51 +201,23 @@
       throw new Error('No hay una función fetch disponible para cargar YouTube.');
     }
 
-    const apiBase = options.apiBaseUrl || DEFAULT_API_BASE;
-    const infoResponse = await fetcher(`${apiBase}${videoId}`);
-    if (!infoResponse || !infoResponse.ok) {
-      throw new Error('No se pudo obtener la información del video de YouTube.');
-    }
-    let info;
-    let textSource = null;
-    if (infoResponse && typeof infoResponse.text === 'function') {
-      textSource = infoResponse;
-    } else if (infoResponse && typeof infoResponse.clone === 'function') {
+    const usingCustomFetcher = Boolean(options.fetcher);
+    const apiBases = buildApiBaseList(options, { allowFallbacks: !usingCustomFetcher });
+    let info = null;
+    let lastError = null;
+
+    for (const base of apiBases) {
       try {
-        const clone = infoResponse.clone();
-        if (clone && typeof clone.text === 'function') {
-          textSource = clone;
-        }
-      } catch (cloneErr) {
-        console.warn('No se pudo clonar la respuesta de YouTube:', cloneErr);
+        info = await fetchVideoInfo(fetcher, base, videoId);
+        break;
+      } catch (err) {
+        lastError = err;
       }
     }
 
-    if (textSource) {
-      const rawText = await textSource.text();
-      if (!rawText) {
-        throw new Error('El servicio de YouTube devolvió una respuesta vacía.');
-      }
-      try {
-        info = JSON.parse(rawText);
-      } catch (parseErr) {
-        const snippet = rawText.replace(/\s+/g, ' ').trim().slice(0, 200);
-        const detail = snippet ? ` Respuesta: ${snippet}` : '';
-        throw new Error(
-          `El servicio de YouTube devolvió datos no válidos.${detail}`,
-        );
-      }
-    } else if (typeof infoResponse?.json === 'function') {
-      try {
-        info = await infoResponse.json();
-      } catch (parseErr) {
-        const detail = parseErr?.message ? ` Detalle: ${parseErr.message}` : '';
-        throw new Error(
-          `El servicio de YouTube devolvió datos no válidos.${detail}`,
-        );
-      }
-    } else {
-      throw new Error('No se pudo interpretar la respuesta del servicio de YouTube.');
+    if (!info) {
+      if (lastError) throw lastError;
+      throw new Error('No se pudo obtener la información del video de YouTube.');
     }
 
     if (!info || typeof info !== 'object') {
