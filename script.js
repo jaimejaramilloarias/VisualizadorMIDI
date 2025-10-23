@@ -304,41 +304,6 @@ if (typeof document !== 'undefined') {
     const deleteMarkerBtn = document.getElementById('tap-marker-delete');
     const tapTooltip = document.getElementById('tap-tooltip');
 
-    const playbackLockTargets = [];
-    const playbackLockStates = new Map();
-
-    const registerPlaybackLockTarget = (element) => {
-      if (element && !playbackLockTargets.includes(element)) {
-        playbackLockTargets.push(element);
-      }
-    };
-
-    function lockPlaybackUI() {
-      playbackLockTargets.forEach((element) => {
-        if (!element) return;
-        if (!playbackLockStates.has(element)) {
-          playbackLockStates.set(element, element.disabled);
-        }
-        element.disabled = true;
-        element.classList.add('menu-locked');
-      });
-    }
-
-    function unlockPlaybackUI() {
-      playbackLockTargets.forEach((element) => {
-        if (!element) return;
-        const wasDisabled = playbackLockStates.has(element)
-          ? playbackLockStates.get(element)
-          : element.disabled;
-        element.disabled = wasDisabled;
-        element.classList.remove('menu-locked');
-        if (!wasDisabled) {
-          element.removeAttribute('aria-disabled');
-        }
-      });
-      playbackLockStates.clear();
-    }
-
     let velocityBase = getVelocityBase();
     let tapTempoActive = false;
     let tapTempoHits = [];
@@ -1074,7 +1039,6 @@ if (typeof document !== 'undefined') {
           audioPlayer.stop(true);
           stopAnimation();
           renderFrame(audioOffsetMs / 1000);
-          unlockPlaybackUI();
           finalizeTapTempoRecording({ canceled: true });
           if (tapTempoStatus) {
             tapTempoStatus.textContent =
@@ -3161,7 +3125,6 @@ if (typeof document !== 'undefined') {
 
     function startPlayback({ onEnded } = {}) {
       const endedHandler = () => {
-        unlockPlaybackUI();
         stopAnimation();
         renderFrame(audioOffsetMs / 1000);
         if (typeof onEnded === 'function') {
@@ -3169,7 +3132,6 @@ if (typeof document !== 'undefined') {
         }
       };
       if (!audioPlayer.start(notes, endedHandler)) return false;
-      lockPlaybackUI();
       startAnimation();
       return true;
     }
@@ -3178,7 +3140,6 @@ if (typeof document !== 'undefined') {
       audioPlayer.stop(preserveOffset);
       stopAnimation();
       renderFrame(audioPlayer.getStartOffset() + audioOffsetMs / 1000);
-      unlockPlaybackUI();
       if (tapTempoActive) {
         finalizeTapTempoRecording({ canceled: true });
       }
@@ -3202,7 +3163,6 @@ if (typeof document !== 'undefined') {
 
     async function refreshAnimation() {
       const canResume = audioPlayer.canStart(notes);
-      const wasPlaying = audioPlayer.isPlaying();
       await refreshPlaybackAnimation(
         audioPlayer,
         stopAnimation,
@@ -3250,7 +3210,7 @@ if (typeof document !== 'undefined') {
       const file = e.target.files[0];
       if (!file) return;
       try {
-        const result = await loadWavFile(file, audioPlayer.getAudioContext());
+      const result = await loadWavFile(file, audioPlayer.getAudioContext());
         audioPlayer.loadBuffer(result.audioBuffer, result.trimOffset);
         console.log('WAV cargado, trimOffset =', result.trimOffset);
         prepareWaveform(result.audioBuffer);
@@ -3272,12 +3232,7 @@ if (typeof document !== 'undefined') {
       onForward: () => seek(3),
       onBackward: () => seek(-3),
       onRestart: () => {
-        const result = restartPlayback(
-          audioPlayer,
-          stopAnimation,
-          renderFrame,
-          startPlayback,
-        );
+        restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback);
       },
       onRefresh: () => {
         refreshAnimation().catch((err) => console.error(err));
@@ -3300,24 +3255,6 @@ if (typeof document !== 'undefined') {
         }
       },
     });
-
-    [
-      loadBtn,
-      loadWavBtn,
-      uiControls.forwardBtn,
-      uiControls.backwardBtn,
-      uiControls.forwardArrowBtn,
-      uiControls.backwardArrowBtn,
-      uiControls.restartBtn,
-      uiControls.refreshBtn,
-      uiControls.aspect169Btn,
-      uiControls.aspect916Btn,
-      uiControls.fullScreenBtn,
-      toggleFamilyPanelBtn,
-      developerBtn,
-      tapTempoBtn,
-    ].forEach(registerPlaybackLockTarget);
-
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
