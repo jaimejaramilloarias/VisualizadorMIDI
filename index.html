@@ -80,13 +80,53 @@
     >Pantalla completa</button>
   </nav>
 
-  <canvas
-    id="visualizer"
-    width="1280"
-    height="720"
-    title="Área de visualización"
-    data-help="Muestra la animación de las notas del archivo MIDI."
-  ></canvas>
+  <div id="youtube-controls">
+    <label for="youtube-url" class="sr-only">Enlace de YouTube</label>
+    <input
+      type="url"
+      id="youtube-url"
+      placeholder="https://www.youtube.com/watch?v=..."
+      title="Pega un enlace de YouTube para usar su audio"
+      data-help="Introduce un enlace de YouTube. Se descargará el audio y, si está disponible, el video para usarlo como fondo."
+    />
+    <button
+      id="load-youtube"
+      title="Cargar audio y video desde YouTube"
+      data-help="Descarga el audio del enlace de YouTube y lo sincroniza con la animación."
+    >Cargar YouTube</button>
+    <span id="youtube-status" class="control-hint"
+      >Pega un enlace para cargar audio desde YouTube.</span
+    >
+    <label id="video-opacity-control">
+      Opacidad video
+      <input
+        type="range"
+        id="video-opacity"
+        min="0"
+        max="100"
+        value="40"
+        title="Ajusta la opacidad del video de fondo"
+      />
+      <span id="video-opacity-value">40%</span>
+    </label>
+  </div>
+
+  <div id="visual-stage">
+    <video
+      id="background-video"
+      preload="auto"
+      muted
+      playsinline
+      class="hidden"
+    ></video>
+    <canvas
+      id="visualizer"
+      width="1280"
+      height="720"
+      title="Área de visualización"
+      data-help="Muestra la animación de las notas del archivo MIDI."
+    ></canvas>
+  </div>
 
   <input
     type="file"
@@ -211,6 +251,7 @@
   <script src="utils.js"></script>
   <script src="midiLoader.js"></script>
   <script src="wavLoader.js"></script>
+  <script src="youtubeLoader.js"></script>
   <script src="audioPlayer.js"></script>
   <script src="ui.js"></script>
   <script src="help.js"></script>
