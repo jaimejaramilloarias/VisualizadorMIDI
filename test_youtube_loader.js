@@ -22,7 +22,7 @@ const { loadYouTubeMedia, extractYouTubeId } = require('./youtubeLoader.js');
   };
 
   const fetcher = async (url) => {
-    if (url === 'https://piped.video/api/v1/streams/abcdefghijk') {
+    if (url.startsWith('https://piped.video/api/v1/streams/abcdefghijk')) {
       return {
         ok: true,
         json: async () => ({
@@ -81,7 +81,7 @@ const { loadYouTubeMedia, extractYouTubeId } = require('./youtubeLoader.js');
   assert.strictEqual(Math.round(result.duration), 12);
 
   const failingFetcher = async (url) => {
-    if (url === 'https://piped.video/api/v1/streams/abcdefghijk') {
+    if (url.startsWith('https://piped.video/api/v1/streams/abcdefghijk')) {
       return {
         ok: true,
         text: async () => '<!DOCTYPE html><html><body>Error</body></html>',
