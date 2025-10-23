@@ -2,10 +2,22 @@ const assert = require('assert');
 const { JSDOM } = require('jsdom');
 
 const dom = new JSDOM(`<!DOCTYPE html><html><body>
+<nav id="top-menu">
+  <button id="load-midi"></button>
+  <button id="load-wav"></button>
+  <button id="play-stop"></button>
+  <button id="seek-forward"></button>
+  <button id="seek-backward"></button>
+  <button id="seek-forward-arrow"></button>
+  <button id="seek-backward-arrow"></button>
+  <button id="restart"></button>
+  <button id="refresh-animation"></button>
+  <button id="aspect-16-9"></button>
+  <button id="aspect-9-16"></button>
+  <button id="full-screen"></button>
+</nav>
 <canvas id="visualizer" width="800" height="720"></canvas>
-<button id="load-midi"></button>
 <input id="midi-file-input" />
-<button id="load-wav"></button>
 <input id="wav-file-input" />
 <select id="family-parameter-select"></select>
 <input id="family-height-control" data-output="family-height-value" />
@@ -15,27 +27,68 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <input id="family-bump-control" data-output="family-bump-value" />
 <span id="family-bump-value"></span>
 <input type="checkbox" id="family-extension-toggle" />
-<button id="toggle-family-panel"></button>
-<button id="developer-mode"></button>
+<nav id="bottom-menu">
+  <button id="toggle-family-panel"></button>
+  <button id="developer-mode"></button>
+  <button id="tap-tempo-mode"></button>
+</nav>
 <div id="family-config-panel"><div id="developer-controls"></div></div>
 <div id="assignment-modal"></div>
 <div id="modal-instrument-list"></div>
 <div id="modal-family-zones"></div>
 <button id="apply-assignments"></button>
-<button id="play-stop"></button>
-<button id="seek-forward"></button>
-<button id="seek-backward"></button>
-<button id="restart"></button>
-<button id="aspect-16-9"></button>
-<button id="aspect-9-16"></button>
-<button id="full-screen"></button>
+<div id="tap-tempo-panel"></div>
+<button id="start-tap-tempo"></button>
+<button id="stop-tap-tempo"></button>
+<div id="tap-tempo-status"></div>
+<div id="tap-tempo-editor"></div>
+<canvas id="tap-waveform"></canvas>
+<input id="tap-zoom" />
+<input id="tap-position" />
+<button id="tap-marker-add"></button>
+<button id="tap-marker-delete"></button>
+<div id="tap-tooltip"></div>
 </body></html>`, { runScripts: 'outside-only' });
 
-global.document = dom.window.document;
 global.window = dom.window;
+global.document = dom.window.document;
+
+global.alert = () => {};
+dom.window.alert = global.alert;
+
+global.Image = dom.window.Image;
+
+dom.window.innerWidth = 1280;
+dom.window.innerHeight = 720;
+
+class StubAudioContext {
+  constructor() {
+    this.currentTime = 0;
+    this.state = 'running';
+    this.destination = {};
+  }
+  resume() {
+    this.state = 'running';
+    return Promise.resolve();
+  }
+  createBufferSource() {
+    const source = {
+      connect() {},
+      start() {},
+      stop() {},
+      onended: null,
+    };
+    return source;
+  }
+}
+
+global.AudioContext = StubAudioContext;
+global.webkitAudioContext = StubAudioContext;
+dom.window.AudioContext = StubAudioContext;
+dom.window.webkitAudioContext = StubAudioContext;
 
 const contexts = [];
-dom.window.HTMLCanvasElement.prototype.getContext = function() {
+dom.window.HTMLCanvasElement.prototype.getContext = function () {
   const ctx = {
     rects: [],
     strokes: [],
@@ -128,35 +181,79 @@ dom.window.HTMLCanvasElement.prototype.getContext = function() {
   return ctx;
 };
 
-global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
-global.cancelAnimationFrame = (id) => clearTimeout(id);
+let rafId = 0;
+const rafTimers = new Map();
+const raf = (cb) => {
+  const id = ++rafId;
+  const timer = setTimeout(() => {
+    rafTimers.delete(id);
+    cb(Date.now());
+  }, 0);
+  rafTimers.set(id, timer);
+  return id;
+};
+const caf = (id) => {
+  const timer = rafTimers.get(id);
+  if (timer) {
+    clearTimeout(timer);
+    rafTimers.delete(id);
+  }
+};
+
+global.requestAnimationFrame = raf;
+global.cancelAnimationFrame = caf;
+dom.window.requestAnimationFrame = raf;
+dom.window.cancelAnimationFrame = caf;
 
 const script = require('./script.js');
 
 dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 
-const canvas = dom.window.document.getElementById('visualizer');
-const noteHeight = canvas.height / 88;
-const sizeFactor = script.getFamilyModifiers('Metales').sizeFactor;
-const baseHeight = noteHeight * sizeFactor;
-const velBase = script.getVelocityBase();
+dom.window.__setTestNotes([
+  {
+    start: 0,
+    end: 2,
+    noteNumber: 60,
+    velocity: 90,
+    color: '#ffffff',
+    shape: 'oval',
+    family: 'Metales',
+  },
+]);
 
-const notes = [
-  { start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'capsule', family: 'Metales', velocity: velBase },
-  { start: 0, end: 1, noteNumber: 62, color: '#fff', shape: 'capsule', family: 'Metales', velocity: velBase * 2 },
-];
+const loadBtn = dom.window.document.getElementById('load-midi');
+const toggleBtn = dom.window.document.getElementById('toggle-family-panel');
+const playBtn = dom.window.document.getElementById('play-stop');
 
-dom.window.__setTestNotes(notes);
+const initialLoadDisabled = loadBtn.disabled;
+const initialToggleDisabled = toggleBtn.disabled;
 
-dom.window.__renderFrame(1.1);
+const delay = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const strokes = contexts[1].strokes.filter((stroke) => stroke.w > 0 && stroke.h > 0);
-assert.strictEqual(strokes.length, 2, 'Debe dibujar dos contornos tras el note off');
+(async () => {
+  playBtn.click();
+  await delay();
 
-const h1 = strokes[0].h;
-const h2 = strokes[1].h;
+  assert.strictEqual(loadBtn.disabled, true, 'El botón de carga debe bloquearse durante la reproducción');
+  assert.strictEqual(
+    toggleBtn.disabled,
+    true,
+    'El panel de familias debe bloquearse durante la reproducción'
+  );
 
-assert(Math.abs(h1 - baseHeight) < 1e-6);
-assert(Math.abs(h2 - baseHeight * 2) < 1e-6);
+  playBtn.click();
+  await delay();
 
-console.log('Pruebas de altura de notas por velocidad en renderización completadas');
+  assert.strictEqual(
+    loadBtn.disabled,
+    initialLoadDisabled,
+    'El botón de carga debe restaurar su estado original tras pausar'
+  );
+  assert.strictEqual(
+    toggleBtn.disabled,
+    initialToggleDisabled,
+    'El botón del panel de familias debe restaurar su estado tras pausar'
+  );
+
+  console.log('Pruebas de accesibilidad de menús tras pausa completadas');
+})();
