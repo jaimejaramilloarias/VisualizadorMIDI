@@ -58,51 +58,63 @@
   "familyCustomizations": {
     "Metales": {
       "color": "#edd113",
-      "shape": "roundedSquare"
+      "shape": "roundedSquare",
+      "secondaryColor": "#000000"
     },
     "Cornos": {
       "color": "#edbe13",
-      "shape": "roundedSquareDouble"
+      "shape": "roundedSquareDouble",
+      "secondaryColor": "#000000"
     },
     "Maderas de timbre \"redondo\"": {
       "color": "#769df3",
-      "shape": "arabesque"
+      "shape": "roundedSquare",
+      "secondaryColor": "#000000"
     },
     "Dobles cañas": {
       "color": "#c23afd",
-      "shape": "sixPointStar"
+      "shape": "sixPointStar",
+      "secondaryColor": "#000000"
     },
     "Saxofones": {
       "color": "#ce8767",
-      "shape": "fourPointStar"
+      "shape": "fourPointStar",
+      "secondaryColor": "#000000"
     },
     "Placas": {
       "color": "#ff0000",
-      "shape": "diamondDouble"
+      "shape": "diamondDouble",
+      "secondaryColor": "#000000"
     },
     "Auxiliares": {
       "color": "#347875",
-      "shape": "arabesqueDouble"
+      "shape": "roundedSquareDouble",
+      "secondaryColor": "#000000"
     },
     "Cuerdas frotadas": {
       "color": "#41e342",
-      "shape": "diamond"
+      "shape": "diamond",
+      "secondaryColor": "#000000"
     },
     "Cuerdas pulsadas": {
       "color": "#1abeb4",
-      "shape": "triangle"
+      "shape": "triangle",
+      "secondaryColor": "#000000"
     },
     "Voces": {
       "color": "#bebebe",
-      "shape": "mill"
+      "shape": "squareDouble",
+      "secondaryColor": "#000000"
     },
     "Custom 1": {
       "color": "#d52b2b",
-      "shape": "diamond"
+      "shape": "diamond",
+      "secondaryColor": "#000000"
     },
     "Percusión menor": {
       "color": "#a78269",
-      "shape": "square"
+      "shape": "square",
+      "secondaryColor": "#000000"
     }
   },
   "enabledInstruments": {
@@ -271,8 +283,6 @@
     "families": {}
   },
   "shapeExtensions": {
-    "arabesque": true,
-    "arabesqueDouble": true,
     "circle": true,
     "circleDouble": true,
     "square": true,
@@ -285,8 +295,6 @@
     "fourPointStarDouble": true,
     "sixPointStar": true,
     "sixPointStarDouble": true,
-    "mill": true,
-    "millDouble": true,
     "triangle": true,
     "triangleDouble": true
   }

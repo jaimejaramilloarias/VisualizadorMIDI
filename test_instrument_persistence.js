@@ -17,7 +17,7 @@ const notes = [
     end: 1,
     noteNumber: 60,
     color: '#fff',
-    shape: 'arabesque',
+    shape: 'roundedSquare',
     family: 'Maderas de timbre "redondo"',
     velocity: 67,
   },
