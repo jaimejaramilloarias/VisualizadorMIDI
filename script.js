@@ -73,10 +73,8 @@ const { setupHelpMessages: initHelpMessages } =
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
 // al importar estas funciones, renombramos las referencias locales.
-const {
-  initializeUI: initializeUIControls,
-  initializeDeveloperMode: initDeveloperMode,
-} = typeof require !== 'undefined' ? require('./ui.js') : window.ui;
+const { initializeUI: initializeUIControls } =
+  typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
 const { loadWavFile } =
@@ -285,7 +283,6 @@ if (typeof document !== 'undefined') {
     const wavInput = document.getElementById('wav-file-input');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
-    const developerBtn = document.getElementById('developer-mode');
     const developerControls = document.getElementById('developer-controls');
     const assignmentModal = document.getElementById('assignment-modal');
     const modalInstrumentList = document.getElementById('modal-instrument-list');
@@ -322,7 +319,6 @@ if (typeof document !== 'undefined') {
     let tapTempoStartReference = 0;
     let tapTempoMap = null;
     let originalTempoMap = [];
-    let devMode = null;
     let draggingMarkerId = null;
     let markerHandles = [];
     let hoveredHandleKey = null;
@@ -335,7 +331,28 @@ if (typeof document !== 'undefined') {
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
-    const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value);
+    if (familyPanel) {
+      familyPanel.classList.add('active');
+    }
+    if (toggleFamilyPanelBtn) {
+      toggleFamilyPanelBtn.textContent = '▲';
+    }
+
+    const NON_EXTENDABLE_SHAPES = new Set([
+      'circleDouble',
+      'squareDouble',
+      'roundedSquareDouble',
+      'diamondDouble',
+      'fourPointStarDouble',
+      'sixPointStar',
+      'sixPointStarDouble',
+      'triangleDouble',
+    ]);
+    const isShapeExtendable = (shape) =>
+      !!(shape && !NON_EXTENDABLE_SHAPES.has(shape));
+    const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value).filter((value) =>
+      isShapeExtendable(value),
+    );
 
     function requestImmediateRender() {
       if (typeof renderFrame === 'function') {
@@ -415,7 +432,6 @@ if (typeof document !== 'undefined') {
       tapTempoModeActive = true;
       if (tapTempoPanel) tapTempoPanel.classList.remove('hidden');
       if (tapTempoBtn) tapTempoBtn.classList.add('active');
-      if (familyPanel) familyPanel.classList.remove('active');
       syncWaveformCanvasSize();
       renderWaveform();
       updateCursor();
@@ -1018,9 +1034,6 @@ if (typeof document !== 'undefined') {
         if (tapTempoModeActive) {
           deactivateTapTempoMode();
         } else {
-          if (devMode && devMode.isActive()) {
-            devMode.setActive(false);
-          }
           activateTapTempoMode();
         }
       });
@@ -1268,18 +1281,8 @@ if (typeof document !== 'undefined') {
       checkboxDrag = null;
     });
 
-    if (developerBtn && developerControls) {
-      devMode = initDeveloperMode({
-        button: developerBtn,
-        panel: developerControls,
-        onToggle: (active) => {
-          if (active) {
-            familyPanel.classList.add('active');
-            deactivateTapTempoMode();
-          }
-        },
-      });
-
+    if (developerControls) {
+      developerControls.classList.remove('hidden');
       // Control para segundos visibles en el canvas
       const secsLabel = document.createElement('label');
       secsLabel.textContent = 'Segundos visibles:';
@@ -2749,13 +2752,17 @@ if (typeof document !== 'undefined') {
         if (!target) {
           const config = getShapeExtensions();
           const values = STRETCHABLE_SHAPES.map((shape) => config[shape] !== false);
-          const allTrue = values.every(Boolean);
+          const allTrue = values.length > 0 && values.every(Boolean);
           const allFalse = values.every((val) => !val);
           const hasOverrides = Object.keys(getFamilyExtensionConfig()).length > 0;
-          extensionToggle.disabled = false;
-          extensionToggle.checked = allTrue;
-          extensionToggle.indeterminate = hasOverrides || (!allTrue && !allFalse);
-          if (hasOverrides) {
+          extensionToggle.disabled = STRETCHABLE_SHAPES.length === 0;
+          extensionToggle.checked = allTrue && !extensionToggle.disabled;
+          extensionToggle.indeterminate =
+            hasOverrides || (!allTrue && !allFalse && !extensionToggle.disabled);
+          if (extensionToggle.disabled) {
+            extensionHint.textContent = 'Sin figuras compatibles con la extensión';
+            extensionHint.classList.add('hint-active');
+          } else if (hasOverrides) {
             extensionHint.textContent = 'Con personalizaciones por familia';
             extensionHint.classList.add('hint-active');
           } else {
@@ -2773,6 +2780,11 @@ if (typeof document !== 'undefined') {
             extensionToggle.checked = false;
             extensionToggle.disabled = true;
             extensionHint.textContent = 'Sin figura asociada';
+            extensionHint.classList.add('hint-active');
+          } else if (!isShapeExtendable(shape)) {
+            extensionToggle.checked = false;
+            extensionToggle.disabled = true;
+            extensionHint.textContent = 'Extensión no disponible para esta figura';
             extensionHint.classList.add('hint-active');
           } else {
             extensionToggle.disabled = false;
@@ -2802,7 +2814,8 @@ if (typeof document !== 'undefined') {
           STRETCHABLE_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
         } else {
           const shape = getEffectiveFamilyShape(target);
-          if (!shape) {
+          if (!shape || !isShapeExtendable(shape)) {
+            clearFamilyExtension(target);
             updateExtensionControl();
             return;
           }

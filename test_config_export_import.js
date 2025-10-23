@@ -40,22 +40,22 @@ const config = {
   contourWidth: { global: 1.5, families: { Metales: 1.2 } },
   contourOpacity: { global: 1, families: {} },
   visibleSeconds: 6,
-  heightScale: { global: 1, families: {} },
+  heightScale: { global: 2, families: {} },
   shapeExtensions: {
     circle: true,
-    circleDouble: true,
+    circleDouble: false,
     square: true,
-    squareDouble: true,
+    squareDouble: false,
     roundedSquare: true,
-    roundedSquareDouble: true,
+    roundedSquareDouble: false,
     diamond: true,
-    diamondDouble: true,
+    diamondDouble: false,
     fourPointStar: true,
-    fourPointStarDouble: true,
-    sixPointStar: true,
-    sixPointStarDouble: true,
+    fourPointStarDouble: false,
+    sixPointStar: false,
+    sixPointStarDouble: false,
     triangle: true,
-    triangleDouble: true,
+    triangleDouble: false,
   },
   familyExtensions: { Metales: true },
   familyLineSettings: {},
@@ -82,7 +82,7 @@ assert.strictEqual(getBumpControl('Metales'), 1.1);
 assert.strictEqual(getContourWidthScale(), 1.5);
 assert.strictEqual(getContourWidthScale('Metales'), 1.2);
 assert.strictEqual(getVisibleSeconds(), 6);
-assert.deepStrictEqual(getHeightScaleConfig(), { global: 1, families: {} });
+assert.deepStrictEqual(getHeightScaleConfig(), { global: 2, families: {} });
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);

@@ -125,7 +125,7 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
 }
 
 // Control global y por familia para el efecto "bump"
-let bumpControl = 1;
+let bumpControl = 1.2;
 let familyBumpControl = {};
 
 function persistBumpControl() {
@@ -236,7 +236,7 @@ function computeVelocityHeight(baseHeight, velocity, reference = velocityBase) {
 }
 
 // Escala global o por familia para la altura de las figuras
-let heightScale = 1;
+let heightScale = 2;
 let familyHeightScale = {};
 
 function persistHeightScale() {
@@ -287,7 +287,7 @@ function getHeightScaleConfig() {
 loadHeightScale();
 
 // Escala global o por familia para el grosor del contorno tras el NOTE OFF
-let contourWidthScale = 0.6;
+let contourWidthScale = 0;
 let familyContourWidthScale = {};
 let contourOpacity = 1;
 let familyContourOpacity = {};
@@ -450,7 +450,7 @@ function getContourOpacityConfig() {
 loadContourOpacity();
 
 // Control global y por familia del glow
-let glowStrength = 1;
+let glowStrength = 1.5;
 let familyGlowStrength = {};
 
 function persistGlowStrength() {
@@ -710,7 +710,7 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceEllipse(ctx, x, y, width, height, 0.44);
+          traceEllipse(ctx, x, y, width, height, 0.396);
         },
       },
     ],
@@ -746,7 +746,7 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.45);
+          const frame = getScaledFrame(x, y, width, height, 0.405);
           ctx.rect(frame.x, frame.y, frame.width, frame.height);
         },
       },
@@ -783,7 +783,7 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.46);
+          const frame = getScaledFrame(x, y, width, height, 0.414);
           const radius = Math.min(frame.width, frame.height) * 0.25;
           traceRoundedSquare(ctx, frame.x, frame.y, frame.width, frame.height, radius);
         },
@@ -825,8 +825,8 @@ const SHAPE_METADATA = {
         color: 'primary',
         draw(ctx, x, y, width, height) {
           traceDiamond(ctx, x, y, width, height, {
-            insetX: width * 0.32,
-            insetY: height * 0.32,
+            insetX: width * 0.352,
+            insetY: height * 0.352,
           });
         },
       },
@@ -868,8 +868,8 @@ const SHAPE_METADATA = {
         color: 'primary',
         draw(ctx, x, y, width, height) {
           traceFourPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.32,
-            insetY: height * 0.32,
+            insetX: width * 0.352,
+            insetY: height * 0.352,
           });
         },
       },
@@ -912,8 +912,8 @@ const SHAPE_METADATA = {
         color: 'primary',
         draw(ctx, x, y, width, height) {
           traceSixPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.32,
-            insetY: height * 0.32,
+            insetX: width * 0.352,
+            insetY: height * 0.352,
           });
         },
       },
@@ -950,8 +950,8 @@ const SHAPE_METADATA = {
         color: 'primary',
         draw(ctx, x, y, width, height) {
           traceTriangle(ctx, x, y, width, height, {
-            insetX: width * 0.32,
-            insetY: height * 0.32,
+            insetX: width * 0.352,
+            insetY: height * 0.352,
           });
         },
       },
@@ -979,6 +979,17 @@ const SHAPE_ORDER = [
   'triangle',
   'triangleDouble',
 ];
+
+const NON_EXTENDABLE_SHAPES = new Set([
+  'circleDouble',
+  'squareDouble',
+  'roundedSquareDouble',
+  'diamondDouble',
+  'fourPointStarDouble',
+  'sixPointStar',
+  'sixPointStarDouble',
+  'triangleDouble',
+]);
 
 const SHAPE_OPTIONS = SHAPE_ORDER.map((value) => ({ value, label: SHAPE_METADATA[value].label }));
 
@@ -1032,7 +1043,7 @@ function drawNoteShape(
 
 // Estado de alargamiento progresivo por figura alargada
 const SHAPE_EXTENSION_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
-  acc[value] = true;
+  acc[value] = !NON_EXTENDABLE_SHAPES.has(value);
   return acc;
 }, {});
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
@@ -1062,14 +1073,29 @@ function loadShapeExtensions() {
       }
     } catch {}
   }
+  NON_EXTENDABLE_SHAPES.forEach((shape) => {
+    shapeExtensions[shape] = false;
+  });
+}
+
+function isShapeExtendable(shape) {
+  return !!(shape && !NON_EXTENDABLE_SHAPES.has(shape));
 }
 
 function getShapeExtension(shape) {
   loadShapeExtensions();
+  if (!isShapeExtendable(shape)) return false;
   return shapeExtensions[shape] !== false;
 }
 
 function setShapeExtension(shape, enabled) {
+  if (!isShapeExtendable(shape)) {
+    shapeExtensions[shape] = false;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('shapeExtensions', JSON.stringify(shapeExtensions));
+    }
+    return;
+  }
   shapeExtensions[shape] = !!enabled;
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('shapeExtensions', JSON.stringify(shapeExtensions));
@@ -1125,6 +1151,7 @@ function getFamilyExtensionConfig() {
 }
 
 function isExtensionEnabledForFamily(shape, family) {
+  if (!isShapeExtendable(shape)) return false;
   const override = getFamilyExtension(family);
   if (typeof override === 'boolean') {
     return override;
@@ -1134,7 +1161,7 @@ function isExtensionEnabledForFamily(shape, family) {
 
 loadShapeExtensions();
 
-const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.3, width: 8 };
+const DEFAULT_LINE_SETTINGS = { enabled: false, opacity: 0.3, width: 8 };
 let familyLineSettings = {};
 let familyTravelSettings = {};
 const DEFAULT_TRAVEL_EFFECT = true;
