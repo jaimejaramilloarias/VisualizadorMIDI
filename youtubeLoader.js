@@ -5,11 +5,19 @@
   const detectTrimOffset = wavApi?.detectTrimOffset || (() => 0);
   const normalizeAudioBuffer = wavApi?.normalizeAudioBuffer || ((buffer) => buffer);
 
-  const DEFAULT_API_BASES = [
-    'https://piped.video/api/v1/streams/{{id}}?local=true&client=android',
-    'https://piped.video/api/v1/streams/{{id}}?local=true',
-    'https://piped.video/api/v1/streams/',
+  const DEFAULT_PIPED_INSTANCES = [
+    'https://piped.video',
+    'https://pipedapi.kavin.rocks',
+    'https://piped.mha.fi',
   ];
+  const DEFAULT_STREAM_PATTERNS = [
+    '/api/v1/streams/{{id}}?local=true&client=android',
+    '/api/v1/streams/{{id}}?local=true',
+    '/api/v1/streams/{{id}}',
+  ];
+  const DEFAULT_API_BASES = DEFAULT_PIPED_INSTANCES.flatMap((instance) =>
+    DEFAULT_STREAM_PATTERNS.map((pattern) => `${instance}${pattern}`),
+  );
   const DEFAULT_API_BASE = DEFAULT_API_BASES[0];
   const DEFAULT_AUDIO_MIME_PREFERENCE = ['audio/mp4', 'audio/webm'];
   const DEFAULT_VIDEO_MIME_PREFERENCE = ['video/mp4', 'video/webm'];
@@ -168,7 +176,12 @@
     const statusDetail = typeof status === 'number'
       ? ` Estado: ${status}${statusText ? ` ${statusText}` : ''}.`
       : '';
-    const error = new Error(`No se pudo obtener la información del video de YouTube.${statusDetail}`);
+    const unauthorizedHint = status === 401 || status === 403
+      ? ' Verifica que la instancia seleccionada permita accesos públicos o configura una instancia alternativa en las opciones de YouTube.'
+      : '';
+    const error = new Error(
+      `No se pudo obtener la información del video de YouTube.${statusDetail}${unauthorizedHint}`,
+    );
     error.code = 'YOUTUBE_FETCH_FAILED';
     return error;
   }
