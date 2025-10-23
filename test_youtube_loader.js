@@ -80,5 +80,30 @@ const { loadYouTubeMedia, extractYouTubeId } = require('./youtubeLoader.js');
   );
   assert.strictEqual(Math.round(result.duration), 12);
 
+  const failingFetcher = async (url) => {
+    if (url === 'https://piped.video/api/v1/streams/abcdefghijk') {
+      return {
+        ok: true,
+        text: async () => '<!DOCTYPE html><html><body>Error</body></html>',
+      };
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  let errorCaptured = false;
+  try {
+    await loadYouTubeMedia('https://www.youtube.com/watch?v=abcdefghijk', {
+      audioCtx: new MockAudioContext(),
+      fetcher: failingFetcher,
+    });
+  } catch (err) {
+    errorCaptured = true;
+    assert(
+      /datos no válidos/i.test(err.message) || /respuesta vacía/i.test(err.message),
+      'Debe informar que la respuesta del servicio no es válida',
+    );
+  }
+  assert.strictEqual(errorCaptured, true, 'Debe lanzar un error amigable cuando la respuesta no es JSON.');
+
   console.log('Pruebas de carga de YouTube completadas');
 })();

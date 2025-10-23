@@ -99,7 +99,51 @@
     if (!infoResponse || !infoResponse.ok) {
       throw new Error('No se pudo obtener la información del video de YouTube.');
     }
-    const info = await infoResponse.json();
+    let info;
+    let textSource = null;
+    if (infoResponse && typeof infoResponse.text === 'function') {
+      textSource = infoResponse;
+    } else if (infoResponse && typeof infoResponse.clone === 'function') {
+      try {
+        const clone = infoResponse.clone();
+        if (clone && typeof clone.text === 'function') {
+          textSource = clone;
+        }
+      } catch (cloneErr) {
+        console.warn('No se pudo clonar la respuesta de YouTube:', cloneErr);
+      }
+    }
+
+    if (textSource) {
+      const rawText = await textSource.text();
+      if (!rawText) {
+        throw new Error('El servicio de YouTube devolvió una respuesta vacía.');
+      }
+      try {
+        info = JSON.parse(rawText);
+      } catch (parseErr) {
+        const snippet = rawText.replace(/\s+/g, ' ').trim().slice(0, 200);
+        const detail = snippet ? ` Respuesta: ${snippet}` : '';
+        throw new Error(
+          `El servicio de YouTube devolvió datos no válidos.${detail}`,
+        );
+      }
+    } else if (typeof infoResponse?.json === 'function') {
+      try {
+        info = await infoResponse.json();
+      } catch (parseErr) {
+        const detail = parseErr?.message ? ` Detalle: ${parseErr.message}` : '';
+        throw new Error(
+          `El servicio de YouTube devolvió datos no válidos.${detail}`,
+        );
+      }
+    } else {
+      throw new Error('No se pudo interpretar la respuesta del servicio de YouTube.');
+    }
+
+    if (!info || typeof info !== 'object') {
+      throw new Error('La respuesta del servicio de YouTube no contiene datos válidos.');
+    }
 
     const audioStream = selectStream(info?.audioStreams, {
       preferredMimeTypes: options.preferredAudioMimeTypes || DEFAULT_AUDIO_MIME_PREFERENCE,
