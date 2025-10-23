@@ -274,6 +274,8 @@ window.DEFAULT_CONFIG = {
     "oval": true,
     "capsule": true,
     "star": true,
-    "diamond": true
+    "diamond": true,
+    "circle": true,
+    "square": true
   }
 };
