@@ -286,168 +286,22 @@ function getHeightScaleConfig() {
 
 loadHeightScale();
 
-// Escala global o por familia para el grosor del contorno tras el NOTE OFF
-let contourWidthScale = 0;
-let familyContourWidthScale = {};
-let contourOpacity = 1;
-let familyContourOpacity = {};
-
-function persistContourWidthScale() {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(
-      'contourWidthScale',
-      JSON.stringify({
-        global: contourWidthScale,
-        families: familyContourWidthScale,
-      }),
-    );
-  }
+// Los contornos están deshabilitados de forma permanente, por lo que las
+// funciones relacionadas con su configuración ya no realizan ninguna acción.
+function setContourWidthScale() {}
+function getContourWidthScale() {
+  return 0;
 }
-
-function loadContourWidthScale() {
-  if (typeof localStorage === 'undefined') return;
-  const stored = localStorage.getItem('contourWidthScale');
-  if (!stored) return;
-  try {
-    const parsed = JSON.parse(stored);
-    if (typeof parsed === 'number') {
-      contourWidthScale = parsed;
-      familyContourWidthScale = {};
-    } else {
-      if (typeof parsed.global === 'number' && isFinite(parsed.global)) {
-        contourWidthScale = Math.max(parsed.global, 0);
-      }
-      if (parsed.families && typeof parsed.families === 'object') {
-        familyContourWidthScale = Object.entries(parsed.families).reduce(
-          (acc, [family, value]) => {
-            if (typeof value === 'number' && isFinite(value) && value >= 0) {
-              acc[family] = value;
-            }
-            return acc;
-          },
-          {},
-        );
-      }
-    }
-  } catch {
-    const numeric = parseFloat(stored);
-    if (!Number.isNaN(numeric)) {
-      contourWidthScale = Math.max(numeric, 0);
-      familyContourWidthScale = {};
-    }
-  }
-}
-
-function setContourWidthScale(value, family) {
-  if (typeof value !== 'number' || !isFinite(value) || value < 0) return;
-  if (family) {
-    familyContourWidthScale[family] = value;
-  } else {
-    contourWidthScale = value;
-    familyContourWidthScale = {};
-  }
-  persistContourWidthScale();
-}
-
-function getContourWidthScale(family) {
-  loadContourWidthScale();
-  if (family) {
-    const override = familyContourWidthScale[family];
-    if (typeof override === 'number' && isFinite(override) && override >= 0) {
-      return override;
-    }
-  }
-  return contourWidthScale;
-}
-
 function getContourWidthConfig() {
-  loadContourWidthScale();
-  return {
-    global: contourWidthScale,
-    families: { ...familyContourWidthScale },
-  };
+  return { global: 0, families: {} };
 }
-
-loadContourWidthScale();
-
-function persistContourOpacity() {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(
-      'contourOpacity',
-      JSON.stringify({
-        global: contourOpacity,
-        families: familyContourOpacity,
-      }),
-    );
-  }
+function setContourOpacity() {}
+function getContourOpacity() {
+  return 0;
 }
-
-function loadContourOpacity() {
-  if (typeof localStorage === 'undefined') return;
-  const stored = localStorage.getItem('contourOpacity');
-  if (!stored) return;
-  try {
-    const parsed = JSON.parse(stored);
-    if (typeof parsed === 'number') {
-      contourOpacity = Math.min(Math.max(parsed, 0), 1);
-      familyContourOpacity = {};
-    } else {
-      if (typeof parsed.global === 'number' && isFinite(parsed.global)) {
-        contourOpacity = Math.min(Math.max(parsed.global, 0), 1);
-      }
-      if (parsed.families && typeof parsed.families === 'object') {
-        familyContourOpacity = Object.entries(parsed.families).reduce(
-          (acc, [family, value]) => {
-            if (typeof value === 'number' && isFinite(value)) {
-              acc[family] = Math.min(Math.max(value, 0), 1);
-            }
-            return acc;
-          },
-          {},
-        );
-      }
-    }
-  } catch {
-    const numeric = parseFloat(stored);
-    if (!Number.isNaN(numeric)) {
-      contourOpacity = Math.min(Math.max(numeric, 0), 1);
-      familyContourOpacity = {};
-    }
-  }
-}
-
-function setContourOpacity(value, family) {
-  if (typeof value !== 'number' || !isFinite(value)) return;
-  const clamped = Math.min(Math.max(value, 0), 1);
-  if (family) {
-    familyContourOpacity[family] = clamped;
-  } else {
-    contourOpacity = clamped;
-    familyContourOpacity = {};
-  }
-  persistContourOpacity();
-}
-
-function getContourOpacity(family) {
-  loadContourOpacity();
-  if (family) {
-    const override = familyContourOpacity[family];
-    if (typeof override === 'number' && isFinite(override)) {
-      return Math.min(Math.max(override, 0), 1);
-    }
-  }
-  return contourOpacity;
-}
-
 function getContourOpacityConfig() {
-  loadContourOpacity();
-  return {
-    global: contourOpacity,
-    families: { ...familyContourOpacity },
-  };
+  return { global: 0, families: {} };
 }
-
-loadContourOpacity();
 
 // Control global y por familia del glow
 let glowStrength = 1.5;
@@ -546,18 +400,8 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   ctx.restore();
 }
 
-function computeNoteStrokeWidth(width, height, family) {
-  const minDim = Math.max(Math.min(width, height), 1);
-  const maxDim = Math.max(width, height, 1);
-  const aspect = maxDim / minDim;
-  const base = minDim * 0.25;
-  const elongatedBoost = Math.min(minDim * 0.2, Math.log2(aspect + 1) * minDim * 0.1);
-  const spanBoost = Math.min(minDim * 0.15, maxDim * 0.005);
-  let strokeWidth = base + elongatedBoost + spanBoost;
-  strokeWidth = Math.max(1.35, strokeWidth);
-  strokeWidth = Math.min(strokeWidth, minDim * 0.65);
-  const scale = Math.max(getContourWidthScale(family), 0);
-  return strokeWidth * (scale || 0);
+function computeNoteStrokeWidth() {
+  return 0;
 }
 
 function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
@@ -993,7 +837,9 @@ const NON_EXTENDABLE_SHAPES = new Set([
 
 const SHAPE_OPTIONS = SHAPE_ORDER.map((value) => ({ value, label: SHAPE_METADATA[value].label }));
 
+const DOUBLE_SHAPE_PATTERN = /double$/i;
 const DEFAULT_SECONDARY_LAYER_COLOR = '#000000';
+const isDoubleShape = (shape) => typeof shape === 'string' && DOUBLE_SHAPE_PATTERN.test(shape);
 
 // Dibuja cualquiera de las figuras declaradas anteriormente respetando reglas de relleno
 function drawNoteShape(
@@ -1043,7 +889,7 @@ function drawNoteShape(
 
 // Estado de alargamiento progresivo por figura alargada
 const SHAPE_EXTENSION_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
-  acc[value] = !NON_EXTENDABLE_SHAPES.has(value);
+  acc[value] = !isDoubleShape(value) && !NON_EXTENDABLE_SHAPES.has(value);
   return acc;
 }, {});
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
@@ -1076,10 +922,15 @@ function loadShapeExtensions() {
   NON_EXTENDABLE_SHAPES.forEach((shape) => {
     shapeExtensions[shape] = false;
   });
+  Object.keys(shapeExtensions).forEach((shape) => {
+    if (isDoubleShape(shape)) {
+      shapeExtensions[shape] = false;
+    }
+  });
 }
 
 function isShapeExtendable(shape) {
-  return !!(shape && !NON_EXTENDABLE_SHAPES.has(shape));
+  return !!(shape && !isDoubleShape(shape) && !NON_EXTENDABLE_SHAPES.has(shape));
 }
 
 function getShapeExtension(shape) {

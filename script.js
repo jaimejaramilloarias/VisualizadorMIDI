@@ -7,13 +7,6 @@ const {
   computeBumpHeight,
   computeGlowAlpha,
   drawNoteShape,
-  computeNoteStrokeWidth,
-  setContourWidthScale,
-  getContourWidthScale,
-  getContourWidthConfig,
-  setContourOpacity,
-  getContourOpacity,
-  getContourOpacityConfig,
   interpolateColor,
   SHAPE_OPTIONS,
   getFamilyModifiers,
@@ -338,18 +331,12 @@ if (typeof document !== 'undefined') {
       toggleFamilyPanelBtn.textContent = '▲';
     }
 
-    const NON_EXTENDABLE_SHAPES = new Set([
-      'circleDouble',
-      'squareDouble',
-      'roundedSquareDouble',
-      'diamondDouble',
-      'fourPointStarDouble',
-      'sixPointStar',
-      'sixPointStarDouble',
-      'triangleDouble',
-    ]);
+    const DOUBLE_SHAPE_PATTERN = /double$/i;
+    const isDoubleShapeName = (shape) =>
+      typeof shape === 'string' && DOUBLE_SHAPE_PATTERN.test(shape);
+    const NON_EXTENDABLE_SHAPES = new Set(['sixPointStar']);
     const isShapeExtendable = (shape) =>
-      !!(shape && !NON_EXTENDABLE_SHAPES.has(shape));
+      !!(shape && !isDoubleShapeName(shape) && !NON_EXTENDABLE_SHAPES.has(shape));
     const STRETCHABLE_SHAPES = SHAPE_OPTIONS.map((opt) => opt.value).filter((value) =>
       isShapeExtendable(value),
     );
@@ -1490,8 +1477,6 @@ if (typeof document !== 'undefined') {
       let updateHeightControl = () => {};
       let updateGlowControl = () => {};
       let updateBumpControl = () => {};
-      let updateContourControl = () => {};
-      let updateContourOpacityControl = () => {};
       let updateExtensionControl = () => {};
       let updateParameterControls = () => {};
       let updateInstrumentColorControl = () => {};
@@ -1664,42 +1649,6 @@ if (typeof document !== 'undefined') {
         });
         if (base === null) {
           base = Math.round(getBumpControl(null) * 100);
-        }
-        return { value: base, mixed };
-      };
-
-      const getContourState = (targetFamily) => {
-        const families = familiesFromSelection(targetFamily);
-        let base = null;
-        let mixed = false;
-        families.forEach((family) => {
-          const value = Math.round(getContourWidthScale(family) * 100);
-          if (base === null) {
-            base = value;
-          } else if (Math.abs(base - value) > 0.5) {
-            mixed = true;
-          }
-        });
-        if (base === null) {
-          base = Math.round(getContourWidthScale(null) * 100);
-        }
-        return { value: base, mixed };
-      };
-
-      const getContourOpacityState = (targetFamily) => {
-        const families = familiesFromSelection(targetFamily);
-        let base = null;
-        let mixed = false;
-        families.forEach((family) => {
-          const value = Math.round(getContourOpacity(family) * 100);
-          if (base === null) {
-            base = value;
-          } else if (Math.abs(base - value) > 0.5) {
-            mixed = true;
-          }
-        });
-        if (base === null) {
-          base = Math.round(getContourOpacity(null) * 100);
         }
         return { value: base, mixed };
       };
@@ -2633,108 +2582,6 @@ if (typeof document !== 'undefined') {
       bumpControl.appendChild(bumpHint);
       familyPanel.appendChild(bumpControl);
 
-      const contourControl = document.createElement('div');
-      contourControl.className = 'family-config-item family-config-group';
-      const contourLabel = document.createElement('label');
-      contourLabel.textContent = 'Grosor contorno (%):';
-      const contourInput = document.createElement('input');
-      contourInput.type = 'number';
-      contourInput.min = '0';
-      contourInput.max = '400';
-      contourInput.step = '1';
-      const contourHint = document.createElement('span');
-      contourHint.className = 'control-hint';
-
-      updateContourControl = () => {
-        const { value, mixed } = getContourState(familyTargetSelect.value);
-        if (mixed) {
-          contourInput.value = '';
-          contourInput.placeholder = '—';
-          contourHint.textContent = 'Valores variados';
-          contourHint.classList.add('hint-active');
-        } else {
-          contourInput.placeholder = '';
-          const rounded = Math.round(value);
-          contourInput.value = String(rounded);
-          contourHint.textContent = `${rounded}%`;
-          contourHint.classList.remove('hint-active');
-        }
-      };
-
-      contourInput.addEventListener('change', () => {
-        let value = parseFloat(contourInput.value);
-        if (!isFinite(value)) {
-          updateContourControl();
-          return;
-        }
-        value = Math.max(0, Math.min(400, value));
-        contourInput.value = String(Math.round(value));
-        const target = familyTargetSelect.value;
-        if (target) {
-          setContourWidthScale(value / 100, target);
-        } else {
-          setContourWidthScale(value / 100);
-        }
-        requestImmediateRender();
-        updateContourControl();
-      });
-
-      contourControl.appendChild(contourLabel);
-      contourControl.appendChild(contourInput);
-      contourControl.appendChild(contourHint);
-      familyPanel.appendChild(contourControl);
-
-      const contourOpacityControl = document.createElement('div');
-      contourOpacityControl.className = 'family-config-item family-config-group';
-      const contourOpacityLabel = document.createElement('label');
-      contourOpacityLabel.textContent = 'Opacidad contorno (%):';
-      const contourOpacityInput = document.createElement('input');
-      contourOpacityInput.type = 'number';
-      contourOpacityInput.min = '0';
-      contourOpacityInput.max = '100';
-      contourOpacityInput.step = '1';
-      const contourOpacityHint = document.createElement('span');
-      contourOpacityHint.className = 'control-hint';
-
-      updateContourOpacityControl = () => {
-        const { value, mixed } = getContourOpacityState(familyTargetSelect.value);
-        if (mixed) {
-          contourOpacityInput.value = '';
-          contourOpacityInput.placeholder = '—';
-          contourOpacityHint.textContent = 'Valores variados';
-          contourOpacityHint.classList.add('hint-active');
-        } else {
-          contourOpacityInput.placeholder = '';
-          const rounded = Math.round(value);
-          contourOpacityInput.value = String(rounded);
-          contourOpacityHint.textContent = `${rounded}%`;
-          contourOpacityHint.classList.remove('hint-active');
-        }
-      };
-
-      contourOpacityInput.addEventListener('change', () => {
-        let value = parseFloat(contourOpacityInput.value);
-        if (!isFinite(value)) {
-          updateContourOpacityControl();
-          return;
-        }
-        value = Math.max(0, Math.min(100, value));
-        contourOpacityInput.value = String(Math.round(value));
-        const target = familyTargetSelect.value;
-        if (target) {
-          setContourOpacity(value / 100, target);
-        } else {
-          setContourOpacity(value / 100);
-        }
-        requestImmediateRender();
-        updateContourOpacityControl();
-      });
-
-      contourOpacityControl.appendChild(contourOpacityLabel);
-      contourOpacityControl.appendChild(contourOpacityInput);
-      contourOpacityControl.appendChild(contourOpacityHint);
-      familyPanel.appendChild(contourOpacityControl);
-
       const extensionControl = document.createElement('div');
       extensionControl.className = 'family-config-item family-config-group';
       const extensionLabel = document.createElement('label');
@@ -2838,8 +2685,6 @@ if (typeof document !== 'undefined') {
         updateHeightControl();
         updateGlowControl();
         updateBumpControl();
-        updateContourControl();
-        updateContourOpacityControl();
         updateExtensionControl();
       };
 
@@ -4171,8 +4016,6 @@ function exportConfiguration() {
     opacityScale: getOpacityScale(),
     glowStrength: getGlowStrengthConfig(),
     bumpControl: getBumpControlConfig(),
-    contourWidth: getContourWidthConfig(),
-    contourOpacity: getContourOpacityConfig(),
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
     shapeExtensions: getShapeExtensions(),
@@ -4221,33 +4064,6 @@ function importConfiguration(json, tracks = [], notes = []) {
     if (data.bumpControl.families && typeof data.bumpControl.families === 'object') {
       Object.entries(data.bumpControl.families).forEach(([fam, val]) => {
         if (typeof val === 'number') setBumpControl(val, fam);
-      });
-    }
-  }
-  if (typeof data.contourWidth === 'number') {
-    setContourWidthScale(data.contourWidth);
-  } else if (data.contourWidth && typeof data.contourWidth === 'object') {
-    if (typeof data.contourWidth.global === 'number') {
-      setContourWidthScale(data.contourWidth.global);
-    }
-    if (data.contourWidth.families && typeof data.contourWidth.families === 'object') {
-      Object.entries(data.contourWidth.families).forEach(([fam, val]) => {
-        if (typeof val === 'number') setContourWidthScale(val, fam);
-      });
-    }
-  }
-  if (typeof data.contourOpacity === 'number') {
-    setContourOpacity(data.contourOpacity);
-  } else if (data.contourOpacity && typeof data.contourOpacity === 'object') {
-    if (typeof data.contourOpacity.global === 'number') {
-      setContourOpacity(data.contourOpacity.global);
-    }
-    if (
-      data.contourOpacity.families &&
-      typeof data.contourOpacity.families === 'object'
-    ) {
-      Object.entries(data.contourOpacity.families).forEach(([fam, val]) => {
-        if (typeof val === 'number') setContourOpacity(val, fam);
       });
     }
   }
@@ -4520,13 +4336,6 @@ if (typeof module !== 'undefined') {
     computeBumpHeight,
     computeGlowAlpha,
     applyGlowEffect,
-    computeNoteStrokeWidth,
-    setContourWidthScale,
-    getContourWidthScale,
-    getContourWidthConfig,
-    setContourOpacity,
-    getContourOpacity,
-    getContourOpacityConfig,
     computeSeekOffset,
     resetStartOffset,
     drawNoteShape,
