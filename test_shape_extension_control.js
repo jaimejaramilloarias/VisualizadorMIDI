@@ -18,4 +18,20 @@ setShapeExtension('circle', true);
 result = computeDynamicBounds(note, 2, canvasWidth, pixelsPerSecond, baseWidth, 'circle');
 assert.strictEqual(result.width, baseWidth + (finalWidth - baseWidth) / 2);
 
+const doubleNote = {
+  start: 1,
+  end: 3,
+  shape: 'circleDouble',
+  family: 'Percusión',
+};
+result = computeDynamicBounds(
+  doubleNote,
+  2,
+  canvasWidth,
+  pixelsPerSecond,
+  baseWidth,
+  'circleDouble',
+);
+assert.strictEqual(result.width, baseWidth);
+
 console.log('Pruebas de control de extensión de figuras completadas');
