@@ -1348,7 +1348,7 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
     baseHeight,
   );
   if (!isExtensionEnabledForFamily(note.shape, note.family)) {
-    return durationWidth;
+    return isDoubleShape(note.shape) ? baseHeight : durationWidth;
   }
   return baseHeight;
 }
@@ -1366,8 +1366,9 @@ function computeDynamicBounds(
   const xStart = center + (note.start - currentSec) * pixelsPerSecond;
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
   const effectiveShape = shape || note.shape;
+  const doubleShape = isDoubleShape(effectiveShape);
   if (!isExtensionEnabledForFamily(effectiveShape, note.family)) {
-    const width = finalWidth;
+    const width = doubleShape ? baseWidth : finalWidth;
     return { xStart, xEnd: xStart + width, width };
   }
   if (xStart > center) {
