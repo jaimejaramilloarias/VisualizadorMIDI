@@ -3284,11 +3284,12 @@ if (typeof document !== 'undefined') {
       const activeTravels = [];
       const margin = Math.max(canvas.width * 0.1, 80);
 
+      const snapHalf = (value) => Math.round(value * 2) / 2;
       const computeLayoutAt = (note, time) => {
         const { sizeFactor, bump } = getFamilyModifiers(note.family);
         let baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
         baseHeight = computeVelocityHeight(baseHeight, note.velocity || velocityBase);
-        const { xStart, xEnd, width } = computeDynamicBounds(
+        const { xStart: rawXStart, width: rawWidth } = computeDynamicBounds(
           note,
           time,
           canvas.width,
@@ -3304,14 +3305,34 @@ if (typeof document !== 'undefined') {
           note.end,
           bump,
           note.family,
+          rawXStart,
+          canvas.width,
         );
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
-        const alpha = computeOpacity(xStart, xEnd, canvas.width);
-        const centerX = xStart + width / 2;
-        const centerY = y + height / 2;
-        return { xStart, xEnd, width, height, y, alpha, centerX, centerY };
+        const snappedXStart = snapHalf(rawXStart);
+        const snappedWidth = Math.max(0.5, snapHalf(rawWidth));
+        const snappedXEnd = snappedXStart + snappedWidth;
+        const snappedY = snapHalf(y);
+        const snappedHeight = Math.max(0.5, snapHalf(height));
+        const alpha = computeOpacity(snappedXStart, snappedXEnd, canvas.width);
+        const centerX = snappedXStart + snappedWidth / 2;
+        const centerY = snappedY + snappedHeight / 2;
+        const alignmentX = snappedXStart;
+        const alignmentY = centerY;
+        return {
+          xStart: snappedXStart,
+          xEnd: snappedXEnd,
+          width: snappedWidth,
+          height: snappedHeight,
+          y: snappedY,
+          alpha,
+          centerX,
+          centerY,
+          alignmentX,
+          alignmentY,
+        };
       };
 
       for (let i = startIndex; i < endIndex; i++) {
@@ -3357,23 +3378,30 @@ if (typeof document !== 'undefined') {
           const avgAlpha = ((current.metrics.alpha || 0) + (next.metrics.alpha || 0)) / 2;
           const lineAlpha = config.opacity * avgAlpha;
           if (lineAlpha <= 0) continue;
-          const controlX = (current.metrics.centerX + next.metrics.centerX) / 2;
+          const controlX =
+            (current.metrics.alignmentX + next.metrics.alignmentX) / 2;
           const controlY = (current.metrics.centerY + next.metrics.centerY) / 2;
           offscreenCtx.save();
           offscreenCtx.strokeStyle = current.note.color;
           offscreenCtx.lineWidth = config.width;
           offscreenCtx.globalAlpha = lineAlpha;
           offscreenCtx.beginPath();
-          offscreenCtx.moveTo(current.metrics.centerX, current.metrics.centerY);
+          offscreenCtx.moveTo(
+            current.metrics.alignmentX,
+            current.metrics.alignmentY,
+          );
           if (typeof offscreenCtx.quadraticCurveTo === 'function') {
             offscreenCtx.quadraticCurveTo(
               controlX,
               controlY,
-              next.metrics.centerX,
-              next.metrics.centerY,
+              next.metrics.alignmentX,
+              next.metrics.alignmentY,
             );
           } else {
-            offscreenCtx.lineTo(next.metrics.centerX, next.metrics.centerY);
+            offscreenCtx.lineTo(
+              next.metrics.alignmentX,
+              next.metrics.alignmentY,
+            );
           }
           offscreenCtx.stroke();
           offscreenCtx.restore();
@@ -3405,7 +3433,14 @@ if (typeof document !== 'undefined') {
         }
 
         const glowAlpha = !released
-          ? computeGlowAlpha(currentSec, note.start, 0.2, note.family)
+          ? computeGlowAlpha(
+              currentSec,
+              note.start,
+              0.2,
+              note.family,
+              metrics.xStart,
+              canvas.width,
+            )
           : 0;
         if (glowAlpha > 0) {
           applyGlowEffect(
@@ -3429,11 +3464,11 @@ if (typeof document !== 'undefined') {
         const targetLayout = computeLayoutAt(note.next, note.next.start);
         const startShift = (currentSec - note.start) * pixelsPerSecond;
         const targetShift = (currentSec - note.next.start) * pixelsPerSecond;
-        const startX = startLayout.centerX - startShift;
-        const startY = startLayout.centerY;
-        const endX = targetLayout.centerX - targetShift;
-        const endY = targetLayout.centerY;
-        const posX = startX + (endX - startX) * clamped;
+        const startLeft = startLayout.alignmentX - startShift;
+        const startY = startLayout.alignmentY;
+        const endLeft = targetLayout.alignmentX - targetShift;
+        const endY = targetLayout.alignmentY;
+        const posLeft = startLeft + (endLeft - startLeft) * clamped;
         const posY = startY + (endY - startY) * clamped;
         const scale = Math.max(0, 1 - clamped);
         if (scale <= 0) return;
@@ -3442,7 +3477,7 @@ if (typeof document !== 'undefined') {
         const baseAlpha = Math.max(layout.metrics.alpha, 0);
         const alpha = Math.max(0, Math.min(1, baseAlpha * scale));
         if (alpha <= 0) return;
-        const drawX = posX - width / 2;
+        const drawX = posLeft;
         const drawY = posY - height / 2;
         if (drawX > canvas.width || drawX + width < 0) return;
 
