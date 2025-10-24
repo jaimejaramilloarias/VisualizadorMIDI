@@ -214,7 +214,7 @@ function computeBumpHeight(
   if (
     typeof alignmentX === 'number' &&
     typeof canvasWidth === 'number' &&
-    alignmentX > canvasWidth / 2 + 0.25
+    alignmentX > canvasWidth / 2 + 0.001
   ) {
     return baseHeight;
   }
@@ -405,13 +405,14 @@ function computeGlowAlpha(
     duration <= 0 ||
     (typeof alignmentX === 'number' &&
       typeof canvasWidth === 'number' &&
-      alignmentX > canvasWidth / 2 + 0.25)
+      alignmentX > canvasWidth / 2 + 0.001)
   ) {
     return 0;
   }
   if (currentSec < start || currentSec > start + duration) return 0;
   const progress = (currentSec - start) / duration;
-  return 1 - progress;
+  const clamped = Math.min(Math.max(progress, 0), 1);
+  return 1 - clamped;
 }
 
 // Aplica un efecto de brillo con desenfoque alrededor de la figura

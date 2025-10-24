@@ -3332,6 +3332,7 @@ if (typeof document !== 'undefined') {
           centerY,
           alignmentX,
           alignmentY,
+          activationX: rawXStart,
         };
       };
 
@@ -3438,7 +3439,7 @@ if (typeof document !== 'undefined') {
               note.start,
               0.2,
               note.family,
-              metrics.xStart,
+              metrics.activationX ?? metrics.xStart,
               canvas.width,
             )
           : 0;
