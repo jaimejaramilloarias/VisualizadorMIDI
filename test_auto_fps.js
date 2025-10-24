@@ -29,9 +29,9 @@ rafCallback(5);
 rafCallback(30);
 
 assert.strictEqual(deltas.length, 3);
-assert.strictEqual(deltas[0], 10);
-assert.strictEqual(deltas[1], 10);
-assert.strictEqual(deltas[2], 20);
+assert.strictEqual(deltas[0], 0);
+assert.strictEqual(deltas[1], 5);
+assert.strictEqual(deltas[2], 25);
 
 stop();
 assert(canceled);

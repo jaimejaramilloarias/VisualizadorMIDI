@@ -400,8 +400,9 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   ctx.restore();
 }
 
-function computeNoteStrokeWidth() {
-  return 0;
+function computeNoteStrokeWidth(width = 0, height = 0) {
+  const minDim = Math.max(Math.min(width, height), 1);
+  return Math.max(minDim / 6, 1.5);
 }
 
 function configureNoteStrokeStyle(ctx, shape, width, height, strokeWidth) {
@@ -438,6 +439,14 @@ function getScaledFrame(x, y, width, height, scale) {
   const nx = x + (width - w) / 2;
   const ny = y + (height - h) / 2;
   return { x: nx, y: ny, width: w, height: h };
+}
+
+function getCenteredSquareFrame(x, y, width, height, scale = 1) {
+  const size = Math.min(width, height);
+  const scaled = size * scale;
+  const nx = x + (width - scaled) / 2;
+  const ny = y + (height - scaled) / 2;
+  return { x: nx, y: ny, width: scaled, height: scaled };
 }
 
 function traceRoundedSquare(ctx, x, y, width, height, radius) {
@@ -542,25 +551,29 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceEllipse(ctx, x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceEllipse(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceEllipse(ctx, x, y, width, height, 0.7);
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.7);
+          traceEllipse(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceEllipse(ctx, x, y, width, height, 0.396);
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.396);
+          traceEllipse(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      traceEllipse(ctx, x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      traceEllipse(ctx, frame.x, frame.y, frame.width, frame.height);
     },
   },
   square: {
@@ -577,27 +590,29 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          ctx.rect(x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          ctx.rect(frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.72);
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.72);
           ctx.rect(frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.405);
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.405);
           ctx.rect(frame.x, frame.y, frame.width, frame.height);
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      ctx.rect(x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      ctx.rect(frame.x, frame.y, frame.width, frame.height);
     },
   },
   roundedSquare: {
@@ -612,31 +627,33 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const radius = Math.min(width, height) * 0.25;
-          traceRoundedSquare(ctx, x, y, width, height, radius);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          const radius = frame.width * 0.25;
+          traceRoundedSquare(ctx, frame.x, frame.y, frame.width, frame.height, radius);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.72);
-          const radius = Math.min(frame.width, frame.height) * 0.25;
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.72);
+          const radius = frame.width * 0.25;
           traceRoundedSquare(ctx, frame.x, frame.y, frame.width, frame.height, radius);
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          const frame = getScaledFrame(x, y, width, height, 0.414);
-          const radius = Math.min(frame.width, frame.height) * 0.25;
+          const frame = getCenteredSquareFrame(x, y, width, height, 0.414);
+          const radius = frame.width * 0.25;
           traceRoundedSquare(ctx, frame.x, frame.y, frame.width, frame.height, radius);
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      const radius = Math.min(width, height) * 0.25;
-      traceRoundedSquare(ctx, x, y, width, height, radius);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      const radius = frame.width * 0.25;
+      traceRoundedSquare(ctx, frame.x, frame.y, frame.width, frame.height, radius);
     },
   },
   diamond: {
@@ -653,31 +670,35 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceDiamond(ctx, x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceDiamond(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceDiamond(ctx, x, y, width, height, {
-            insetX: width * 0.16,
-            insetY: height * 0.16,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceDiamond(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.16,
+            insetY: frame.height * 0.16,
           });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceDiamond(ctx, x, y, width, height, {
-            insetX: width * 0.352,
-            insetY: height * 0.352,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceDiamond(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.352,
+            insetY: frame.height * 0.352,
           });
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      traceDiamond(ctx, x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      traceDiamond(ctx, frame.x, frame.y, frame.width, frame.height);
     },
   },
   fourPointStar: {
@@ -696,31 +717,35 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceFourPointStar(ctx, x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceFourPointStar(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceFourPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.16,
-            insetY: height * 0.16,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceFourPointStar(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.16,
+            insetY: frame.height * 0.16,
           });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceFourPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.352,
-            insetY: height * 0.352,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceFourPointStar(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.352,
+            insetY: frame.height * 0.352,
           });
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      traceFourPointStar(ctx, x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      traceFourPointStar(ctx, frame.x, frame.y, frame.width, frame.height);
     },
   },
   sixPointStar: {
@@ -734,30 +759,34 @@ const SHAPE_METADATA = {
     label: 'Estrella de 6 puntas doble',
     sharp: true,
     draw(ctx, x, y, width, height) {
-      traceSixPointStar(ctx, x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      traceSixPointStar(ctx, frame.x, frame.y, frame.width, frame.height);
     },
     layers: [
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceSixPointStar(ctx, x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceSixPointStar(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceSixPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.16,
-            insetY: height * 0.16,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceSixPointStar(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.16,
+            insetY: frame.height * 0.16,
           });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceSixPointStar(ctx, x, y, width, height, {
-            insetX: width * 0.352,
-            insetY: height * 0.352,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceSixPointStar(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.352,
+            insetY: frame.height * 0.352,
           });
         },
       },
@@ -778,31 +807,35 @@ const SHAPE_METADATA = {
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceTriangle(ctx, x, y, width, height);
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceTriangle(ctx, frame.x, frame.y, frame.width, frame.height);
         },
       },
       {
         color: 'secondary',
         draw(ctx, x, y, width, height) {
-          traceTriangle(ctx, x, y, width, height, {
-            insetX: width * 0.18,
-            insetY: height * 0.18,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceTriangle(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.18,
+            insetY: frame.height * 0.18,
           });
         },
       },
       {
         color: 'primary',
         draw(ctx, x, y, width, height) {
-          traceTriangle(ctx, x, y, width, height, {
-            insetX: width * 0.352,
-            insetY: height * 0.352,
+          const frame = getCenteredSquareFrame(x, y, width, height);
+          traceTriangle(ctx, frame.x, frame.y, frame.width, frame.height, {
+            insetX: frame.width * 0.352,
+            insetY: frame.height * 0.352,
           });
         },
       },
     ],
     secondaryFill: '#000000',
     draw(ctx, x, y, width, height) {
-      traceTriangle(ctx, x, y, width, height);
+      const frame = getCenteredSquareFrame(x, y, width, height);
+      traceTriangle(ctx, frame.x, frame.y, frame.width, frame.height);
     },
   },
 };
@@ -1276,45 +1309,40 @@ function prefersReducedMotion() {
 
 function startAutoFPSLoop(callback, minDt = 8, maxDt = 32) {
   if (prefersReducedMotion()) {
-    callback(0, performance.now());
+    const now = performance.now();
+    callback(0, now);
     return () => {};
   }
 
   let last = performance.now();
-  let adaptiveMin = minDt;
-  let adaptiveMax = maxDt;
-  let sampleCount = 0;
-  let sampleTotal = 0;
+  let initialized = false;
   let id;
 
-  const clampDt = (value) => {
-    const lower = Math.min(Math.max(adaptiveMin, minDt), maxDt);
-    const upper = Math.max(lower, Math.min(adaptiveMax, maxDt));
-    return Math.min(Math.max(value, lower), upper);
-  };
+  const fallbackMin = Math.max(0, Number.isFinite(minDt) ? minDt : 0);
+  const fallbackMax = Math.max(fallbackMin, Number.isFinite(maxDt) ? maxDt : fallbackMin);
 
-  function updateAdaptiveWindow(delta) {
-    if (!Number.isFinite(delta) || delta <= 0) return;
-    sampleCount += 1;
-    sampleTotal += delta;
-    if (sampleCount > 120) {
-      sampleCount = Math.round(sampleCount / 2);
-      sampleTotal /= 2;
+  function computeDt(now) {
+    const delta = now - last;
+    last = now;
+    if (!Number.isFinite(delta) || delta <= 0) {
+      return fallbackMin;
     }
-    if (sampleCount < 5) return;
-    const average = sampleTotal / sampleCount;
-    const target = Math.min(Math.max(average, minDt), maxDt);
-    const span = target * 0.25;
-    adaptiveMin = Math.max(minDt, target - span);
-    adaptiveMax = Math.min(maxDt, target + span);
+    if (fallbackMax > 0 && delta > fallbackMax * 4) {
+      return fallbackMax;
+    }
+    return delta;
   }
 
   function frame(now) {
-    const delta = now - last;
-    updateAdaptiveWindow(delta);
-    const dt = clampDt(Number.isFinite(delta) ? delta : minDt);
-    last = now;
-    callback(dt, now);
+    const current = Number.isFinite(now) ? now : performance.now();
+    if (!initialized) {
+      last = current;
+      initialized = true;
+      callback(0, current);
+    } else {
+      const dt = computeDt(current);
+      callback(dt, current);
+    }
     id = requestAnimationFrame(frame);
   }
 
