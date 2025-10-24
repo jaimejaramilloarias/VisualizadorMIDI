@@ -10,6 +10,7 @@ const {
   getVisibleSeconds,
   getHeightScaleConfig,
 } = require('./script.js');
+const { getOutlineSettings, resetOutlineSettings } = require('./utils.js');
 
 const tracks = assignTrackInfo([{ name: 'Flauta', events: [] }]);
 const notes = [
@@ -25,6 +26,8 @@ const notes = [
     instrument: tracks[0].instrument,
   },
 ];
+
+resetOutlineSettings();
 
 const config = {
   assignedFamilies: { Flauta: 'Metales' },
@@ -57,9 +60,36 @@ const config = {
   familyExtensions: { Metales: true },
   familyLineSettings: {},
   familyTravelSettings: {},
+  outlineSettings: {
+    global: {
+      enabled: true,
+      mode: 'full',
+      width: 4,
+      color: '#654321',
+      opacity: 0.75,
+    },
+    families: {
+      Metales: {
+        enabled: true,
+        mode: 'post',
+        width: 6,
+        color: '#abcdef',
+        opacity: 0.5,
+      },
+    },
+  },
 };
 
 importConfiguration(config, tracks, notes);
+
+const globalOutline = getOutlineSettings();
+assert.deepStrictEqual(globalOutline, config.outlineSettings.global);
+const familyOutline = getOutlineSettings('Metales');
+assert.strictEqual(familyOutline.mode, 'post');
+assert.strictEqual(familyOutline.width, 6);
+assert.strictEqual(familyOutline.color, '#abcdef');
+assert.strictEqual(familyOutline.opacity, 0.5);
+assert.strictEqual(familyOutline.enabled, true);
 
 assert.strictEqual(tracks[0].family, 'Metales');
 assert.strictEqual(tracks[0].shape, 'diamond');
@@ -81,5 +111,7 @@ assert.deepStrictEqual(getHeightScaleConfig(), { global: 2, families: {} });
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);
+
+resetOutlineSettings();
 
 console.log('Pruebas de exportación e importación completadas');

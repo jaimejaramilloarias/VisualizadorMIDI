@@ -302,23 +302,6 @@ function getHeightScaleConfig() {
 
 loadHeightScale();
 
-// Los contornos están deshabilitados de forma permanente, por lo que las
-// funciones relacionadas con su configuración ya no realizan ninguna acción.
-function setContourWidthScale() {}
-function getContourWidthScale() {
-  return 0;
-}
-function getContourWidthConfig() {
-  return { global: 0, families: {} };
-}
-function setContourOpacity() {}
-function getContourOpacity() {
-  return 0;
-}
-function getContourOpacityConfig() {
-  return { global: 0, families: {} };
-}
-
 // Control global y por familia del glow
 let glowStrength = 1.5;
 let familyGlowStrength = {};
@@ -927,6 +910,146 @@ const DOUBLE_SHAPE_PATTERN = /double$/i;
 const DEFAULT_SECONDARY_LAYER_COLOR = '#000000';
 const isDoubleShape = (shape) => typeof shape === 'string' && DOUBLE_SHAPE_PATTERN.test(shape);
 
+const OUTLINE_MODES = ['full', 'pre', 'post'];
+const OUTLINE_DEFAULTS = Object.freeze({
+  enabled: false,
+  mode: 'full',
+  width: 3,
+  color: null,
+  opacity: 1,
+});
+let outlineSettings = { ...OUTLINE_DEFAULTS };
+let familyOutlineSettings = {};
+
+function persistOutlineSettings() {
+  if (typeof localStorage === 'undefined') return;
+  const payload = {
+    global: outlineSettings,
+    families: familyOutlineSettings,
+  };
+  localStorage.setItem('outlineSettings', JSON.stringify(payload));
+}
+
+function sanitizeOutlineSettings(config = {}, base = OUTLINE_DEFAULTS) {
+  const sanitized = { ...base };
+  if (typeof config.enabled === 'boolean') sanitized.enabled = config.enabled;
+  if (typeof config.mode === 'string' && OUTLINE_MODES.includes(config.mode)) {
+    sanitized.mode = config.mode;
+  }
+  if (typeof config.width === 'number' && Number.isFinite(config.width)) {
+    sanitized.width = Math.max(0.25, config.width);
+  }
+  if (typeof config.opacity === 'number' && Number.isFinite(config.opacity)) {
+    sanitized.opacity = Math.min(Math.max(config.opacity, 0), 1);
+  }
+  if (typeof config.color === 'string') {
+    const hex = config.color.trim();
+    sanitized.color = /^#([0-9a-f]{3}){1,2}$/i.test(hex) ? hex.toLowerCase() : sanitized.color;
+  } else if (config.color === null) {
+    sanitized.color = null;
+  }
+  return sanitized;
+}
+
+function loadOutlineSettings() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('outlineSettings');
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.global && typeof parsed.global === 'object') {
+        outlineSettings = sanitizeOutlineSettings(parsed.global, outlineSettings);
+      }
+      if (parsed.families && typeof parsed.families === 'object') {
+        familyOutlineSettings = Object.entries(parsed.families).reduce(
+          (acc, [family, cfg]) => {
+            if (cfg && typeof cfg === 'object') {
+              acc[family] = sanitizeOutlineSettings(cfg, outlineSettings);
+            }
+            return acc;
+          },
+          {},
+        );
+      }
+    }
+  } catch (err) {
+    try {
+      const fallback = JSON.parse(stored);
+      if (fallback && typeof fallback === 'object') {
+        outlineSettings = sanitizeOutlineSettings(fallback, outlineSettings);
+      }
+    } catch {}
+  }
+}
+
+function setOutlineSettings(updates = {}, family) {
+  loadOutlineSettings();
+  if (family) {
+    const current = familyOutlineSettings[family] || outlineSettings;
+    familyOutlineSettings[family] = sanitizeOutlineSettings(updates, current);
+  } else {
+    outlineSettings = sanitizeOutlineSettings(updates, outlineSettings);
+  }
+  persistOutlineSettings();
+}
+
+function mergeOutlineSettings(base, override) {
+  if (!override) return { ...base };
+  const merged = { ...base };
+  if (typeof override.enabled === 'boolean') merged.enabled = override.enabled;
+  if (typeof override.mode === 'string' && OUTLINE_MODES.includes(override.mode)) {
+    merged.mode = override.mode;
+  }
+  if (typeof override.width === 'number' && Number.isFinite(override.width)) {
+    merged.width = Math.max(0.25, override.width);
+  }
+  if (typeof override.opacity === 'number' && Number.isFinite(override.opacity)) {
+    merged.opacity = Math.min(Math.max(override.opacity, 0), 1);
+  }
+  if (override.color === null) {
+    merged.color = null;
+  } else if (typeof override.color === 'string') {
+    const hex = override.color.trim();
+    if (/^#([0-9a-f]{3}){1,2}$/i.test(hex)) {
+      merged.color = hex.toLowerCase();
+    }
+  }
+  return merged;
+}
+
+function getOutlineSettings(family) {
+  loadOutlineSettings();
+  const base = { ...outlineSettings };
+  if (!family) return base;
+  const override = familyOutlineSettings[family];
+  if (!override) return base;
+  return mergeOutlineSettings(base, override);
+}
+
+function getOutlineSettingsConfig() {
+  loadOutlineSettings();
+  return {
+    global: { ...outlineSettings },
+    families: { ...familyOutlineSettings },
+  };
+}
+
+function clearFamilyOutlineSettings(family) {
+  loadOutlineSettings();
+  if (!family) return;
+  delete familyOutlineSettings[family];
+  persistOutlineSettings();
+}
+
+function resetOutlineSettings() {
+  outlineSettings = { ...OUTLINE_DEFAULTS };
+  familyOutlineSettings = {};
+  persistOutlineSettings();
+}
+
+loadOutlineSettings();
+
 // Dibuja cualquiera de las figuras declaradas anteriormente respetando reglas de relleno
 function drawNoteShape(
   ctx,
@@ -1454,12 +1577,14 @@ const utils = {
   setBumpControl,
   getBumpControl,
   getBumpControlConfig,
-  setContourWidthScale,
-  getContourWidthScale,
-  getContourWidthConfig,
-  setContourOpacity,
-  getContourOpacity,
-  getContourOpacityConfig,
+  setOutlineSettings,
+  getOutlineSettings,
+  getOutlineSettingsConfig,
+  clearFamilyOutlineSettings,
+  resetOutlineSettings,
+  sanitizeOutlineSettings,
+  OUTLINE_MODES,
+  OUTLINE_DEFAULTS,
   setHeightScale,
   getHeightScale,
   getHeightScaleConfig,
