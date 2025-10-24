@@ -33,8 +33,11 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 global.document = dom.window.document;
 global.window = dom.window;
 
+global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
+
 const contexts = [];
-dom.window.HTMLCanvasElement.prototype.getContext = function() {
+dom.window.HTMLCanvasElement.prototype.getContext = function () {
   const ctx = {
     rects: [],
     rect(x, y, w, h) { this.rects.push({ x, y, w, h }); },
@@ -57,38 +60,39 @@ dom.window.HTMLCanvasElement.prototype.getContext = function() {
   return ctx;
 };
 
-global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
-global.cancelAnimationFrame = (id) => clearTimeout(id);
-
 const script = require('./script.js');
 
 dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 
 const canvas = dom.window.document.getElementById('visualizer');
-const noteHeight = canvas.height / 88;
-const sizeFactor = script.getFamilyModifiers('Metales').sizeFactor;
-const baseHeight = noteHeight * sizeFactor * script.getHeightScale('Metales');
-const velBase = script.getVelocityBase();
+const center = canvas.width / 2;
+const visibleSeconds = script.getVisibleSeconds();
+const pixelsPerSecond = canvas.width / visibleSeconds;
 
 const notes = [
-  { start: 0, end: 1, noteNumber: 60, color: '#fff', shape: 'square', family: 'Metales', velocity: velBase },
-  { start: 0, end: 1, noteNumber: 62, color: '#fff', shape: 'square', family: 'Metales', velocity: velBase * 2 },
+  { start: 2, end: 4, noteNumber: 60, color: '#fff', shape: 'square', family: 'Metales', velocity: 64 },
 ];
 
 dom.window.__setTestNotes(notes);
 
-dom.window.__renderFrame(1.3);
+const offscreen = contexts[1];
 
-const rects = contexts[1].rects;
-assert.strictEqual(rects.length, 2, 'Debe dibujar dos rectángulos de contorno tras el note off');
+offscreen.rects.length = 0;
+dom.window.__renderFrame(2);
+assert.strictEqual(offscreen.rects.length > 0, true);
+const atStart = offscreen.rects[0];
+assert(Math.abs(atStart.x - center) <= 0.5, 'El borde izquierdo debe alinearse con el NOTE ON');
 
-const h1 = rects[0].h;
-const h2 = rects[1].h;
+offscreen.rects.length = 0;
+dom.window.__renderFrame(1.5);
+const beforeStart = offscreen.rects[0];
+const expectedFuture = Math.round((center + (notes[0].start - 1.5) * pixelsPerSecond) * 2) / 2;
+assert(Math.abs(beforeStart.x - expectedFuture) <= 0.5, 'El avance futuro debe mantener el borde alineado al NOTE ON');
 
-const expectedH1 = Math.round(baseHeight * 2) / 2;
-const expectedH2 = Math.round(baseHeight * 4) / 2;
+offscreen.rects.length = 0;
+dom.window.__renderFrame(4.5);
+const afterEnd = offscreen.rects[0];
+const expectedPast = Math.round((center + (notes[0].start - 4.5) * pixelsPerSecond) * 2) / 2;
+assert(Math.abs(afterEnd.x - expectedPast) <= 0.5, 'El retroceso pasado debe mantener el borde alineado al NOTE ON');
 
-assert(Math.abs(h1 - expectedH1) < 1e-6);
-assert(Math.abs(h2 - expectedH2) < 1e-6);
-
-console.log('Pruebas de altura de notas por velocidad en renderización completadas');
+console.log('Pruebas de alineación de notas completadas');

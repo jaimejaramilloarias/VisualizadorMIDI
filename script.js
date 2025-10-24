@@ -55,6 +55,13 @@ const {
   getTravelEffectSettings,
   setTravelEffectSettings,
   resetTravelEffectSettings,
+  setOutlineSettings,
+  getOutlineSettings,
+  getOutlineSettingsConfig,
+  clearFamilyOutlineSettings,
+  resetOutlineSettings,
+  sanitizeOutlineSettings,
+  OUTLINE_MODES,
 } = typeof require !== 'undefined' ? require('./utils.js') : window.utils;
 
 // "setupHelpMessages" se declara globalmente en help.js. Para evitar conflictos
@@ -1477,6 +1484,7 @@ if (typeof document !== 'undefined') {
       let updateHeightControl = () => {};
       let updateGlowControl = () => {};
       let updateBumpControl = () => {};
+      let updateOutlineControl = () => {};
       let updateExtensionControl = () => {};
       let updateParameterControls = () => {};
       let updateInstrumentColorControl = () => {};
@@ -2043,6 +2051,161 @@ if (typeof document !== 'undefined') {
       instrumentShapeControl.appendChild(instrumentShapeHint);
       instrumentConfig.appendChild(instrumentShapeControl);
 
+      const instrumentOutlineControl = document.createElement('div');
+      instrumentOutlineControl.className = 'family-config-item family-config-group instrument-outline-control';
+
+      const instrumentOutlineHeader = document.createElement('div');
+      instrumentOutlineHeader.className = 'outline-row instrument-outline-header';
+      const instrumentOutlineToggleLabel = document.createElement('label');
+      instrumentOutlineToggleLabel.className = 'outline-toggle-label';
+      const instrumentOutlineToggle = document.createElement('input');
+      instrumentOutlineToggle.type = 'checkbox';
+      instrumentOutlineToggleLabel.appendChild(instrumentOutlineToggle);
+      instrumentOutlineToggleLabel.appendChild(document.createTextNode(' Contorno activo'));
+      const instrumentOutlineStatus = document.createElement('span');
+      instrumentOutlineStatus.className = 'control-hint';
+      instrumentOutlineHeader.appendChild(instrumentOutlineToggleLabel);
+      instrumentOutlineHeader.appendChild(instrumentOutlineStatus);
+      instrumentOutlineControl.appendChild(instrumentOutlineHeader);
+
+      const instrumentOutlineModeRow = document.createElement('div');
+      instrumentOutlineModeRow.className = 'outline-row';
+      const instrumentOutlineModeLabel = document.createElement('label');
+      instrumentOutlineModeLabel.textContent = 'Modo:';
+      const instrumentOutlineModeSelect = document.createElement('select');
+      OUTLINE_MODES.forEach((mode) => {
+        const option = document.createElement('option');
+        option.value = mode;
+        option.textContent = OUTLINE_MODE_LABELS[mode] || mode;
+        instrumentOutlineModeSelect.appendChild(option);
+      });
+      const instrumentOutlineModeHint = document.createElement('span');
+      instrumentOutlineModeHint.className = 'control-hint';
+      instrumentOutlineModeRow.appendChild(instrumentOutlineModeLabel);
+      instrumentOutlineModeRow.appendChild(instrumentOutlineModeSelect);
+      instrumentOutlineModeRow.appendChild(instrumentOutlineModeHint);
+      instrumentOutlineControl.appendChild(instrumentOutlineModeRow);
+
+      const instrumentOutlineWidthRow = document.createElement('div');
+      instrumentOutlineWidthRow.className = 'outline-row';
+      const instrumentOutlineWidthLabel = document.createElement('label');
+      instrumentOutlineWidthLabel.textContent = 'Grosor (px):';
+      const instrumentOutlineWidthInput = document.createElement('input');
+      instrumentOutlineWidthInput.type = 'number';
+      instrumentOutlineWidthInput.step = '0.1';
+      instrumentOutlineWidthInput.min = '0.25';
+      instrumentOutlineWidthInput.max = '40';
+      const instrumentOutlineWidthHint = document.createElement('span');
+      instrumentOutlineWidthHint.className = 'control-hint';
+      instrumentOutlineWidthRow.appendChild(instrumentOutlineWidthLabel);
+      instrumentOutlineWidthRow.appendChild(instrumentOutlineWidthInput);
+      instrumentOutlineWidthRow.appendChild(instrumentOutlineWidthHint);
+      instrumentOutlineControl.appendChild(instrumentOutlineWidthRow);
+
+      const instrumentOutlineOpacityRow = document.createElement('div');
+      instrumentOutlineOpacityRow.className = 'outline-row';
+      const instrumentOutlineOpacityLabel = document.createElement('label');
+      instrumentOutlineOpacityLabel.textContent = 'Opacidad (%):';
+      const instrumentOutlineOpacityInput = document.createElement('input');
+      instrumentOutlineOpacityInput.type = 'number';
+      instrumentOutlineOpacityInput.min = '0';
+      instrumentOutlineOpacityInput.max = '100';
+      instrumentOutlineOpacityInput.step = '1';
+      const instrumentOutlineOpacityHint = document.createElement('span');
+      instrumentOutlineOpacityHint.className = 'control-hint';
+      instrumentOutlineOpacityRow.appendChild(instrumentOutlineOpacityLabel);
+      instrumentOutlineOpacityRow.appendChild(instrumentOutlineOpacityInput);
+      instrumentOutlineOpacityRow.appendChild(instrumentOutlineOpacityHint);
+      instrumentOutlineControl.appendChild(instrumentOutlineOpacityRow);
+
+      const instrumentOutlineColorRow = document.createElement('div');
+      instrumentOutlineColorRow.className = 'outline-row outline-color-row';
+      const instrumentOutlineColorLabel = document.createElement('label');
+      instrumentOutlineColorLabel.textContent = 'Color del contorno:';
+      const instrumentOutlineColorInput = document.createElement('input');
+      instrumentOutlineColorInput.type = 'color';
+      instrumentOutlineColorInput.value = '#ffffff';
+      const instrumentOutlineColorAutoLabel = document.createElement('label');
+      instrumentOutlineColorAutoLabel.className = 'outline-color-auto';
+      const instrumentOutlineColorAuto = document.createElement('input');
+      instrumentOutlineColorAuto.type = 'checkbox';
+      instrumentOutlineColorAuto.checked = true;
+      instrumentOutlineColorAutoLabel.appendChild(instrumentOutlineColorAuto);
+      instrumentOutlineColorAutoLabel.appendChild(document.createTextNode(' Usar color de la figura'));
+      const instrumentOutlineColorHint = document.createElement('span');
+      instrumentOutlineColorHint.className = 'control-hint';
+      instrumentOutlineColorRow.appendChild(instrumentOutlineColorLabel);
+      instrumentOutlineColorRow.appendChild(instrumentOutlineColorInput);
+      instrumentOutlineColorRow.appendChild(instrumentOutlineColorAutoLabel);
+      instrumentOutlineColorRow.appendChild(instrumentOutlineColorHint);
+      instrumentOutlineControl.appendChild(instrumentOutlineColorRow);
+
+      instrumentConfig.appendChild(instrumentOutlineControl);
+
+      const applyInstrumentOutlineUpdate = (updates) => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        setInstrumentCustomization(
+          trackName,
+          { outline: updates },
+          currentTracks,
+          notes,
+          getEditStartTime(),
+        );
+        requestImmediateRender();
+        updateInstrumentColorControl();
+      };
+
+      instrumentOutlineToggle.addEventListener('change', () => {
+        applyInstrumentOutlineUpdate({ enabled: instrumentOutlineToggle.checked });
+      });
+
+      instrumentOutlineModeSelect.addEventListener('change', () => {
+        const mode = instrumentOutlineModeSelect.value;
+        if (!mode || !OUTLINE_MODES.includes(mode)) return;
+        applyInstrumentOutlineUpdate({ mode });
+      });
+
+      instrumentOutlineWidthInput.addEventListener('change', () => {
+        const raw = parseFloat(instrumentOutlineWidthInput.value);
+        if (!Number.isFinite(raw)) {
+          updateInstrumentColorControl();
+          return;
+        }
+        const clamped = Math.max(0.25, Math.min(40, raw));
+        const rounded = Math.round(clamped * 10) / 10;
+        instrumentOutlineWidthInput.value = String(rounded);
+        applyInstrumentOutlineUpdate({ width: rounded });
+      });
+
+      instrumentOutlineOpacityInput.addEventListener('change', () => {
+        const raw = parseFloat(instrumentOutlineOpacityInput.value);
+        if (!Number.isFinite(raw)) {
+          updateInstrumentColorControl();
+          return;
+        }
+        const clamped = Math.max(0, Math.min(100, raw));
+        instrumentOutlineOpacityInput.value = String(Math.round(clamped));
+        applyInstrumentOutlineUpdate({ opacity: clamp(clamped / 100, 0, 1) });
+      });
+
+      instrumentOutlineColorInput.addEventListener('input', () => {
+        if (instrumentOutlineColorAuto.checked) return;
+        const hex = instrumentOutlineColorInput.value;
+        if (typeof hex !== 'string') return;
+        applyInstrumentOutlineUpdate({ color: hex });
+      });
+
+      instrumentOutlineColorAuto.addEventListener('change', () => {
+        if (instrumentOutlineColorAuto.checked) {
+          instrumentOutlineColorInput.disabled = true;
+          applyInstrumentOutlineUpdate({ color: null });
+        } else {
+          instrumentOutlineColorInput.disabled = false;
+          applyInstrumentOutlineUpdate({ color: instrumentOutlineColorInput.value || '#ffffff' });
+        }
+      });
+
       const instrumentResetControl = document.createElement('div');
       instrumentResetControl.className = 'family-config-item family-config-group';
       const instrumentResetBtn = document.createElement('button');
@@ -2060,6 +2223,12 @@ if (typeof document !== 'undefined') {
         instrumentSwatches.forEach((swatch) => {
           swatch.disabled = disabled;
         });
+        instrumentOutlineToggle.disabled = disabled;
+        instrumentOutlineModeSelect.disabled = disabled;
+        instrumentOutlineWidthInput.disabled = disabled;
+        instrumentOutlineOpacityInput.disabled = disabled;
+        instrumentOutlineColorAuto.disabled = disabled;
+        instrumentOutlineColorInput.disabled = disabled || instrumentOutlineColorAuto.checked;
       };
 
       instrumentSelect.addEventListener('change', () => {
@@ -2128,6 +2297,22 @@ if (typeof document !== 'undefined') {
             swatch.classList.remove('selected');
             swatch.setAttribute('aria-pressed', 'false');
           });
+          instrumentOutlineToggle.checked = false;
+          instrumentOutlineStatus.textContent = 'Selecciona un instrumento';
+          instrumentOutlineStatus.classList.add('hint-active');
+          instrumentOutlineModeSelect.value = OUTLINE_MODES[0] || 'full';
+          instrumentOutlineModeHint.textContent = '';
+          instrumentOutlineModeHint.classList.add('hint-active');
+          instrumentOutlineWidthInput.value = '0';
+          instrumentOutlineWidthHint.textContent = '';
+          instrumentOutlineWidthHint.classList.add('hint-active');
+          instrumentOutlineOpacityInput.value = '0';
+          instrumentOutlineOpacityHint.textContent = '';
+          instrumentOutlineOpacityHint.classList.add('hint-active');
+          instrumentOutlineColorAuto.checked = true;
+          instrumentOutlineColorInput.value = '#ffffff';
+          instrumentOutlineColorHint.textContent = '';
+          instrumentOutlineColorHint.classList.add('hint-active');
           return;
         }
         setInstrumentControlsEnabled(true);
@@ -2191,6 +2376,71 @@ if (typeof document !== 'undefined') {
         } else {
           instrumentShapeHint.textContent = '';
           instrumentShapeHint.classList.add('hint-active');
+        }
+
+        const outlineBase = track ? getOutlineSettings(track.family) : getOutlineSettings();
+        const outlineOverride = override.outline || null;
+        const effectiveOutline = outlineOverride
+          ? mergeOutlineConfig(outlineBase, outlineOverride)
+          : outlineBase;
+        const outlineHas = (key) =>
+          !!(outlineOverride && Object.prototype.hasOwnProperty.call(outlineOverride, key));
+        const hasOutlineOverride = outlineOverride && Object.keys(outlineOverride).length > 0;
+        if (hasOutlineOverride) {
+          instrumentOutlineStatus.textContent = 'Contorno personalizado';
+          instrumentOutlineStatus.classList.remove('hint-active');
+        } else {
+          instrumentOutlineStatus.textContent = 'Usa configuración de familia';
+          instrumentOutlineStatus.classList.add('hint-active');
+        }
+        instrumentOutlineToggle.checked = !!effectiveOutline.enabled;
+        if (instrumentOutlineModeSelect.querySelector(`option[value="${effectiveOutline.mode}"]`)) {
+          instrumentOutlineModeSelect.value = effectiveOutline.mode;
+        }
+        if (outlineHas('mode')) {
+          const label = OUTLINE_MODE_LABELS[instrumentOutlineModeSelect.value] || instrumentOutlineModeSelect.value;
+          instrumentOutlineModeHint.textContent = `Personalizado: ${label}`;
+          instrumentOutlineModeHint.classList.remove('hint-active');
+        } else {
+          instrumentOutlineModeHint.textContent = 'Usa modo de familia';
+          instrumentOutlineModeHint.classList.add('hint-active');
+        }
+        const widthValue = Math.round((effectiveOutline.width || 0) * 10) / 10;
+        instrumentOutlineWidthInput.value = String(widthValue);
+        if (outlineHas('width')) {
+          instrumentOutlineWidthHint.textContent = `${widthValue.toFixed(1)} px (personalizado)`;
+          instrumentOutlineWidthHint.classList.remove('hint-active');
+        } else {
+          instrumentOutlineWidthHint.textContent = `${widthValue.toFixed(1)} px de familia`;
+          instrumentOutlineWidthHint.classList.add('hint-active');
+        }
+        const opacityValue = Math.round((effectiveOutline.opacity || 0) * 100);
+        instrumentOutlineOpacityInput.value = String(opacityValue);
+        if (outlineHas('opacity')) {
+          instrumentOutlineOpacityHint.textContent = `${opacityValue}% (personalizado)`;
+          instrumentOutlineOpacityHint.classList.remove('hint-active');
+        } else {
+          instrumentOutlineOpacityHint.textContent = `${opacityValue}% de familia`;
+          instrumentOutlineOpacityHint.classList.add('hint-active');
+        }
+        const effectiveColor = effectiveOutline.color || null;
+        instrumentOutlineColorAuto.checked = effectiveColor === null;
+        instrumentOutlineColorInput.disabled = instrumentOutlineColorAuto.checked;
+        instrumentOutlineColorInput.value = effectiveColor || '#ffffff';
+        if (outlineHas('color')) {
+          if (outlineOverride.color === null) {
+            instrumentOutlineColorHint.textContent = 'Forzado al color de la figura';
+            instrumentOutlineColorHint.classList.remove('hint-active');
+          } else {
+            instrumentOutlineColorHint.textContent = `Personalizado: ${effectiveColor.toUpperCase()}`;
+            instrumentOutlineColorHint.classList.remove('hint-active');
+          }
+        } else if (effectiveColor) {
+          instrumentOutlineColorHint.textContent = `${effectiveColor.toUpperCase()} (familia)`;
+          instrumentOutlineColorHint.classList.add('hint-active');
+        } else {
+          instrumentOutlineColorHint.textContent = 'Color de la figura (familia)';
+          instrumentOutlineColorHint.classList.add('hint-active');
         }
       };
 
@@ -2582,6 +2832,272 @@ if (typeof document !== 'undefined') {
       bumpControl.appendChild(bumpHint);
       familyPanel.appendChild(bumpControl);
 
+      const outlineControl = document.createElement('div');
+      outlineControl.className = 'family-config-item family-config-group outline-config';
+
+      const outlineToggleLabel = document.createElement('label');
+      outlineToggleLabel.className = 'outline-toggle-label';
+      const outlineToggle = document.createElement('input');
+      outlineToggle.type = 'checkbox';
+      outlineToggleLabel.appendChild(outlineToggle);
+      outlineToggleLabel.appendChild(document.createTextNode(' Contorno activo'));
+      outlineControl.appendChild(outlineToggleLabel);
+
+      const outlineModeControl = document.createElement('div');
+      outlineModeControl.className = 'outline-row';
+      const outlineModeLabel = document.createElement('label');
+      outlineModeLabel.textContent = 'Modo:';
+      const outlineModeSelect = document.createElement('select');
+      OUTLINE_MODES.forEach((mode) => {
+        const option = document.createElement('option');
+        option.value = mode;
+        option.textContent = OUTLINE_MODE_LABELS[mode] || mode;
+        outlineModeSelect.appendChild(option);
+      });
+      const outlineModeHint = document.createElement('span');
+      outlineModeHint.className = 'control-hint';
+      outlineModeControl.appendChild(outlineModeLabel);
+      outlineModeControl.appendChild(outlineModeSelect);
+      outlineModeControl.appendChild(outlineModeHint);
+      outlineControl.appendChild(outlineModeControl);
+
+      const outlineWidthControl = document.createElement('div');
+      outlineWidthControl.className = 'outline-row';
+      const outlineWidthLabel = document.createElement('label');
+      outlineWidthLabel.textContent = 'Grosor (px):';
+      const outlineWidthInput = document.createElement('input');
+      outlineWidthInput.type = 'number';
+      outlineWidthInput.step = '0.1';
+      outlineWidthInput.min = '0.25';
+      outlineWidthInput.max = '40';
+      const outlineWidthHint = document.createElement('span');
+      outlineWidthHint.className = 'control-hint';
+      outlineWidthControl.appendChild(outlineWidthLabel);
+      outlineWidthControl.appendChild(outlineWidthInput);
+      outlineWidthControl.appendChild(outlineWidthHint);
+      outlineControl.appendChild(outlineWidthControl);
+
+      const outlineOpacityControl = document.createElement('div');
+      outlineOpacityControl.className = 'outline-row';
+      const outlineOpacityLabel = document.createElement('label');
+      outlineOpacityLabel.textContent = 'Opacidad (%):';
+      const outlineOpacityInput = document.createElement('input');
+      outlineOpacityInput.type = 'number';
+      outlineOpacityInput.min = '0';
+      outlineOpacityInput.max = '100';
+      outlineOpacityInput.step = '1';
+      const outlineOpacityHint = document.createElement('span');
+      outlineOpacityHint.className = 'control-hint';
+      outlineOpacityControl.appendChild(outlineOpacityLabel);
+      outlineOpacityControl.appendChild(outlineOpacityInput);
+      outlineOpacityControl.appendChild(outlineOpacityHint);
+      outlineControl.appendChild(outlineOpacityControl);
+
+      const outlineColorControl = document.createElement('div');
+      outlineColorControl.className = 'outline-row outline-color-row';
+      const outlineColorLabel = document.createElement('label');
+      outlineColorLabel.textContent = 'Color del contorno:';
+      const outlineColorInput = document.createElement('input');
+      outlineColorInput.type = 'color';
+      outlineColorInput.value = '#ffffff';
+      const outlineColorAutoLabel = document.createElement('label');
+      outlineColorAutoLabel.className = 'outline-color-auto';
+      const outlineColorAuto = document.createElement('input');
+      outlineColorAuto.type = 'checkbox';
+      outlineColorAuto.checked = true;
+      outlineColorAutoLabel.appendChild(outlineColorAuto);
+      outlineColorAutoLabel.appendChild(document.createTextNode(' Usar color de la figura'));
+      const outlineColorHint = document.createElement('span');
+      outlineColorHint.className = 'control-hint';
+      outlineColorControl.appendChild(outlineColorLabel);
+      outlineColorControl.appendChild(outlineColorInput);
+      outlineColorControl.appendChild(outlineColorAutoLabel);
+      outlineColorControl.appendChild(outlineColorHint);
+      outlineControl.appendChild(outlineColorControl);
+
+      updateOutlineControl = () => {
+        const target = familyTargetSelect.value;
+        if (!target) {
+          const settings = getOutlineSettings();
+          outlineToggle.indeterminate = false;
+          outlineToggle.checked = !!settings.enabled;
+          outlineModeSelect.value = settings.mode;
+          outlineModeHint.textContent = OUTLINE_MODE_LABELS[settings.mode] || settings.mode;
+          outlineModeHint.classList.remove('hint-active');
+          const widthValue = Math.round((settings.width || 0) * 10) / 10;
+          outlineWidthInput.placeholder = '';
+          outlineWidthInput.value = String(widthValue);
+          outlineWidthHint.textContent = `${widthValue.toFixed(1)} px`;
+          outlineWidthHint.classList.remove('hint-active');
+          const opacityValue = Math.round((settings.opacity || 0) * 100);
+          outlineOpacityInput.placeholder = '';
+          outlineOpacityInput.value = String(opacityValue);
+          outlineOpacityHint.textContent = `${opacityValue}%`;
+          outlineOpacityHint.classList.remove('hint-active');
+          const color = settings.color || null;
+          outlineColorAuto.indeterminate = false;
+          outlineColorAuto.checked = color === null;
+          outlineColorInput.disabled = outlineColorAuto.checked;
+          outlineColorInput.value = color || '#ffffff';
+          if (color) {
+            outlineColorHint.textContent = color.toUpperCase();
+            outlineColorHint.classList.remove('hint-active');
+          } else {
+            outlineColorHint.textContent = 'Color de la figura';
+            outlineColorHint.classList.add('hint-active');
+          }
+          return;
+        }
+        const families = familiesFromSelection(target);
+        let enabledBase = null;
+        let enabledMixed = false;
+        let modeBase = null;
+        let modeMixed = false;
+        let widthBase = null;
+        let widthMixed = false;
+        let opacityBase = null;
+        let opacityMixed = false;
+        let colorBase = null;
+        let colorMixed = false;
+        let autoBase = null;
+        let autoMixed = false;
+        families.forEach((family) => {
+          const settings = getOutlineSettings(family);
+          const enabled = !!settings.enabled;
+          if (enabledBase === null) enabledBase = enabled;
+          else if (enabledBase !== enabled) enabledMixed = true;
+          const mode = settings.mode;
+          if (modeBase === null) modeBase = mode;
+          else if (modeBase !== mode) modeMixed = true;
+          const width = Math.round((settings.width || 0) * 10) / 10;
+          if (widthBase === null) widthBase = width;
+          else if (Math.abs(widthBase - width) > 0.001) widthMixed = true;
+          const opacity = Math.round((settings.opacity || 0) * 100);
+          if (opacityBase === null) opacityBase = opacity;
+          else if (Math.abs(opacityBase - opacity) > 0.5) opacityMixed = true;
+          const isAuto = settings.color === null;
+          if (autoBase === null) autoBase = isAuto;
+          else if (autoBase !== isAuto) autoMixed = true;
+          if (!isAuto) {
+            const normalized = (settings.color || '').toLowerCase();
+            if (colorBase === null) colorBase = normalized;
+            else if (colorBase !== normalized) colorMixed = true;
+          }
+        });
+        outlineToggle.indeterminate = enabledMixed;
+        outlineToggle.checked = enabledMixed ? !!enabledBase : !!enabledBase;
+        const effectiveMode = modeMixed ? outlineModeSelect.value : modeBase || OUTLINE_MODES[0];
+        if (outlineModeSelect.querySelector(`option[value="${effectiveMode}"]`)) {
+          outlineModeSelect.value = effectiveMode;
+        }
+        outlineModeHint.textContent = modeMixed
+          ? 'Valores variados'
+          : OUTLINE_MODE_LABELS[outlineModeSelect.value] || outlineModeSelect.value;
+        outlineModeHint.classList.toggle('hint-active', modeMixed);
+        if (widthMixed) {
+          outlineWidthInput.value = '';
+          outlineWidthInput.placeholder = '—';
+          outlineWidthHint.textContent = 'Valores variados';
+          outlineWidthHint.classList.add('hint-active');
+        } else {
+          const value = widthBase ?? 3;
+          outlineWidthInput.placeholder = '';
+          outlineWidthInput.value = String(value);
+          outlineWidthHint.textContent = `${Number(value).toFixed(1)} px`;
+          outlineWidthHint.classList.remove('hint-active');
+        }
+        if (opacityMixed) {
+          outlineOpacityInput.value = '';
+          outlineOpacityInput.placeholder = '—';
+          outlineOpacityHint.textContent = 'Valores variados';
+          outlineOpacityHint.classList.add('hint-active');
+        } else {
+          const value = opacityBase ?? 0;
+          outlineOpacityInput.placeholder = '';
+          outlineOpacityInput.value = String(value);
+          outlineOpacityHint.textContent = `${value}%`;
+          outlineOpacityHint.classList.remove('hint-active');
+        }
+        const mixedColorState = colorMixed || autoMixed;
+        outlineColorAuto.indeterminate = mixedColorState;
+        outlineColorAuto.checked = mixedColorState ? false : !!autoBase;
+        outlineColorInput.disabled = outlineColorAuto.checked || outlineColorAuto.indeterminate;
+        if (mixedColorState) {
+          outlineColorHint.textContent = 'Valores variados';
+          outlineColorHint.classList.add('hint-active');
+        } else if (outlineColorAuto.checked) {
+          outlineColorHint.textContent = 'Color de la figura';
+          outlineColorHint.classList.add('hint-active');
+        } else {
+          outlineColorInput.value = colorBase || '#ffffff';
+          outlineColorHint.textContent = (colorBase || '#ffffff').toUpperCase();
+          outlineColorHint.classList.remove('hint-active');
+        }
+      };
+
+      const applyOutlineUpdate = (updates) => {
+        const target = familyTargetSelect.value;
+        if (!target) {
+          setOutlineSettings(updates);
+        } else {
+          familiesFromSelection(target).forEach((family) => setOutlineSettings(updates, family));
+        }
+        requestImmediateRender();
+        updateOutlineControl();
+      };
+
+      outlineToggle.addEventListener('change', () => {
+        outlineToggle.indeterminate = false;
+        applyOutlineUpdate({ enabled: outlineToggle.checked });
+      });
+
+      outlineModeSelect.addEventListener('change', () => {
+        const mode = outlineModeSelect.value;
+        if (!mode || !OUTLINE_MODES.includes(mode)) return;
+        applyOutlineUpdate({ mode });
+      });
+
+      outlineWidthInput.addEventListener('change', () => {
+        const raw = parseFloat(outlineWidthInput.value);
+        if (!Number.isFinite(raw)) {
+          updateOutlineControl();
+          return;
+        }
+        const clamped = Math.max(0.25, Math.min(40, raw));
+        const rounded = Math.round(clamped * 10) / 10;
+        outlineWidthInput.value = String(rounded);
+        applyOutlineUpdate({ width: rounded });
+      });
+
+      outlineOpacityInput.addEventListener('change', () => {
+        const raw = parseFloat(outlineOpacityInput.value);
+        if (!Number.isFinite(raw)) {
+          updateOutlineControl();
+          return;
+        }
+        const clamped = Math.max(0, Math.min(100, raw));
+        outlineOpacityInput.value = String(Math.round(clamped));
+        applyOutlineUpdate({ opacity: clamp(clamped / 100, 0, 1) });
+      });
+
+      outlineColorInput.addEventListener('input', () => {
+        if (outlineColorAuto.checked || outlineColorAuto.indeterminate) return;
+        const hex = outlineColorInput.value;
+        if (typeof hex !== 'string') return;
+        applyOutlineUpdate({ color: hex });
+      });
+
+      outlineColorAuto.addEventListener('change', () => {
+        outlineColorAuto.indeterminate = false;
+        if (outlineColorAuto.checked) {
+          applyOutlineUpdate({ color: null });
+        } else {
+          applyOutlineUpdate({ color: outlineColorInput.value || '#ffffff' });
+        }
+      });
+
+      familyPanel.appendChild(outlineControl);
+
       const extensionControl = document.createElement('div');
       extensionControl.className = 'family-config-item family-config-group';
       const extensionLabel = document.createElement('label');
@@ -2685,6 +3201,7 @@ if (typeof document !== 'undefined') {
         updateHeightControl();
         updateGlowControl();
         updateBumpControl();
+        updateOutlineControl();
         updateExtensionControl();
       };
 
@@ -3342,7 +3859,12 @@ if (typeof document !== 'undefined') {
         const metrics = computeLayoutAt(note, currentSec);
         if (metrics.xEnd < -margin || metrics.xStart > canvas.width + margin) continue;
 
-        const layout = { note, metrics, released: currentSec >= note.end };
+        const layout = {
+          note,
+          metrics,
+          released: currentSec >= note.end,
+          outline: resolveOutlineConfig(note),
+        };
         layouts.push(layout);
 
         const lineConfig = getFamilyLineSettings(note.family);
@@ -3455,6 +3977,18 @@ if (typeof document !== 'undefined') {
             note.family,
           );
         }
+
+        renderOutline(
+          offscreenCtx,
+          note,
+          layout.outline,
+          metrics.xStart,
+          metrics.y,
+          metrics.width,
+          metrics.height,
+          fillAlpha,
+          currentSec,
+        );
       }
 
       activeTravels.forEach(({ note, progress, layout }) => {
@@ -3502,6 +4036,18 @@ if (typeof document !== 'undefined') {
           );
           offscreenCtx.restore();
         }
+
+        renderOutline(
+          offscreenCtx,
+          note,
+          layout.outline,
+          drawX,
+          drawY,
+          width,
+          height,
+          travelAlpha,
+          currentSec,
+        );
       });
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3765,6 +4311,128 @@ const BASE_COLOR_SWATCHES = [
 
 let colorToneShift = 0;
 
+const OUTLINE_MODE_LABELS = {
+  full: 'Completo',
+  pre: 'Antes del NOTE ON',
+  post: 'Después del NOTE OFF',
+};
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function sanitizeOutlineOverride(updates = {}) {
+  const result = {};
+  if (Object.prototype.hasOwnProperty.call(updates, 'enabled')) {
+    if (typeof updates.enabled === 'boolean') {
+      result.enabled = updates.enabled;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'mode')) {
+    const mode = updates.mode;
+    if (typeof mode === 'string' && OUTLINE_MODES.includes(mode)) {
+      result.mode = mode;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'width')) {
+    const width = parseFloat(updates.width);
+    if (Number.isFinite(width)) {
+      result.width = Math.max(0.25, width);
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'opacity')) {
+    const opacity = parseFloat(updates.opacity);
+    if (Number.isFinite(opacity)) {
+      result.opacity = clamp(opacity, 0, 1);
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'color')) {
+    if (updates.color === null) {
+      result.color = null;
+    } else if (typeof updates.color === 'string') {
+      const hex = updates.color.trim();
+      if (/^#([0-9a-f]{3}){1,2}$/i.test(hex)) {
+        result.color = hex.toLowerCase();
+      }
+    }
+  }
+  return result;
+}
+
+function mergeOutlineConfig(baseConfig = {}, override = {}) {
+  const merged = { ...baseConfig };
+  if (override && typeof override === 'object') {
+    if (Object.prototype.hasOwnProperty.call(override, 'enabled')) {
+      merged.enabled = override.enabled;
+    }
+    if (Object.prototype.hasOwnProperty.call(override, 'mode')) {
+      merged.mode = override.mode;
+    }
+    if (Object.prototype.hasOwnProperty.call(override, 'width')) {
+      merged.width = override.width;
+    }
+    if (Object.prototype.hasOwnProperty.call(override, 'opacity')) {
+      merged.opacity = override.opacity;
+    }
+    if (Object.prototype.hasOwnProperty.call(override, 'color')) {
+      merged.color = override.color;
+    }
+  }
+  return merged;
+}
+
+function resolveOutlineConfig(note) {
+  if (!note) return { ...getOutlineSettings() };
+  const base = getOutlineSettings(note.family);
+  const override = instrumentCustomizations[note.trackName ?? note.instrument];
+  if (override && override.outline) {
+    return mergeOutlineConfig(base, override.outline);
+  }
+  return base;
+}
+
+function shouldRenderOutline(outlineConfig, currentSec, note) {
+  if (!outlineConfig || !outlineConfig.enabled || !note) return false;
+  const now = typeof currentSec === 'number' ? currentSec : 0;
+  if (outlineConfig.mode === 'pre') {
+    return now < note.start;
+  }
+  if (outlineConfig.mode === 'post') {
+    return now >= note.end;
+  }
+  return true;
+}
+
+function renderOutline(
+  ctx,
+  note,
+  outlineConfig,
+  x,
+  y,
+  width,
+  height,
+  baseAlpha,
+  currentSec,
+) {
+  if (!ctx || !note || !outlineConfig || !shouldRenderOutline(outlineConfig, currentSec, note)) {
+    return;
+  }
+  const opacity = typeof outlineConfig.opacity === 'number' ? outlineConfig.opacity : 1;
+  const intensity = clamp(baseAlpha * opacity, 0, 1);
+  if (!(intensity > 0)) return;
+  const strokeColor = outlineConfig.color || note.color || '#ffffff';
+  const strokeWidth =
+    typeof outlineConfig.width === 'number' && Number.isFinite(outlineConfig.width)
+      ? outlineConfig.width
+      : undefined;
+  ctx.save();
+  ctx.globalAlpha = intensity;
+  ctx.strokeStyle = strokeColor;
+  drawNoteShape(ctx, note.shape, x, y, width, height, true, strokeWidth);
+  ctx.restore();
+}
+
 function loadColorToneShift() {
   if (typeof localStorage === 'undefined') return;
   const stored = localStorage.getItem('colorToneShift');
@@ -3953,7 +4621,7 @@ function setFamilyCustomization(
 
 function setInstrumentCustomization(
   trackName,
-  { color, shape } = {},
+  options = {},
   tracks = [],
   notes = [],
   fromTime = 0,
@@ -3963,6 +4631,7 @@ function setInstrumentCustomization(
   if (!track) return;
   const existing = instrumentCustomizations[trackName] || {};
   const next = { ...existing };
+  const { color, shape, outline } = options || {};
   if (typeof color === 'string') {
     next.color = color;
     track.color = color;
@@ -3970,6 +4639,16 @@ function setInstrumentCustomization(
   if (typeof shape === 'string') {
     next.shape = shape;
     track.shape = shape;
+  }
+  if (options && Object.prototype.hasOwnProperty.call(options, 'outline')) {
+    if (outline === null) {
+      delete next.outline;
+    } else if (outline && typeof outline === 'object') {
+      const normalized = sanitizeOutlineOverride(outline);
+      if (Object.keys(normalized).length > 0) {
+        next.outline = { ...(next.outline || {}), ...normalized };
+      }
+    }
   }
   instrumentCustomizations[trackName] = next;
   const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
@@ -4024,6 +4703,7 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   }
   resetFamilyLineSettings();
   resetTravelEffectSettings();
+  resetOutlineSettings();
   tracks.forEach((t) => {
     const preset =
       FAMILY_PRESETS[t.family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
@@ -4058,6 +4738,7 @@ function exportConfiguration() {
     familyExtensions: getFamilyExtensionConfig(),
     familyLineSettings: getAllFamilyLineSettings(),
     familyTravelSettings: getTravelEffectSettings(),
+    outlineSettings: getOutlineSettingsConfig(),
   });
 }
 
@@ -4069,6 +4750,17 @@ function importConfiguration(json, tracks = [], notes = []) {
   Object.assign(enabledInstruments, data.enabledInstruments || {});
   setAllFamilyLineSettings(data.familyLineSettings || {});
   setTravelEffectSettings(data.familyTravelSettings || {});
+  resetOutlineSettings();
+  if (data.outlineSettings && typeof data.outlineSettings === 'object') {
+    if (data.outlineSettings.global && typeof data.outlineSettings.global === 'object') {
+      setOutlineSettings(data.outlineSettings.global);
+    }
+    if (data.outlineSettings.families && typeof data.outlineSettings.families === 'object') {
+      Object.entries(data.outlineSettings.families).forEach(([family, cfg]) => {
+        if (cfg && typeof cfg === 'object') setOutlineSettings(cfg, family);
+      });
+    }
+  }
   if (typeof data.velocityBase === 'number') {
     setVelocityBase(data.velocityBase);
   }
@@ -4390,6 +5082,11 @@ if (typeof module !== 'undefined') {
     setBumpControl,
     getBumpControl,
     getBumpControlConfig,
+    sanitizeOutlineOverride,
+    mergeOutlineConfig,
+    resolveOutlineConfig,
+    shouldRenderOutline,
+    renderOutline,
     setSuperSampling,
     getSuperSampling,
     preprocessTempoMap,
