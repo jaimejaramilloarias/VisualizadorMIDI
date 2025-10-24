@@ -275,11 +275,11 @@ window.DEFAULT_CONFIG = {
     "edge": 0,
     "mid": 0.5
   },
-  "glowStrength": 1,
-  "bumpControl": 1,
+  "glowStrength": 1.5,
+  "bumpControl": 1.2,
   "visibleSeconds": 8,
   "heightScale": {
-    "global": 1,
+    "global": 2,
     "families": {}
   },
   "shapeExtensions": {

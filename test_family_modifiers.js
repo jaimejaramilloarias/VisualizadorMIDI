@@ -14,9 +14,9 @@ assert.strictEqual(defaultMods.sizeFactor, 1);
 
 // Cálculo del ancho para figuras no alargadas
 const notePlatillos = { start: 0, end: 1, shape: 'circle', family: 'Platillos' };
-assert.strictEqual(computeNoteWidth(notePlatillos, 10, 20), 13);
+assert.strictEqual(computeNoteWidth(notePlatillos, 10, 20), 26);
 
 const noteTambores = { start: 0, end: 1, shape: 'circle', family: 'Tambores' };
-assert.strictEqual(computeNoteWidth(noteTambores, 10, 20), 10);
+assert.strictEqual(computeNoteWidth(noteTambores, 10, 20), 20);
 
 console.log('Pruebas de modificadores de familia completadas');

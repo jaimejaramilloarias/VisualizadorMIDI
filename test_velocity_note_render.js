@@ -67,7 +67,7 @@ dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
 const canvas = dom.window.document.getElementById('visualizer');
 const noteHeight = canvas.height / 88;
 const sizeFactor = script.getFamilyModifiers('Metales').sizeFactor;
-const baseHeight = noteHeight * sizeFactor;
+const baseHeight = noteHeight * sizeFactor * script.getHeightScale('Metales');
 const velBase = script.getVelocityBase();
 
 const notes = [
@@ -77,7 +77,7 @@ const notes = [
 
 dom.window.__setTestNotes(notes);
 
-dom.window.__renderFrame(1.1);
+dom.window.__renderFrame(1.3);
 
 const rects = contexts[1].rects;
 assert.strictEqual(rects.length, 2, 'Debe dibujar dos rectángulos de contorno tras el note off');

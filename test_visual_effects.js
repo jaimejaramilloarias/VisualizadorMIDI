@@ -24,15 +24,15 @@ setOpacityScale(0, 0.5);
 // Pruebas para computeBumpHeight
 const base = 10;
 approx(computeBumpHeight(base, -0.1, 0, 1), base); // Antes de la nota
-approx(computeBumpHeight(base, 0, 0, 1), 15); // En el NOTE ON
-approx(computeBumpHeight(base, 0.5, 0, 1), 12.5); // Mitad del intervalo
-approx(computeBumpHeight(base, 1, 0, 1), base); // En el NOTE OFF
-approx(computeBumpHeight(base, 0, 0, 1, 0.8), 18); // Bump +30%
+approx(computeBumpHeight(base, 0, 0, 1), 16); // En el NOTE ON con bump 120%
+approx(computeBumpHeight(base, 0.5, 0, 1), 13.5); // Mitad del intervalo extendido
+approx(computeBumpHeight(base, 1.2, 0, 1), base); // Regreso tras la extensión del bump
+approx(computeBumpHeight(base, 0, 0, 1, 0.8), 19.6); // Bump incrementado
 
 // Pruebas para computeGlowAlpha
 approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
-approx(computeGlowAlpha(0.1, 0), 0.5); // Mitad del efecto
-approx(computeGlowAlpha(0.25, 0), 0); // Efecto terminado
+approx(computeGlowAlpha(0.1, 0), 2 / 3); // Mitad del efecto extendido
+approx(computeGlowAlpha(0.3, 0), 0); // Efecto terminado
 
 // Prueba para applyGlowEffect con desenfoque solo vertical
 setGlowStrength(1.5);

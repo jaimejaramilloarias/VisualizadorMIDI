@@ -1,6 +1,6 @@
 // Motor de renderizado basado en requestAnimationFrame
 // Proporciona una cola de eventos para noteOn/noteOff y un bucle principal
-// que procesa eventos en batch y entrega dt clamped al callback de renderizado.
+// que procesa eventos en batch y entrega dt sincronizado con requestAnimationFrame.
 
 function createRenderState(maxBatch = 200) {
   return {
@@ -84,7 +84,11 @@ function processEventQueue(state, handler) {
 function startRenderLoop(state, render, handleEvent) {
   let last = performance.now();
   function frame(now) {
-    const dt = Math.min(Math.max(now - last, 8), 32);
+    const delta = now - last;
+    let dt = 0;
+    if (Number.isFinite(delta) && delta > 0) {
+      dt = delta > 250 ? 250 : delta;
+    }
     last = now;
     processEventQueue(state, handleEvent);
     if (render) render(dt, now, state);
