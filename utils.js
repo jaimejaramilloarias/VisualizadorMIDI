@@ -197,11 +197,27 @@ loadBumpControl();
 
 // Calcula la altura con efecto "bump" para una nota en reproducción
 // "bump" indica el incremento inicial de altura (0.5 = +50%)
-function computeBumpHeight(baseHeight, currentSec, start, end, bump = 0.5, family) {
+function computeBumpHeight(
+  baseHeight,
+  currentSec,
+  start,
+  end,
+  bump = 0.5,
+  family,
+  alignmentX,
+  canvasWidth,
+) {
   const control = getBumpControl(family);
   const amount = bump * control;
   const duration = (end - start) * control;
   if (amount <= 0 || duration <= 0) return baseHeight;
+  if (
+    typeof alignmentX === 'number' &&
+    typeof canvasWidth === 'number' &&
+    alignmentX > canvasWidth / 2 + 0.25
+  ) {
+    return baseHeight;
+  }
   if (currentSec < start || currentSec > start + duration) return baseHeight;
   const progress = (currentSec - start) / duration;
   const clamped = Math.min(Math.max(progress, 0), 1);
@@ -375,10 +391,25 @@ function getGlowStrengthConfig() {
 loadGlowStrength();
 
 // Calcula la intensidad del brillo en el NOTE ON
-function computeGlowAlpha(currentSec, start, baseDuration = 0.2, family) {
+function computeGlowAlpha(
+  currentSec,
+  start,
+  baseDuration = 0.2,
+  family,
+  alignmentX,
+  canvasWidth,
+) {
   const strength = getGlowStrength(family);
   const duration = baseDuration * strength;
-  if (duration <= 0 || currentSec < start || currentSec > start + duration) return 0;
+  if (
+    duration <= 0 ||
+    (typeof alignmentX === 'number' &&
+      typeof canvasWidth === 'number' &&
+      alignmentX > canvasWidth / 2 + 0.25)
+  ) {
+    return 0;
+  }
+  if (currentSec < start || currentSec > start + duration) return 0;
   const progress = (currentSec - start) / duration;
   return 1 - progress;
 }
@@ -484,22 +515,43 @@ function traceDiamond(ctx, x, y, width, height, inset = 0) {
 function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
   const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
   const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
-  const cx = x + width / 2;
-  const cy = y + height / 2;
-  const outerX = width / 2 - insetX;
-  const outerY = height / 2 - insetY;
-  const innerX = outerX * 0.45;
-  const innerY = outerY * 0.45;
-  for (let i = 0; i < 8; i++) {
-    const angle = (Math.PI / 4) * i - Math.PI / 2;
-    const useOuter = i % 2 === 0;
-    const radiusX = useOuter ? outerX : innerX;
-    const radiusY = useOuter ? outerY : innerY;
-    const px = cx + Math.cos(angle) * radiusX;
-    const py = cy + Math.sin(angle) * radiusY;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const effectiveWidth = Math.max(width - insetX * 2, 0);
+  const effectiveHeight = Math.max(height - insetY * 2, 0);
+  const outerRadiusX = effectiveWidth / 2;
+  const outerRadiusY = effectiveHeight / 2;
+  const innerRadiusX = outerRadiusX * 0.55;
+  const innerRadiusY = outerRadiusY * 0.55;
+  const outerHandleX = outerRadiusX * 0.82;
+  const outerHandleY = outerRadiusY * 0.82;
+  const innerHandleX = innerRadiusX * 0.68;
+  const innerHandleY = innerRadiusY * 0.68;
+
+  const toPoint = (angle, radiusX, radiusY) => ({
+    x: centerX + Math.cos(angle) * radiusX,
+    y: centerY + Math.sin(angle) * radiusY,
+  });
+
+  const start = toPoint(-Math.PI / 2, outerRadiusX, outerRadiusY);
+  ctx.moveTo(start.x, start.y);
+
+  for (let i = 0; i < 4; i++) {
+    const baseAngle = -Math.PI / 2 + i * (Math.PI / 2);
+    const innerAngle = baseAngle + Math.PI / 4;
+    const nextOuterAngle = baseAngle + Math.PI / 2;
+
+    const control1 = toPoint(baseAngle + Math.PI / 10, outerHandleX, outerHandleY);
+    const control2 = toPoint(innerAngle - Math.PI / 10, innerHandleX, innerHandleY);
+    const innerPoint = toPoint(innerAngle, innerRadiusX, innerRadiusY);
+    ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, innerPoint.x, innerPoint.y);
+
+    const control3 = toPoint(innerAngle + Math.PI / 10, innerHandleX, innerHandleY);
+    const control4 = toPoint(nextOuterAngle - Math.PI / 10, outerHandleX, outerHandleY);
+    const nextOuter = toPoint(nextOuterAngle, outerRadiusX, outerRadiusY);
+    ctx.bezierCurveTo(control3.x, control3.y, control4.x, control4.y, nextOuter.x, nextOuter.y);
   }
+
   ctx.closePath();
 }
 
