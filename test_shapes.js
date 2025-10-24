@@ -136,6 +136,61 @@ const maxX = Math.max(...xs);
 assert.strictEqual(minX, 0, 'diamante alargado no alineado a la izquierda');
 assert.strictEqual(maxX, 20, 'diamante alargado no alineado a la derecha');
 
+// Verificación de alineación izquierda para figuras dobles extendidas
+const circleDoubleCtx = {
+  ellipses: [],
+  fillStyle: '#fff',
+  beginPath() {},
+  ellipse(cx, cy, rx, ry) {
+    this.ellipses.push({ cx, rx });
+  },
+  fill() {},
+};
+drawNoteShape(circleDoubleCtx, 'circleDouble', 0, 0, 20, 10);
+assert(circleDoubleCtx.ellipses.length > 0, 'no se dibujó la capa principal del círculo doble');
+const firstEllipse = circleDoubleCtx.ellipses[0];
+assert.strictEqual(
+  Math.round((firstEllipse.cx - firstEllipse.rx) * 1e6) / 1e6,
+  0,
+  'círculo doble no alineado a la izquierda',
+);
+
+const squareDoubleCtx = {
+  rects: [],
+  fillStyle: '#fff',
+  beginPath() {},
+  rect(x, y, width, height) {
+    this.rects.push({ x, width });
+  },
+  fill() {},
+};
+drawNoteShape(squareDoubleCtx, 'squareDouble', 0, 0, 20, 10);
+assert(squareDoubleCtx.rects.length > 0, 'no se dibujó la capa principal del cuadrado doble');
+assert.strictEqual(squareDoubleCtx.rects[0].x, 0, 'cuadrado doble no alineado a la izquierda');
+
+const triangleDoubleCtx = {
+  path: [],
+  fillStyle: '#fff',
+  beginPath() {
+    this.path = [];
+  },
+  moveTo(x, y) {
+    this.path.push([x, y]);
+  },
+  lineTo(x, y) {
+    this.path.push([x, y]);
+  },
+  closePath() {},
+  fill() {
+    if (this.path.length && typeof this.firstMinX === 'undefined') {
+      const xsTriangle = this.path.map((p) => p[0]);
+      this.firstMinX = Math.min(...xsTriangle);
+    }
+  },
+};
+drawNoteShape(triangleDoubleCtx, 'triangleDouble', 0, 0, 20, 10);
+assert.strictEqual(triangleDoubleCtx.firstMinX, 0, 'triángulo doble no alineado a la izquierda');
+
 // Verificación del grosor dinámico del contorno
 const strokeCtx = stubCtx();
 drawNoteShape(strokeCtx, 'circle', 0, 0, 40, 10, true);
