@@ -37,6 +37,7 @@ const {
   computeDynamicBounds,
   computeDiamondBounds,
   setShapeExtension,
+  setShapeExtensionsEnabled,
   getShapeExtension,
   getShapeExtensions,
   setFamilyExtension,
@@ -3191,7 +3192,7 @@ if (typeof document !== 'undefined') {
         extensionToggle.indeterminate = false;
         if (!target) {
           clearAllFamilyExtensions();
-          STRETCHABLE_SHAPES.forEach((shape) => setShapeExtension(shape, enabled));
+          setShapeExtensionsEnabled(enabled);
         } else {
           const shape = getEffectiveFamilyShape(target);
           if (!shape || !isShapeExtendable(shape)) {
@@ -5131,6 +5132,7 @@ if (typeof module !== 'undefined') {
     computeDynamicBounds,
     computeDiamondBounds,
     setShapeExtension,
+    setShapeExtensionsEnabled,
     getShapeExtension,
     getShapeExtensions,
     setFamilyExtension,

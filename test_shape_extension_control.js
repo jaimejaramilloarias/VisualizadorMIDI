@@ -1,5 +1,10 @@
 const assert = require('assert');
-const { computeDynamicBounds, setShapeExtension } = require('./script');
+const {
+  computeDynamicBounds,
+  setShapeExtension,
+  setShapeExtensionsEnabled,
+  getShapeExtension,
+} = require('./script');
 
 const note = { start: 1, end: 3, shape: 'circle' };
 const canvasWidth = 200;
@@ -17,6 +22,12 @@ assert.strictEqual(result.width, finalWidth);
 setShapeExtension('circle', true);
 result = computeDynamicBounds(note, 2, canvasWidth, pixelsPerSecond, baseWidth, 'circle');
 assert.strictEqual(result.width, baseWidth + (finalWidth - baseWidth) / 2);
+
+setShapeExtensionsEnabled(false);
+assert.strictEqual(getShapeExtension('circle'), false);
+setShapeExtensionsEnabled(true);
+assert.strictEqual(getShapeExtension('circle'), true);
+assert.strictEqual(getShapeExtension('circleDouble'), false);
 
 const doubleNote = {
   start: 1,
