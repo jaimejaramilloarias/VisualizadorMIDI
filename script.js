@@ -40,11 +40,21 @@ const {
   setShapeExtensionsEnabled,
   getShapeExtension,
   getShapeExtensions,
+  setShapeStretch,
+  setShapeStretchEnabled,
+  getShapeStretch,
+  getShapeStretchConfig,
   setFamilyExtension,
   getFamilyExtension,
   getFamilyExtensionConfig,
   clearFamilyExtension,
   clearAllFamilyExtensions,
+  setFamilyStretch,
+  getFamilyStretch,
+  getFamilyStretchConfig,
+  clearFamilyStretch,
+  clearAllFamilyStretch,
+  isStretchEnabledForFamily,
   isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,
@@ -1497,6 +1507,7 @@ if (typeof document !== 'undefined') {
       let updateBumpControl = () => {};
       let updateOutlineControl = () => {};
       let updateExtensionControl = () => {};
+      let updateStretchControl = () => {};
       let updateParameterControls = () => {};
       let updateInstrumentColorControl = () => {};
       let updateSecondaryColorControl = () => {};
@@ -3131,24 +3142,35 @@ if (typeof document !== 'undefined') {
       updateExtensionControl = () => {
         const target = familyTargetSelect.value;
         if (!target) {
+          const stretchConfig = getShapeStretchConfig();
+          const stretchableShapes = STRETCHABLE_SHAPES.filter(
+            (shape) => stretchConfig[shape] !== false,
+          );
+          const hasStretchOverrides = Object.keys(getFamilyStretchConfig()).length > 0;
+          if (stretchableShapes.length === 0) {
+            extensionToggle.checked = false;
+            extensionToggle.disabled = true;
+            extensionToggle.indeterminate = false;
+            extensionHint.textContent = hasStretchOverrides
+              ? 'Extensión desactivada por configuraciones de familia'
+              : 'Extensión desactivada en todas las figuras';
+            extensionHint.classList.add('hint-active');
+            return;
+          }
           const config = getShapeExtensions();
-          const values = STRETCHABLE_SHAPES.map((shape) => config[shape] !== false);
+          const values = stretchableShapes.map((shape) => config[shape] !== false);
           const allTrue = values.length > 0 && values.every(Boolean);
           const allFalse = values.every((val) => !val);
           const hasOverrides = Object.keys(getFamilyExtensionConfig()).length > 0;
-          extensionToggle.disabled = STRETCHABLE_SHAPES.length === 0;
-          extensionToggle.checked = allTrue && !extensionToggle.disabled;
-          extensionToggle.indeterminate =
-            hasOverrides || (!allTrue && !allFalse && !extensionToggle.disabled);
-          if (extensionToggle.disabled) {
-            extensionHint.textContent = 'Sin figuras compatibles con la extensión';
-            extensionHint.classList.add('hint-active');
-          } else if (hasOverrides) {
+          extensionToggle.disabled = false;
+          extensionToggle.checked = allTrue;
+          extensionToggle.indeterminate = hasOverrides || (!allTrue && !allFalse);
+          if (hasOverrides) {
             extensionHint.textContent = 'Con personalizaciones por familia';
             extensionHint.classList.add('hint-active');
           } else {
             extensionHint.textContent = allTrue
-              ? 'Activa en todas las figuras'
+              ? 'Activa en todas las figuras con extensión'
               : allFalse
               ? 'Desactivada globalmente'
               : 'Valores variados';
@@ -3166,6 +3188,15 @@ if (typeof document !== 'undefined') {
             extensionToggle.checked = false;
             extensionToggle.disabled = true;
             extensionHint.textContent = 'Extensión no disponible para esta figura';
+            extensionHint.classList.add('hint-active');
+          } else if (!isStretchEnabledForFamily(shape, target)) {
+            extensionToggle.checked = false;
+            extensionToggle.disabled = true;
+            const override = getFamilyStretch(target);
+            extensionHint.textContent =
+              typeof override === 'boolean'
+                ? 'Extensión desactivada para esta familia'
+                : 'Extensión desactivada globalmente';
             extensionHint.classList.add('hint-active');
           } else {
             extensionToggle.disabled = false;
@@ -3215,11 +3246,113 @@ if (typeof document !== 'undefined') {
       extensionControl.appendChild(extensionHint);
       familyPanel.appendChild(extensionControl);
 
+      const stretchControl = document.createElement('div');
+      stretchControl.className = 'family-config-item family-config-group';
+      const stretchLabel = document.createElement('label');
+      stretchLabel.className = 'extension-toggle-label';
+      const stretchToggle = document.createElement('input');
+      stretchToggle.type = 'checkbox';
+      stretchToggle.className = 'extension-toggle-input';
+      stretchLabel.appendChild(stretchToggle);
+      stretchLabel.appendChild(document.createTextNode(' Extensión'));
+      const stretchHint = document.createElement('span');
+      stretchHint.className = 'control-hint';
+
+      updateStretchControl = () => {
+        const target = familyTargetSelect.value;
+        if (!target) {
+          const config = getShapeStretchConfig();
+          const values = STRETCHABLE_SHAPES.map((shape) => config[shape] !== false);
+          const allTrue = values.length > 0 && values.every(Boolean);
+          const allFalse = values.every((val) => !val);
+          const hasOverrides = Object.keys(getFamilyStretchConfig()).length > 0;
+          stretchToggle.disabled = STRETCHABLE_SHAPES.length === 0;
+          stretchToggle.checked = allTrue && !stretchToggle.disabled;
+          stretchToggle.indeterminate =
+            hasOverrides || (!allTrue && !allFalse && !stretchToggle.disabled);
+          if (stretchToggle.disabled) {
+            stretchHint.textContent = 'Sin figuras compatibles con la extensión';
+            stretchHint.classList.add('hint-active');
+          } else if (hasOverrides) {
+            stretchHint.textContent = 'Con personalizaciones por familia';
+            stretchHint.classList.add('hint-active');
+          } else {
+            stretchHint.textContent = allTrue
+              ? 'Activa en todas las figuras'
+              : allFalse
+              ? 'Desactivada globalmente'
+              : 'Valores variados';
+            stretchHint.classList.toggle('hint-active', !allTrue && !allFalse);
+          }
+        } else {
+          stretchToggle.indeterminate = false;
+          const shape = getEffectiveFamilyShape(target);
+          if (!shape) {
+            stretchToggle.checked = false;
+            stretchToggle.disabled = true;
+            stretchHint.textContent = 'Sin figura asociada';
+            stretchHint.classList.add('hint-active');
+          } else if (!isShapeExtendable(shape)) {
+            stretchToggle.checked = false;
+            stretchToggle.disabled = true;
+            stretchHint.textContent = 'Extensión no disponible para esta figura';
+            stretchHint.classList.add('hint-active');
+          } else {
+            stretchToggle.disabled = false;
+            const override = getFamilyStretch(target);
+            const globalEnabled = getShapeStretch(shape);
+            const enabled = isStretchEnabledForFamily(shape, target);
+            stretchToggle.checked = !!enabled;
+            stretchHint.textContent =
+              typeof override === 'boolean'
+                ? override
+                  ? 'Personalizado: activado'
+                  : 'Personalizado: desactivado'
+                : globalEnabled
+                ? 'Usa valor global (activado)'
+                : 'Usa valor global (desactivado)';
+            stretchHint.classList.toggle('hint-active', typeof override !== 'boolean');
+          }
+        }
+      };
+
+      stretchToggle.addEventListener('change', () => {
+        const target = familyTargetSelect.value;
+        const enabled = stretchToggle.checked;
+        stretchToggle.indeterminate = false;
+        if (!target) {
+          clearAllFamilyStretch();
+          setShapeStretchEnabled(enabled);
+        } else {
+          const shape = getEffectiveFamilyShape(target);
+          if (!shape || !isShapeExtendable(shape)) {
+            clearFamilyStretch(target);
+            updateStretchControl();
+            updateExtensionControl();
+            return;
+          }
+          const globalEnabled = getShapeStretch(shape);
+          if (enabled === globalEnabled) {
+            clearFamilyStretch(target);
+          } else {
+            setFamilyStretch(target, enabled);
+          }
+        }
+        requestImmediateRender();
+        updateStretchControl();
+        updateExtensionControl();
+      });
+
+      stretchControl.appendChild(stretchLabel);
+      stretchControl.appendChild(stretchHint);
+      familyPanel.appendChild(stretchControl);
+
       updateParameterControls = () => {
         updateHeightControl();
         updateGlowControl();
         updateBumpControl();
         updateOutlineControl();
+        updateStretchControl();
         updateExtensionControl();
       };
 
@@ -4753,8 +4886,10 @@ function exportConfiguration() {
     bumpControl: getBumpControlConfig(),
     visibleSeconds: getVisibleSeconds(),
     heightScale: getHeightScaleConfig(),
+    shapeStretch: getShapeStretchConfig(),
     shapeExtensions: getShapeExtensions(),
     familyExtensions: getFamilyExtensionConfig(),
+    familyStretch: getFamilyStretchConfig(),
     familyLineSettings: getAllFamilyLineSettings(),
     familyTravelSettings: getTravelEffectSettings(),
     outlineSettings: getOutlineSettingsConfig(),
@@ -4834,11 +4969,26 @@ function importConfiguration(json, tracks = [], notes = []) {
     });
   }
 
+  if (data.shapeStretch && typeof data.shapeStretch === 'object') {
+    Object.entries(data.shapeStretch).forEach(([shape, enabled]) => {
+      setShapeStretch(shape, enabled);
+    });
+  }
+
   if (data.familyExtensions && typeof data.familyExtensions === 'object') {
     clearAllFamilyExtensions();
     Object.entries(data.familyExtensions).forEach(([fam, enabled]) => {
       if (typeof enabled === 'boolean') {
         setFamilyExtension(fam, enabled);
+      }
+    });
+  }
+
+  if (data.familyStretch && typeof data.familyStretch === 'object') {
+    clearAllFamilyStretch();
+    Object.entries(data.familyStretch).forEach(([fam, enabled]) => {
+      if (typeof enabled === 'boolean') {
+        setFamilyStretch(fam, enabled);
       }
     });
   }
@@ -5135,11 +5285,21 @@ if (typeof module !== 'undefined') {
     setShapeExtensionsEnabled,
     getShapeExtension,
     getShapeExtensions,
+    setShapeStretch,
+    setShapeStretchEnabled,
+    getShapeStretch,
+    getShapeStretchConfig,
     setFamilyExtension,
     getFamilyExtension,
     getFamilyExtensionConfig,
     clearFamilyExtension,
     clearAllFamilyExtensions,
+    setFamilyStretch,
+    getFamilyStretch,
+    getFamilyStretchConfig,
+    clearFamilyStretch,
+    clearAllFamilyStretch,
+    isStretchEnabledForFamily,
     isExtensionEnabledForFamily,
   };
 }
