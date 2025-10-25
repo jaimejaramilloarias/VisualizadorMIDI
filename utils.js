@@ -1138,6 +1138,18 @@ function setShapeExtension(shape, enabled) {
   }
 }
 
+function setShapeExtensionsEnabled(enabled) {
+  loadShapeExtensions();
+  const value = !!enabled;
+  Object.keys(shapeExtensions).forEach((shape) => {
+    shapeExtensions[shape] = isShapeExtendable(shape) ? value : false;
+  });
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('shapeExtensions', JSON.stringify(shapeExtensions));
+  }
+  return { ...shapeExtensions };
+}
+
 function getShapeExtensions() {
   loadShapeExtensions();
   return { ...shapeExtensions };
@@ -1566,6 +1578,7 @@ const utils = {
   getHeightScale,
   getHeightScaleConfig,
   setShapeExtension,
+  setShapeExtensionsEnabled,
   getShapeExtension,
   getShapeExtensions,
   setFamilyExtension,
