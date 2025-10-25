@@ -9,6 +9,8 @@ const {
   getBumpControl,
   getVisibleSeconds,
   getHeightScaleConfig,
+  getShapeStretch,
+  getFamilyStretch,
 } = require('./script.js');
 const { getOutlineSettings, resetOutlineSettings } = require('./utils.js');
 
@@ -41,6 +43,22 @@ const config = {
   bumpControl: { global: 1.2, families: { Metales: 1.1 } },
   visibleSeconds: 6,
   heightScale: { global: 2, families: {} },
+  shapeStretch: {
+    circle: true,
+    circleDouble: false,
+    square: true,
+    squareDouble: false,
+    roundedSquare: false,
+    roundedSquareDouble: false,
+    diamond: false,
+    diamondDouble: false,
+    fourPointStar: true,
+    fourPointStarDouble: false,
+    sixPointStar: false,
+    sixPointStarDouble: false,
+    triangle: true,
+    triangleDouble: false,
+  },
   shapeExtensions: {
     circle: true,
     circleDouble: false,
@@ -58,6 +76,7 @@ const config = {
     triangleDouble: false,
   },
   familyExtensions: { Metales: true },
+  familyStretch: { Metales: false },
   familyLineSettings: {},
   familyTravelSettings: {},
   outlineSettings: {
@@ -108,6 +127,9 @@ assert.strictEqual(getBumpControl(), 1.2);
 assert.strictEqual(getBumpControl('Metales'), 1.1);
 assert.strictEqual(getVisibleSeconds(), 6);
 assert.deepStrictEqual(getHeightScaleConfig(), { global: 2, families: {} });
+assert.strictEqual(getShapeStretch('roundedSquare'), false);
+assert.strictEqual(getShapeStretch('diamond'), false);
+assert.strictEqual(getFamilyStretch('Metales'), false);
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);

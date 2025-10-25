@@ -1080,6 +1080,13 @@ const SHAPE_EXTENSION_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
 let familyShapeExtensions = {};
 
+const SHAPE_STRETCH_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
+  acc[value] = !isDoubleShape(value) && !NON_EXTENDABLE_SHAPES.has(value);
+  return acc;
+}, {});
+let shapeStretch = { ...SHAPE_STRETCH_DEFAULTS };
+let familyShapeStretch = {};
+
 function loadShapeExtensions() {
   if (typeof localStorage === 'undefined') return;
   const stored = localStorage.getItem('shapeExtensions');
@@ -1155,6 +1162,116 @@ function getShapeExtensions() {
   return { ...shapeExtensions };
 }
 
+function loadShapeStretch() {
+  if (typeof localStorage === 'undefined') return;
+  const stored = localStorage.getItem('shapeStretch');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && typeof parsed === 'object') {
+        shapeStretch = { ...shapeStretch, ...parsed };
+      }
+    } catch {}
+  }
+  const byFamily = localStorage.getItem('familyShapeStretch');
+  if (byFamily) {
+    try {
+      const parsed = JSON.parse(byFamily);
+      if (parsed && typeof parsed === 'object') {
+        familyShapeStretch = Object.entries(parsed).reduce(
+          (acc, [fam, val]) => {
+            if (typeof val === 'boolean') acc[fam] = val;
+            return acc;
+          },
+          {},
+        );
+      }
+    } catch {}
+  }
+  Object.keys(shapeStretch).forEach((shape) => {
+    if (!isShapeExtendable(shape)) {
+      shapeStretch[shape] = false;
+    }
+  });
+}
+
+function getShapeStretch(shape) {
+  loadShapeStretch();
+  if (!isShapeExtendable(shape)) return false;
+  return shapeStretch[shape] !== false;
+}
+
+function setShapeStretch(shape, enabled) {
+  if (!isShapeExtendable(shape)) {
+    shapeStretch[shape] = false;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('shapeStretch', JSON.stringify(shapeStretch));
+    }
+    return;
+  }
+  shapeStretch[shape] = !!enabled;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('shapeStretch', JSON.stringify(shapeStretch));
+  }
+}
+
+function setShapeStretchEnabled(enabled) {
+  loadShapeStretch();
+  const value = !!enabled;
+  Object.keys(shapeStretch).forEach((shape) => {
+    shapeStretch[shape] = isShapeExtendable(shape) ? value : false;
+  });
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('shapeStretch', JSON.stringify(shapeStretch));
+  }
+  return { ...shapeStretch };
+}
+
+function getShapeStretchConfig() {
+  loadShapeStretch();
+  return { ...shapeStretch };
+}
+
+function persistFamilyShapeStretch() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('familyShapeStretch', JSON.stringify({ ...familyShapeStretch }));
+  }
+}
+
+function setFamilyStretch(family, enabled) {
+  if (!family) return;
+  if (typeof enabled === 'boolean') {
+    familyShapeStretch[family] = enabled;
+  } else {
+    delete familyShapeStretch[family];
+  }
+  persistFamilyShapeStretch();
+}
+
+function clearFamilyStretch(family) {
+  setFamilyStretch(family, null);
+}
+
+function clearAllFamilyStretch() {
+  loadShapeStretch();
+  familyShapeStretch = {};
+  persistFamilyShapeStretch();
+}
+
+function getFamilyStretch(family) {
+  loadShapeStretch();
+  if (!family) return null;
+  if (Object.prototype.hasOwnProperty.call(familyShapeStretch, family)) {
+    return familyShapeStretch[family];
+  }
+  return null;
+}
+
+function getFamilyStretchConfig() {
+  loadShapeStretch();
+  return { ...familyShapeStretch };
+}
+
 function persistFamilyShapeExtensions() {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(
@@ -1207,7 +1324,17 @@ function isExtensionEnabledForFamily(shape, family) {
   return getShapeExtension(shape);
 }
 
+function isStretchEnabledForFamily(shape, family) {
+  if (!isShapeExtendable(shape)) return false;
+  const override = getFamilyStretch(family);
+  if (typeof override === 'boolean') {
+    return override;
+  }
+  return getShapeStretch(shape);
+}
+
 loadShapeExtensions();
+loadShapeStretch();
 
 const DEFAULT_LINE_SETTINGS = { enabled: false, opacity: 0.3, width: 8 };
 let familyLineSettings = {};
@@ -1359,6 +1486,9 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
     (note.end - note.start) * pixelsPerSecond,
     baseHeight,
   );
+  if (!isStretchEnabledForFamily(note.shape, note.family)) {
+    return baseHeight;
+  }
   if (!isExtensionEnabledForFamily(note.shape, note.family)) {
     return isDoubleShape(note.shape) ? baseHeight : durationWidth;
   }
@@ -1379,7 +1509,14 @@ function computeDynamicBounds(
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
   const effectiveShape = shape || note.shape;
   const doubleShape = isDoubleShape(effectiveShape);
-  if (!isExtensionEnabledForFamily(effectiveShape, note.family)) {
+  const stretchEnabled = isStretchEnabledForFamily(effectiveShape, note.family);
+  const dynamicEnabled =
+    stretchEnabled && isExtensionEnabledForFamily(effectiveShape, note.family);
+  if (!stretchEnabled) {
+    const width = baseWidth;
+    return { xStart, xEnd: xStart + width, width };
+  }
+  if (!dynamicEnabled) {
     const width = doubleShape ? baseWidth : finalWidth;
     return { xStart, xEnd: xStart + width, width };
   }
@@ -1581,11 +1718,21 @@ const utils = {
   setShapeExtensionsEnabled,
   getShapeExtension,
   getShapeExtensions,
+  setShapeStretch,
+  setShapeStretchEnabled,
+  getShapeStretch,
+  getShapeStretchConfig,
   setFamilyExtension,
   getFamilyExtension,
   getFamilyExtensionConfig,
   clearFamilyExtension,
   clearAllFamilyExtensions,
+  setFamilyStretch,
+  getFamilyStretch,
+  getFamilyStretchConfig,
+  clearFamilyStretch,
+  clearAllFamilyStretch,
+  isStretchEnabledForFamily,
   isExtensionEnabledForFamily,
   getFamilyLineSettings,
   updateFamilyLineSettings,

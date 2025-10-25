@@ -4,6 +4,9 @@ const {
   setShapeExtension,
   setShapeExtensionsEnabled,
   getShapeExtension,
+  setShapeStretch,
+  setShapeStretchEnabled,
+  getShapeStretch,
 } = require('./script');
 
 const note = { start: 1, end: 3, shape: 'circle' };
@@ -23,11 +26,22 @@ setShapeExtension('circle', true);
 result = computeDynamicBounds(note, 2, canvasWidth, pixelsPerSecond, baseWidth, 'circle');
 assert.strictEqual(result.width, baseWidth + (finalWidth - baseWidth) / 2);
 
+setShapeStretch('circle', false);
+result = computeDynamicBounds(note, 1.5, canvasWidth, pixelsPerSecond, baseWidth, 'circle');
+assert.strictEqual(result.width, baseWidth);
+
+setShapeStretch('circle', true);
+
 setShapeExtensionsEnabled(false);
 assert.strictEqual(getShapeExtension('circle'), false);
 setShapeExtensionsEnabled(true);
 assert.strictEqual(getShapeExtension('circle'), true);
 assert.strictEqual(getShapeExtension('circleDouble'), false);
+
+setShapeStretchEnabled(false);
+assert.strictEqual(getShapeStretch('circle'), false);
+setShapeStretchEnabled(true);
+assert.strictEqual(getShapeStretch('circle'), true);
 
 const doubleNote = {
   start: 1,
