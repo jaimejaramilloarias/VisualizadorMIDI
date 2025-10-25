@@ -237,6 +237,17 @@ if (typeof document !== 'undefined') {
     }
 
     let ctx;
+    const configureDrawingContext = (context) => {
+      if (!context) return;
+      if (typeof context.resetTransform === 'function') {
+        context.resetTransform();
+      } else if (typeof context.setTransform === 'function') {
+        context.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      context.imageSmoothingEnabled = false;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+    };
     // Verificamos WebGL2 en un canvas temporal para no bloquear el principal
     if (typeof WebGL2RenderingContext !== 'undefined') {
       const testCanvas = document.createElement('canvas');
@@ -251,10 +262,7 @@ if (typeof document !== 'undefined') {
       return;
     }
 
-    ctx.imageSmoothingEnabled = false;
-
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    configureDrawingContext(ctx);
     canvas.style.imageRendering = 'pixelated';
     // Sugerir al navegador que optimice transformaciones/opacidad del canvas
     canvas.style.willChange = 'transform, opacity';
@@ -263,10 +271,12 @@ if (typeof document !== 'undefined') {
     // Canvas offscreen para optimizar el renderizado de notas
     const offscreenCanvas = document.createElement('canvas');
     const offscreenCtx = offscreenCanvas.getContext('2d');
+    const reconfigureCanvasContexts = () => {
+      configureDrawingContext(ctx);
+      configureDrawingContext(offscreenCtx);
+    };
     if (offscreenCtx) {
-      offscreenCtx.imageSmoothingEnabled = false;
-      offscreenCtx.lineCap = 'round';
-      offscreenCtx.lineJoin = 'round';
+      configureDrawingContext(offscreenCtx);
       offscreenCanvas.width = canvas.width;
       offscreenCanvas.height = canvas.height;
 
@@ -1543,6 +1553,13 @@ if (typeof document !== 'undefined') {
         if (audioPlayer && typeof audioPlayer.isPlaying === 'function') {
           if (audioPlayer.isPlaying()) {
             return 0;
+          }
+          if (typeof audioPlayer.getStartOffset === 'function') {
+            const pausedOffset = audioPlayer.getStartOffset();
+            const visualTime = pausedOffset + audioOffsetMs / 1000;
+            if (Number.isFinite(visualTime)) {
+              return Math.max(0, visualTime);
+            }
           }
         }
         return Math.max(0, lastTime || 0);
@@ -3523,6 +3540,7 @@ if (typeof document !== 'undefined') {
       canvas.style.width = `${styleWidth}px`;
       canvas.style.height = `${styleHeight}px`;
       pixelsPerSecond = canvas.width / visibleSeconds;
+      reconfigureCanvasContexts();
     }
 
     applyCanvasSize(false);
