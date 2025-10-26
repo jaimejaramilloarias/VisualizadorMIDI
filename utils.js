@@ -515,21 +515,28 @@ function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
     { x: centerX - halfWidth, y: centerY },
   ];
 
-  const concavity = 0.45;
-  const controls = [
-    { x: centerX + halfWidth * concavity, y: centerY - halfHeight * concavity },
-    { x: centerX + halfWidth * concavity, y: centerY + halfHeight * concavity },
-    { x: centerX - halfWidth * concavity, y: centerY + halfHeight * concavity },
-    { x: centerX - halfWidth * concavity, y: centerY - halfHeight * concavity },
-  ];
+  const concavityStart = 1.35;
+  const concavityEnd = 1.35;
 
   ctx.moveTo(corners[0].x, corners[0].y);
 
   for (let i = 0; i < 4; i++) {
     const nextIndex = (i + 1) % 4;
-    const control = controls[i];
+    const startCorner = corners[i];
     const nextCorner = corners[nextIndex];
-    ctx.bezierCurveTo(control.x, control.y, control.x, control.y, nextCorner.x, nextCorner.y);
+    const midX = (startCorner.x + nextCorner.x) / 2;
+    const midY = (startCorner.y + nextCorner.y) / 2;
+    const inwardX = centerX - midX;
+    const inwardY = centerY - midY;
+    const control1 = {
+      x: startCorner.x + inwardX * concavityStart,
+      y: startCorner.y + inwardY * concavityStart,
+    };
+    const control2 = {
+      x: nextCorner.x + inwardX * concavityEnd,
+      y: nextCorner.y + inwardY * concavityEnd,
+    };
+    ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, nextCorner.x, nextCorner.y);
   }
 
   ctx.closePath();
