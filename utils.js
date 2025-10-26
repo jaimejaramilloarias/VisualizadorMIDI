@@ -219,9 +219,25 @@ function computeBumpHeight(
     return baseHeight;
   }
   if (currentSec < start || currentSec > start + duration) return baseHeight;
+
   const progress = (currentSec - start) / duration;
   const clamped = Math.min(Math.max(progress, 0), 1);
-  return baseHeight * (1 + amount * (1 - clamped));
+
+  const growthPortion = 0.35;
+  if (clamped <= 0) return baseHeight;
+
+  let scaleFactor;
+  if (clamped < growthPortion) {
+    const normalized = clamped / growthPortion;
+    const eased = 1 - Math.pow(1 - normalized, 3);
+    scaleFactor = eased;
+  } else {
+    const decayProgress = (clamped - growthPortion) / (1 - growthPortion);
+    const easedDecay = Math.pow(Math.max(0, 1 - decayProgress), 2);
+    scaleFactor = easedDecay;
+  }
+
+  return baseHeight * (1 + amount * Math.max(0, Math.min(scaleFactor, 1)));
 }
 
 // Referencia de velocidad MIDI para altura 100%
@@ -401,28 +417,26 @@ function computeGlowAlpha(
 // Aplica un efecto de brillo con desenfoque alrededor de la figura
 function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   const strength = getGlowStrength(family);
-  if (alpha <= 0 || strength <= 0) return;
+  if (alpha <= 0 || strength <= 0 || !ctx) return;
 
   const centerX = x + width / 2;
   const centerY = y + height / 2;
-  const spreadX = width * (1.35 + strength * 0.35);
-  const spreadY = height * (1.5 + strength * 0.6);
-  const innerRadius = Math.min(width, height) * 0.25;
-  const outerRadius = Math.max(spreadX, spreadY) / 2;
-  const primaryAlpha = Math.min(0.75, 0.35 + strength * 0.2);
-  const haloAlpha = Math.min(0.5, 0.2 + strength * 0.15);
+  const spreadX = (width / 2) * (1.6 + strength * 0.9);
+  const spreadY = (height / 2) * (1.8 + strength * 1.1);
+  const innerRadius = Math.min(width, height) * 0.2;
+  const outerRadius = Math.max(spreadX, spreadY);
+  const baseGlow = Math.min(1, alpha * (0.6 + strength * 0.25));
+  const hazeAlpha = Math.min(0.55, 0.18 + strength * 0.12) * alpha;
+  const blurAmount = 18 * (1 + strength * 0.8);
 
   ctx.save();
 
-  let highlightAlpha = alpha * 0.45;
-  let highlightShadowBlur = 12 * strength;
-  let highlightShadowColor = 'rgba(255, 255, 255, 0.6)';
-
-  if (
+  const supportsGradient =
     typeof ctx.createRadialGradient === 'function' &&
-    typeof ctx.ellipse === 'function'
-  ) {
-    const previousComposite = ctx.globalCompositeOperation;
+    typeof ctx.ellipse === 'function';
+
+  if (supportsGradient) {
+    const previousComposite = ctx.globalCompositeOperation || 'source-over';
     const gradient = ctx.createRadialGradient(
       centerX,
       centerY,
@@ -431,33 +445,52 @@ function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
       centerY,
       outerRadius,
     );
-    gradient.addColorStop(0, `rgba(255, 255, 255, ${primaryAlpha})`);
-    gradient.addColorStop(0.45, `rgba(255, 255, 255, ${haloAlpha})`);
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${0.38 * baseGlow})`);
+    gradient.addColorStop(0.35, `rgba(255, 255, 255, ${0.22 * baseGlow})`);
+    gradient.addColorStop(0.7, `rgba(255, 255, 255, ${0.08 * baseGlow})`);
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
-    ctx.globalAlpha = alpha;
     ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 1;
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.ellipse(centerX, centerY, spreadX / 2, spreadY / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, centerY, spreadX, spreadY, 0, 0, Math.PI * 2);
+    ctx.shadowBlur = blurAmount;
+    ctx.shadowColor = `rgba(255, 255, 255, ${0.25 * baseGlow})`;
     ctx.fill();
     ctx.globalCompositeOperation = previousComposite;
   } else {
-    highlightAlpha = alpha * 0.55;
-    highlightShadowBlur = 16 * strength;
-    highlightShadowColor = 'rgba(255, 255, 255, 0.55)';
+    const previousComposite = ctx.globalCompositeOperation || 'source-over';
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = baseGlow;
+    ctx.shadowBlur = blurAmount;
+    ctx.shadowColor = `rgba(255, 255, 255, ${0.25 * baseGlow})`;
+    if (typeof ctx.beginPath === 'function' && typeof ctx.rect === 'function') {
+      ctx.beginPath();
+      ctx.rect(
+        centerX - spreadX,
+        centerY - spreadY,
+        spreadX * 2,
+        spreadY * 2,
+      );
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = previousComposite;
   }
 
-  ctx.globalAlpha = highlightAlpha;
-  ctx.shadowBlur = highlightShadowBlur;
-  ctx.shadowColor = highlightShadowColor;
-  ctx.fillStyle = '#ffffff';
-
-  const scaledWidth = width;
-  const scaledHeight = height * strength;
-  const offsetX = centerX - scaledWidth / 2;
-  const offsetY = centerY - scaledHeight / 2;
-  drawNoteShape(ctx, shape, offsetX, offsetY, scaledWidth, scaledHeight);
+  if (hazeAlpha > 0 && typeof ctx.ellipse === 'function') {
+    const prevComposite = ctx.globalCompositeOperation || 'source-over';
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = hazeAlpha;
+    ctx.shadowBlur = blurAmount * 0.75;
+    ctx.shadowColor = `rgba(255, 255, 255, ${0.18 * baseGlow})`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, spreadX * 1.2, spreadY * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = prevComposite;
+  }
 
   ctx.restore();
 }

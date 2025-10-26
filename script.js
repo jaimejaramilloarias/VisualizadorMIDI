@@ -1513,6 +1513,7 @@ if (typeof document !== 'undefined') {
         }
         n.secondaryColor = track.secondaryColor;
       });
+      applyInstrumentCustomizationsToData([track], notes);
     }
 
     function applyStoredAssignments() {
@@ -3990,6 +3991,7 @@ if (typeof document !== 'undefined') {
           }
         });
         applyStoredAssignments();
+        applyInstrumentCustomizationsToData(currentTracks);
         showAssignmentModal(currentTracks);
         buildFamilyPanel();
         restoreOriginalTempoMap({ preserveStatus: false });
@@ -4061,7 +4063,6 @@ if (typeof document !== 'undefined') {
     function prepareNotesFromTracks(tracks, tempoMapRaw, timeDivision) {
       notes = [];
       trackNoteSequences = new Map();
-      instrumentCustomizations = {};
       tempoMap = preprocessTempoMap(tempoMapRaw, timeDivision);
       tracks.forEach((track) => {
         const sequence = [];
@@ -4101,6 +4102,7 @@ if (typeof document !== 'undefined') {
       startIndex = 0;
       endIndex = 0;
       lastTime = 0;
+      applyInstrumentCustomizationsToData(tracks, notes);
     }
 
     function renderFrame(currentSec) {
@@ -4637,7 +4639,7 @@ if (typeof localStorage !== 'undefined') {
   });
 }
 
-let instrumentCustomizations = {};
+let instrumentCustomizations = loadStoredInstrumentCustomizations();
 
 const BASE_COLOR_SWATCHES = [
   '#1abc9c',
@@ -4667,6 +4669,9 @@ const BASE_COLOR_SWATCHES = [
 ];
 
 let colorToneShift = 0;
+
+const SHAPE_VALUE_SET = new Set(SHAPE_OPTIONS.map((opt) => opt.value));
+const HEX_COLOR_REGEX = /^#([0-9a-f]{3}){1,2}$/i;
 
 const OUTLINE_MODE_LABELS = {
   full: 'Completo',
@@ -4715,6 +4720,101 @@ function sanitizeOutlineOverride(updates = {}) {
     }
   }
   return result;
+}
+
+function normalizeHexColor(hex) {
+  if (typeof hex !== 'string') return null;
+  const trimmed = hex.trim();
+  return HEX_COLOR_REGEX.test(trimmed) ? trimmed.toLowerCase() : null;
+}
+
+function sanitizeInstrumentCustomization(entry = {}) {
+  if (!entry || typeof entry !== 'object') return null;
+  const result = {};
+  if (Object.prototype.hasOwnProperty.call(entry, 'color')) {
+    const normalized = normalizeHexColor(entry.color);
+    if (normalized) {
+      result.color = normalized;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, 'shape')) {
+    const shape = entry.shape;
+    if (typeof shape === 'string' && SHAPE_VALUE_SET.has(shape)) {
+      result.shape = shape;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, 'outline')) {
+    const outline = sanitizeOutlineOverride(entry.outline);
+    if (outline && Object.keys(outline).length > 0) {
+      result.outline = outline;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, 'family')) {
+    const fam = entry.family;
+    if (typeof fam === 'string' && fam) {
+      result.family = fam;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+function loadStoredInstrumentCustomizations() {
+  if (typeof localStorage === 'undefined') return {};
+  const raw = localStorage.getItem('instrumentCustomizations');
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.entries(parsed).reduce((acc, [trackName, cfg]) => {
+      const sanitized = sanitizeInstrumentCustomization(cfg);
+      if (sanitized) {
+        acc[trackName] = sanitized;
+      }
+      return acc;
+    }, {});
+  } catch (error) {
+    console.warn('No se pudieron cargar las personalizaciones de instrumento.', error);
+    return {};
+  }
+}
+
+function saveInstrumentCustomizations() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(
+      'instrumentCustomizations',
+      JSON.stringify(instrumentCustomizations || {}),
+    );
+  } catch (error) {
+    console.warn('No se pudieron guardar las personalizaciones de instrumento.', error);
+  }
+}
+
+function applyInstrumentCustomizationsToData(tracks = [], notes = []) {
+  if (!instrumentCustomizations || typeof instrumentCustomizations !== 'object') return;
+  tracks.forEach((track) => {
+    if (!track || !track.name) return;
+    const override = instrumentCustomizations[track.name];
+    if (!override) return;
+    if (override.shape && SHAPE_VALUE_SET.has(override.shape)) {
+      track.shape = override.shape;
+    }
+    if (override.color) {
+      track.color = override.color;
+    }
+  });
+  notes.forEach((note) => {
+    if (!note) return;
+    const key = note.trackName ?? note.instrument;
+    const override = key ? instrumentCustomizations[key] : null;
+    if (!override) return;
+    if (override.shape && SHAPE_VALUE_SET.has(override.shape)) {
+      note.shape = override.shape;
+    }
+    if (override.color) {
+      note.color = override.color;
+    }
+  });
 }
 
 function mergeOutlineConfig(baseConfig = {}, override = {}) {
@@ -4989,13 +5089,15 @@ function setInstrumentCustomization(
   const existing = instrumentCustomizations[trackName] || {};
   const next = { ...existing };
   const { color, shape, outline } = options || {};
-  if (typeof color === 'string') {
-    next.color = color;
-    track.color = color;
+  const normalizedColor = normalizeHexColor(color);
+  if (normalizedColor) {
+    next.color = normalizedColor;
+    track.color = normalizedColor;
   }
-  if (typeof shape === 'string') {
-    next.shape = shape;
-    track.shape = shape;
+  const validShape = typeof shape === 'string' && SHAPE_VALUE_SET.has(shape) ? shape : null;
+  if (validShape) {
+    next.shape = validShape;
+    track.shape = validShape;
   }
   if (options && Object.prototype.hasOwnProperty.call(options, 'outline')) {
     if (outline === null) {
@@ -5008,15 +5110,16 @@ function setInstrumentCustomization(
     }
   }
   instrumentCustomizations[trackName] = next;
+  saveInstrumentCustomizations();
   const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
   notes.forEach((note) => {
     if ((note.trackName ?? note.instrument) !== trackName) return;
     if (note.start < effectiveFrom) return;
-    if (typeof color === 'string') {
-      note.color = color;
+    if (normalizedColor) {
+      note.color = normalizedColor;
     }
-    if (typeof shape === 'string') {
-      note.shape = shape;
+    if (validShape) {
+      note.shape = validShape;
     }
     note.secondaryColor = track.secondaryColor || '#000000';
   });
@@ -5032,6 +5135,7 @@ function clearInstrumentCustomization(
   const track = tracks.find((t) => t.name === trackName);
   if (!track) return;
   delete instrumentCustomizations[trackName];
+  saveInstrumentCustomizations();
   const preset =
     FAMILY_PRESETS[track.family] ||
     FAMILY_DEFAULTS[track.family] ||
@@ -5055,6 +5159,7 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   });
   familyCustomizations = {};
   instrumentCustomizations = {};
+  saveInstrumentCustomizations();
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('familyCustomizations');
   }
@@ -5084,6 +5189,7 @@ function exportConfiguration() {
   return JSON.stringify({
     assignedFamilies,
     familyCustomizations,
+    instrumentCustomizations,
     enabledInstruments,
     velocityBase: getVelocityBase(),
     opacityScale: getOpacityScale(),
@@ -5106,6 +5212,7 @@ function importConfiguration(json, tracks = [], notes = []) {
   assignedFamilies = { ...((data.assignedFamilies || {})) };
   const famCustoms = data.familyCustomizations || {};
   familyCustomizations = {};
+  instrumentCustomizations = {};
   Object.assign(enabledInstruments, data.enabledInstruments || {});
   setAllFamilyLineSettings(data.familyLineSettings || {});
   setTravelEffectSettings(data.familyTravelSettings || {});
@@ -5233,6 +5340,15 @@ function importConfiguration(json, tracks = [], notes = []) {
       secondaryColor: preset.secondaryColor,
     };
   });
+  if (data.instrumentCustomizations && typeof data.instrumentCustomizations === 'object') {
+    Object.entries(data.instrumentCustomizations).forEach(([trackName, cfg]) => {
+      const sanitized = sanitizeInstrumentCustomization(cfg);
+      if (sanitized) {
+        instrumentCustomizations[trackName] = sanitized;
+      }
+    });
+  }
+  saveInstrumentCustomizations();
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('instrumentFamilies', JSON.stringify(assignedFamilies));
     localStorage.setItem('familyCustomizations', JSON.stringify(familyCustomizations));
@@ -5257,6 +5373,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     n.color = getInstrumentColor(preset);
     n.secondaryColor = preset.secondaryColor || '#000000';
   });
+  applyInstrumentCustomizationsToData(tracks, notes);
 }
 
 async function loadDefaultConfiguration(tracks = [], notes = []) {

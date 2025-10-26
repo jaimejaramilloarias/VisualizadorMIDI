@@ -36,6 +36,9 @@ const config = {
   familyCustomizations: {
     Metales: { color: '#123456', shape: 'diamond', secondaryColor: '#222222' },
   },
+  instrumentCustomizations: {
+    Flauta: { color: '#abcdef', shape: 'triangle' },
+  },
   enabledInstruments: { Flauta: true },
   velocityBase: 80,
   opacityScale: { edge: 0.1, mid: 0.8 },
@@ -115,12 +118,12 @@ assert.strictEqual(familyOutline.opacity, 0.5);
 assert.strictEqual(familyOutline.enabled, true);
 
 assert.strictEqual(tracks[0].family, 'Metales');
-assert.strictEqual(tracks[0].shape, 'diamond');
-assert.strictEqual(tracks[0].color, '#123456');
+assert.strictEqual(tracks[0].shape, 'triangle');
+assert.strictEqual(tracks[0].color, '#abcdef');
 assert.strictEqual(tracks[0].secondaryColor, '#222222');
 assert.strictEqual(notes[0].family, 'Metales');
-assert.strictEqual(notes[0].shape, 'diamond');
-assert.strictEqual(notes[0].color, '#123456');
+assert.strictEqual(notes[0].shape, 'triangle');
+assert.strictEqual(notes[0].color, '#abcdef');
 assert.strictEqual(notes[0].secondaryColor, '#222222');
 
 assert.strictEqual(getVelocityBase(), 80);
