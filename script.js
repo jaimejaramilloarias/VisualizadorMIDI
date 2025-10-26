@@ -93,11 +93,46 @@ const { loadWavFile } =
 const { createAudioPlayer } =
   typeof require !== 'undefined' ? require('./audioPlayer.js') : window.audioPlayer;
 
+// Utilidades de almacenamiento local para reducir lógica repetida
+const storage = typeof localStorage !== 'undefined' ? localStorage : null;
+
+const readStoredValue = (key) => (storage ? storage.getItem(key) : null);
+
+const writeStoredValue = (key, value) => {
+  if (!storage) return;
+  storage.setItem(key, value);
+};
+
+const readStoredJSON = (key, fallback) => {
+  const raw = readStoredValue(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`No se pudo parsear la configuración JSON para "${key}".`, error);
+    return fallback;
+  }
+};
+
+const writeStoredJSON = (key, value) => {
+  if (value === undefined) return;
+  writeStoredValue(key, JSON.stringify(value));
+};
+
+const readStoredNumber = (key, fallback, validator = () => true) => {
+  const raw = readStoredValue(key);
+  if (raw === null) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && validator(parsed) ? parsed : fallback;
+};
+
+const writeStoredNumber = (key, value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return;
+  writeStoredValue(key, String(value));
+};
+
 // Estado de activación de instrumentos
-const enabledInstruments =
-  (typeof localStorage !== 'undefined' &&
-    JSON.parse(localStorage.getItem('enabledInstruments') || '{}')) ||
-  {};
+const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
 
 // Parámetros de fluidez de animación
 const FRAME_DT_MIN = 8;
@@ -105,7 +140,7 @@ const FRAME_DT_MAX = 32;
 let superSampling = 2;
 
 function setSuperSampling(val) {
-  if (typeof val === 'number' && val >= 1 && val <= 2) {
+  if (typeof val === 'number' && Number.isFinite(val) && val >= 1 && val <= 2) {
     superSampling = val;
   }
 }
@@ -116,63 +151,49 @@ function getSuperSampling() {
 
 function setInstrumentEnabled(inst, enabled) {
   enabledInstruments[inst] = enabled;
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('enabledInstruments', JSON.stringify(enabledInstruments));
-  }
+  writeStoredJSON('enabledInstruments', enabledInstruments);
 }
 
-let visibleSeconds = 8;
+let visibleSeconds = readStoredNumber('visibleSeconds', 8, (value) => value > 0);
 let canvas = null;
 let pixelsPerSecond = 0;
-let audioOffsetMs = 0;
+let audioOffsetMs = readStoredNumber('audioOffsetMs', 0);
 
 function setVisibleSeconds(sec) {
-  if (typeof sec !== 'number' || sec <= 0) return;
+  if (typeof sec !== 'number' || !Number.isFinite(sec) || sec <= 0) return;
   visibleSeconds = sec;
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('visibleSeconds', String(visibleSeconds));
-  }
+  writeStoredNumber('visibleSeconds', visibleSeconds);
   if (canvas) {
     pixelsPerSecond = canvas.width / visibleSeconds;
   }
 }
 
 function getVisibleSeconds() {
-  if (typeof localStorage !== 'undefined') {
-    const stored = parseFloat(localStorage.getItem('visibleSeconds'));
-    if (!isNaN(stored) && stored > 0) {
-      visibleSeconds = stored;
-    }
-  }
+  visibleSeconds = readStoredNumber('visibleSeconds', visibleSeconds, (value) => value > 0);
   return visibleSeconds;
 }
 
 getVisibleSeconds();
 
 function setAudioOffset(ms) {
-  if (typeof ms !== 'number') return;
+  if (typeof ms !== 'number' || !Number.isFinite(ms)) return;
   audioOffsetMs = ms;
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('audioOffsetMs', String(audioOffsetMs));
-  }
+  writeStoredNumber('audioOffsetMs', audioOffsetMs);
 }
 
 function getAudioOffset() {
-  if (typeof localStorage !== 'undefined') {
-    const stored = parseFloat(localStorage.getItem('audioOffsetMs'));
-    if (!isNaN(stored)) {
-      audioOffsetMs = stored;
-    }
-  }
+  audioOffsetMs = readStoredNumber('audioOffsetMs', audioOffsetMs);
   return audioOffsetMs;
 }
 
 getAudioOffset();
 
+function isInstrumentEnabled(note) {
+  return enabledInstruments[note.trackName ?? note.instrument] !== false;
+}
+
 function getVisibleNotes(allNotes) {
-  return allNotes.filter(
-    (n) => enabledInstruments[n.trackName ?? n.instrument] !== false,
-  );
+  return allNotes.filter(isInstrumentEnabled);
 }
 
 async function restartPlayback(audioPlayer, stopAnimation, renderFrame, startPlayback) {
