@@ -3979,8 +3979,7 @@ if (typeof document !== 'undefined') {
         );
         const bumpScale = baseHeight > 0 ? height / baseHeight : 1;
         const scaledWidth = rawWidth * bumpScale;
-        const scaledXCenter = rawXStart + rawWidth / 2;
-        const scaledXStart = scaledXCenter - scaledWidth / 2;
+        const scaledXStart = rawXStart;
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
