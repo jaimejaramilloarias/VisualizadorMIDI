@@ -10,36 +10,41 @@ approx(computeGlowAlpha(0.2, 0), 0.5);
 setGlowStrength(1.5, 'Metales');
 approx(computeGlowAlpha(0.15, 0, 0.2, 'Metales'), 0.5);
 
-const ctx = {
-  shadowBlur: 0,
-  shadowColor: null,
-  fillStyle: null,
-  ellipses: [],
-  gradients: [],
-  save() {},
-  restore() {},
-  beginPath() {},
-  ellipse(cx, cy, rx, ry) {
-    this.ellipses.push({ cx, cy, rx, ry });
-  },
-  rect() {},
-  fill() {},
-  createRadialGradient() {
-    const stops = [];
-    this.gradients.push(stops);
-    return {
-      addColorStop(pos, color) {
-        stops.push({ pos, color });
-      },
-    };
-  },
-};
+function brightness(hex) {
+  const normalized = hex.replace('#', '');
+  const num = parseInt(normalized, 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
 
-applyGlowEffect(ctx, 'square', 0, 0, 10, 10, 0.5, 'Metales');
-assert(ctx.shadowBlur > 20, 'blur no escalado');
-assert(ctx.ellipses.length > 0, 'el glow debe generar un halo amplio');
-const haloRadius = ctx.ellipses.reduce((max, e) => Math.max(max, e.rx, e.ry), 0);
-assert(haloRadius > 10, 'el halo debe superar el tamaño de la figura');
-assert(ctx.gradients.length > 0, 'el glow debe utilizar gradientes');
+const baseColor = '#884400';
+const baseSecondary = '#442200';
+const globalTint = applyGlowEffect(baseColor, baseSecondary, 0.6);
+const familyTint = applyGlowEffect(baseColor, baseSecondary, 0.6, 'Metales');
+
+assert(
+  brightness(globalTint.fill) > brightness(baseColor),
+  'el tintado global debe aclarar el color base',
+);
+assert(
+  brightness(globalTint.fill) > brightness(familyTint.fill),
+  'la fuerza global mayor debe aclarar más que la específica de familia',
+);
+assert(
+  brightness(familyTint.secondary) >= brightness(baseSecondary),
+  'la capa secundaria debe aclararse con la activación del glow',
+);
+
+const idleTint = applyGlowEffect(baseColor, baseSecondary, 0, 'Metales');
+assert.strictEqual(idleTint.fill, baseColor, 'sin activación el color no debe cambiar');
+assert.strictEqual(
+  idleTint.secondary,
+  baseSecondary,
+  'el secundario debe permanecer igual cuando no hay glow',
+);
+
+setGlowStrength(1.5);
 
 console.log('Pruebas de control de glow completadas');

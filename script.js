@@ -4295,25 +4295,6 @@ if (typeof document !== 'undefined') {
         const alpha = metrics.alpha;
         if (alpha <= 0) continue;
 
-        const fillAlpha = released ? alpha * 0.4 : alpha;
-        if (fillAlpha > 0) {
-          offscreenCtx.save();
-          offscreenCtx.globalAlpha = fillAlpha;
-          offscreenCtx.fillStyle = note.color;
-          drawNoteShape(
-            offscreenCtx,
-            note.shape,
-            metrics.xStart,
-            metrics.y,
-            metrics.width,
-            metrics.height,
-            false,
-            undefined,
-            { secondaryColor: note.secondaryColor },
-          );
-          offscreenCtx.restore();
-        }
-
         const glowAlpha = !released
           ? computeGlowAlpha(
               currentSec,
@@ -4324,17 +4305,35 @@ if (typeof document !== 'undefined') {
               canvas.width,
             )
           : 0;
-        if (glowAlpha > 0) {
-          applyGlowEffect(
+        const tint = applyGlowEffect(
+          note.color,
+          note.secondaryColor,
+          glowAlpha,
+          note.family,
+        );
+        const fillColor = (tint && tint.fill) || note.color;
+        const secondaryColor =
+          tint && Object.prototype.hasOwnProperty.call(tint, 'secondary')
+            ? tint.secondary
+            : note.secondaryColor;
+
+        const fillAlpha = released ? alpha * 0.4 : alpha;
+        if (fillAlpha > 0) {
+          offscreenCtx.save();
+          offscreenCtx.globalAlpha = fillAlpha;
+          offscreenCtx.fillStyle = fillColor;
+          drawNoteShape(
             offscreenCtx,
             note.shape,
             metrics.xStart,
             metrics.y,
             metrics.width,
             metrics.height,
-            glowAlpha,
-            note.family,
+            false,
+            undefined,
+            { secondaryColor },
           );
+          offscreenCtx.restore();
         }
 
         renderOutline(
@@ -4378,10 +4377,31 @@ if (typeof document !== 'undefined') {
         const isReleased = currentSec >= note.end;
 
         const travelAlpha = isReleased ? alpha * 0.4 : alpha;
+        const travelGlowAlpha = !isReleased
+          ? computeGlowAlpha(
+              currentSec,
+              note.start,
+              0.2,
+              note.family,
+              layout.metrics.activationX ?? layout.metrics.xStart ?? drawX,
+              canvas.width,
+            )
+          : 0;
+        const travelTint = applyGlowEffect(
+          note.color,
+          note.secondaryColor,
+          travelGlowAlpha,
+          note.family,
+        );
+        const travelFill = (travelTint && travelTint.fill) || note.color;
+        const travelSecondary =
+          travelTint && Object.prototype.hasOwnProperty.call(travelTint, 'secondary')
+            ? travelTint.secondary
+            : note.secondaryColor;
         if (travelAlpha > 0) {
           offscreenCtx.save();
           offscreenCtx.globalAlpha = travelAlpha;
-          offscreenCtx.fillStyle = note.color;
+          offscreenCtx.fillStyle = travelFill;
           drawNoteShape(
             offscreenCtx,
             note.shape,
@@ -4391,7 +4411,7 @@ if (typeof document !== 'undefined') {
             height,
             false,
             undefined,
-            { secondaryColor: note.secondaryColor },
+            { secondaryColor: travelSecondary },
           );
           offscreenCtx.restore();
         }
