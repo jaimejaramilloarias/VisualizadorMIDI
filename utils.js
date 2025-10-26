@@ -402,16 +402,63 @@ function computeGlowAlpha(
 function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
   const strength = getGlowStrength(family);
   if (alpha <= 0 || strength <= 0) return;
+
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const spreadX = width * (1.35 + strength * 0.35);
+  const spreadY = height * (1.5 + strength * 0.6);
+  const innerRadius = Math.min(width, height) * 0.25;
+  const outerRadius = Math.max(spreadX, spreadY) / 2;
+  const primaryAlpha = Math.min(0.75, 0.35 + strength * 0.2);
+  const haloAlpha = Math.min(0.5, 0.2 + strength * 0.15);
+
   ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.shadowBlur = 20 * strength;
-  ctx.shadowColor = '#ffffff';
+
+  let highlightAlpha = alpha * 0.45;
+  let highlightShadowBlur = 12 * strength;
+  let highlightShadowColor = 'rgba(255, 255, 255, 0.6)';
+
+  if (
+    typeof ctx.createRadialGradient === 'function' &&
+    typeof ctx.ellipse === 'function'
+  ) {
+    const previousComposite = ctx.globalCompositeOperation;
+    const gradient = ctx.createRadialGradient(
+      centerX,
+      centerY,
+      innerRadius,
+      centerX,
+      centerY,
+      outerRadius,
+    );
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${primaryAlpha})`);
+    gradient.addColorStop(0.45, `rgba(255, 255, 255, ${haloAlpha})`);
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+    ctx.globalAlpha = alpha;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, spreadX / 2, spreadY / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = previousComposite;
+  } else {
+    highlightAlpha = alpha * 0.55;
+    highlightShadowBlur = 16 * strength;
+    highlightShadowColor = 'rgba(255, 255, 255, 0.55)';
+  }
+
+  ctx.globalAlpha = highlightAlpha;
+  ctx.shadowBlur = highlightShadowBlur;
+  ctx.shadowColor = highlightShadowColor;
   ctx.fillStyle = '#ffffff';
-  const w = width;
-  const h = height * strength;
-  const offsetX = x;
-  const offsetY = y - (h - height) / 2;
-  drawNoteShape(ctx, shape, offsetX, offsetY, w, h);
+
+  const scaledWidth = width;
+  const scaledHeight = height * strength;
+  const offsetX = centerX - scaledWidth / 2;
+  const offsetY = centerY - scaledHeight / 2;
+  drawNoteShape(ctx, shape, offsetX, offsetY, scaledWidth, scaledHeight);
+
   ctx.restore();
 }
 
