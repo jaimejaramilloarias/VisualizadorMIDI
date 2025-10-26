@@ -1621,6 +1621,8 @@ if (typeof document !== 'undefined') {
         scopeSelect.appendChild(option);
       });
       scopeSelect.value = 'familia';
+      const getScopeMode = () => scopeSelect.value || 'familia';
+      const shouldForceFamilyOverride = () => getScopeMode() !== 'instrumento';
       scopeSelectorControl.appendChild(scopeLabel);
       scopeSelectorControl.appendChild(scopeSelect);
 
@@ -1751,6 +1753,32 @@ if (typeof document !== 'undefined') {
       const familiesFromSelection = (value) => {
         const list = value ? [value] : FAMILY_LIST;
         return list.filter((family) => !!FAMILY_PRESETS[family]);
+      };
+
+      const clearInstrumentOutlineOverrides = (families) => {
+        if (!instrumentCustomizations || typeof instrumentCustomizations !== 'object') {
+          return false;
+        }
+        const targetFamilies = Array.isArray(families) ? families : [];
+        let changed = false;
+        currentTracks.forEach((track) => {
+          if (!track || !track.name) return;
+          if (targetFamilies.length > 0 && !targetFamilies.includes(track.family)) return;
+          const override = instrumentCustomizations[track.name];
+          if (override && Object.prototype.hasOwnProperty.call(override, 'outline')) {
+            delete override.outline;
+            changed = true;
+            if (Object.keys(override).length === 0) {
+              delete instrumentCustomizations[track.name];
+            } else {
+              instrumentCustomizations[track.name] = override;
+            }
+          }
+        });
+        if (changed) {
+          saveInstrumentCustomizations();
+        }
+        return changed;
       };
 
       const getEditStartTime = () => {
@@ -2771,6 +2799,7 @@ if (typeof document !== 'undefined') {
             currentTracks,
             notes,
             getEditStartTime(),
+            { force: shouldForceFamilyOverride() },
           ),
         );
         renderFrame(lastTime);
@@ -2873,6 +2902,7 @@ if (typeof document !== 'undefined') {
             currentTracks,
             notes,
             getEditStartTime(),
+            { force: shouldForceFamilyOverride() },
           ),
         );
         renderFrame(lastTime);
@@ -2912,6 +2942,7 @@ if (typeof document !== 'undefined') {
               currentTracks,
               notes,
               getEditStartTime(),
+              { force: shouldForceFamilyOverride() },
             ),
           );
           renderFrame(lastTime);
@@ -3312,6 +3343,13 @@ if (typeof document !== 'undefined') {
           setOutlineSettings(updates);
         } else {
           familiesFromSelection(target).forEach((family) => setOutlineSettings(updates, family));
+        }
+        if (shouldForceFamilyOverride()) {
+          const families = familiesFromSelection(target);
+          clearInstrumentOutlineOverrides(families);
+          if (typeof updateInstrumentColorControl === 'function') {
+            updateInstrumentColorControl();
+          }
         }
         requestImmediateRender();
         updateOutlineControl();
@@ -5153,6 +5191,7 @@ function setFamilyCustomization(
   tracks = [],
   notes = [],
   fromTime = 0,
+  { force = false } = {},
 ) {
   const basePreset =
     FAMILY_PRESETS[family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
@@ -5186,26 +5225,73 @@ function setFamilyCustomization(
     secondaryColor: preset.secondaryColor,
   };
   saveFamilyCustomizations();
+  let overridesChanged = false;
   tracks.forEach((t) => {
     if (t.family === family) {
       t.shape = preset.shape;
       t.color = getInstrumentColor(preset);
       t.secondaryColor = preset.secondaryColor;
+      if (force && instrumentCustomizations && t.name) {
+        const override = instrumentCustomizations[t.name];
+        if (override && typeof override === 'object') {
+          let mutated = false;
+          if (shape && Object.prototype.hasOwnProperty.call(override, 'shape')) {
+            delete override.shape;
+            mutated = true;
+          }
+          if (resolvedColor && Object.prototype.hasOwnProperty.call(override, 'color')) {
+            delete override.color;
+            mutated = true;
+          }
+          if (mutated) {
+            overridesChanged = true;
+            if (Object.keys(override).length === 0) {
+              delete instrumentCustomizations[t.name];
+            } else {
+              instrumentCustomizations[t.name] = override;
+            }
+          }
+        }
+      }
     }
   });
   const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
   notes.forEach((n) => {
     if (n.family !== family) return;
     if (n.start < effectiveFrom) return;
-    const override = instrumentCustomizations[n.trackName ?? n.instrument] || {};
-    if (shape && !override.shape) {
+    const key = n.trackName ?? n.instrument;
+    const override = key ? instrumentCustomizations[key] || {} : {};
+    if (force && key && instrumentCustomizations && typeof override === 'object') {
+      let mutated = false;
+      if (shape && Object.prototype.hasOwnProperty.call(override, 'shape')) {
+        delete override.shape;
+        mutated = true;
+      }
+      if (resolvedColor && Object.prototype.hasOwnProperty.call(override, 'color')) {
+        delete override.color;
+        mutated = true;
+      }
+      if (mutated) {
+        overridesChanged = true;
+        if (Object.keys(override).length === 0) {
+          delete instrumentCustomizations[key];
+        } else {
+          instrumentCustomizations[key] = override;
+        }
+      }
+    }
+    const effectiveOverride = key ? instrumentCustomizations[key] || {} : {};
+    if (shape && (force || !effectiveOverride.shape)) {
       n.shape = preset.shape;
     }
-    if (resolvedColor && !override.color) {
+    if (resolvedColor && (force || !effectiveOverride.color)) {
       n.color = getInstrumentColor(preset);
     }
     n.secondaryColor = preset.secondaryColor;
   });
+  if (force && overridesChanged) {
+    saveInstrumentCustomizations();
+  }
 }
 
 function setInstrumentCustomization(
