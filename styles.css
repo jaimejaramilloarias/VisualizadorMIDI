@@ -257,6 +257,20 @@ input:hover {
   gap: 8px;
 }
 
+.scope-selector {
+  margin-bottom: 8px;
+}
+
+.config-scope-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-scope-section.hidden {
+  display: none !important;
+}
+
 .bg-image-buttons {
   display: flex;
   flex-wrap: wrap;

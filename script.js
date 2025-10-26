@@ -1502,6 +1502,38 @@ if (typeof document !== 'undefined') {
       familyPanel.innerHTML = '';
       if (devControls) familyPanel.appendChild(devControls);
 
+      const scopeSelectorControl = document.createElement('div');
+      scopeSelectorControl.className =
+        'family-config-item family-target-control scope-selector';
+      const scopeLabel = document.createElement('label');
+      scopeLabel.textContent = 'Aplicar cambios a:';
+      scopeLabel.setAttribute('for', 'config-scope-select');
+      const scopeSelect = document.createElement('select');
+      scopeSelect.id = 'config-scope-select';
+      [
+        { value: 'instrumento', label: 'Instrumento' },
+        { value: 'familia', label: 'Familia' },
+        { value: 'global', label: 'Global' },
+      ].forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        scopeSelect.appendChild(option);
+      });
+      scopeSelect.value = 'familia';
+      scopeSelectorControl.appendChild(scopeLabel);
+      scopeSelectorControl.appendChild(scopeSelect);
+
+      const instrumentScopeSection = document.createElement('div');
+      instrumentScopeSection.className = 'config-scope-section scope-instrumento';
+
+      const familyScopeSection = document.createElement('div');
+      familyScopeSection.className = 'config-scope-section scope-familia';
+
+      familyPanel.appendChild(scopeSelectorControl);
+      familyPanel.appendChild(instrumentScopeSection);
+      familyPanel.appendChild(familyScopeSection);
+
       let updateHeightControl = () => {};
       let updateGlowControl = () => {};
       let updateBumpControl = () => {};
@@ -1511,6 +1543,8 @@ if (typeof document !== 'undefined') {
       let updateParameterControls = () => {};
       let updateInstrumentColorControl = () => {};
       let updateSecondaryColorControl = () => {};
+      let refreshFamilyControls = () => {};
+      let updateScopeVisibility = () => {};
       const paletteUpdaters = [];
 
       const toHex = (val) => {
@@ -1938,7 +1972,7 @@ if (typeof document !== 'undefined') {
         item.appendChild(label);
         instSection.appendChild(item);
       });
-      familyPanel.appendChild(instSection);
+      instrumentScopeSection.appendChild(instSection);
 
       // Selección múltiple de instrumentos con click/drag
       instSection.addEventListener('mousedown', (e) => {
@@ -2473,20 +2507,39 @@ if (typeof document !== 'undefined') {
         }
       };
 
-      familyPanel.appendChild(instrumentConfig);
+      instrumentScopeSection.appendChild(instrumentConfig);
 
       const targetControl = document.createElement('div');
       targetControl.className = 'family-config-item family-target-control';
       const targetLabel = document.createElement('label');
-      targetLabel.textContent = 'Aplicar cambios a:';
+      targetLabel.textContent = 'Familia:';
       targetLabel.setAttribute('for', 'family-target-select');
       const familyTargetSelect = createFamilySelector();
       familyTargetSelect.id = 'family-target-select';
+      const dispatchFamilyTargetChange = () => {
+        let evt = null;
+        if (typeof window !== 'undefined' && typeof window.Event === 'function') {
+          evt = new window.Event('change', { bubbles: true });
+        } else if (typeof Event === 'function') {
+          try {
+            evt = new Event('change');
+          } catch (err) {
+            evt = null;
+          }
+        }
+        if (!evt && typeof document !== 'undefined' && document.createEvent) {
+          evt = document.createEvent('Event');
+          evt.initEvent('change', true, true);
+        }
+        if (evt) {
+          familyTargetSelect.dispatchEvent(evt);
+        }
+      };
       targetControl.appendChild(targetLabel);
       targetControl.appendChild(familyTargetSelect);
       targetControl.dataset.help =
         'Elige si los ajustes afectan a todas las familias o solo a una.';
-      familyPanel.appendChild(targetControl);
+      familyScopeSection.appendChild(targetControl);
 
       const toneControl = document.createElement('div');
       toneControl.className = 'family-config-item family-config-group';
@@ -2518,12 +2571,12 @@ if (typeof document !== 'undefined') {
       toneControl.appendChild(toneLabel);
       toneControl.appendChild(toneSlider);
       toneControl.appendChild(toneHint);
-      familyPanel.appendChild(toneControl);
+      familyScopeSection.appendChild(toneControl);
 
       const colorControl = document.createElement('div');
       colorControl.className = 'family-config-item family-config-group';
       const colorLabel = document.createElement('label');
-      colorLabel.textContent = 'Color de familia:';
+      colorLabel.textContent = 'Color principal:';
       const colorPalette = document.createElement('div');
       colorPalette.className = 'color-palette';
       colorPalette.setAttribute('role', 'group');
@@ -2609,7 +2662,7 @@ if (typeof document !== 'undefined') {
       colorControl.appendChild(colorLabel);
       colorControl.appendChild(colorPalette);
       colorControl.appendChild(colorHint);
-      familyPanel.appendChild(colorControl);
+      familyScopeSection.appendChild(colorControl);
 
       const secondaryControl = document.createElement('div');
       secondaryControl.className = 'family-config-item family-config-group';
@@ -2654,7 +2707,7 @@ if (typeof document !== 'undefined') {
       secondaryControl.appendChild(secondaryLabel);
       secondaryControl.appendChild(secondaryInput);
       secondaryControl.appendChild(secondaryHint);
-      familyPanel.appendChild(secondaryControl);
+      familyScopeSection.appendChild(secondaryControl);
 
       const shapeControl = document.createElement('div');
       shapeControl.className = 'family-config-item family-config-group';
@@ -2706,7 +2759,7 @@ if (typeof document !== 'undefined') {
       shapeControl.appendChild(shapeLabel);
       shapeControl.appendChild(shapeSelect);
       shapeControl.appendChild(shapeHint);
-      familyPanel.appendChild(shapeControl);
+      familyScopeSection.appendChild(shapeControl);
 
       const heightControl = document.createElement('div');
       heightControl.className = 'family-config-item family-config-group';
@@ -2757,7 +2810,7 @@ if (typeof document !== 'undefined') {
       heightControl.appendChild(heightLabel);
       heightControl.appendChild(heightInput);
       heightControl.appendChild(heightHint);
-      familyPanel.appendChild(heightControl);
+      familyScopeSection.appendChild(heightControl);
 
       const glowControl = document.createElement('div');
       glowControl.className = 'family-config-item family-config-group';
@@ -2808,7 +2861,7 @@ if (typeof document !== 'undefined') {
       glowControl.appendChild(glowLabel);
       glowControl.appendChild(glowInput);
       glowControl.appendChild(glowHint);
-      familyPanel.appendChild(glowControl);
+      familyScopeSection.appendChild(glowControl);
 
       const bumpControl = document.createElement('div');
       bumpControl.className = 'family-config-item family-config-group';
@@ -2859,7 +2912,7 @@ if (typeof document !== 'undefined') {
       bumpControl.appendChild(bumpLabel);
       bumpControl.appendChild(bumpInput);
       bumpControl.appendChild(bumpHint);
-      familyPanel.appendChild(bumpControl);
+      familyScopeSection.appendChild(bumpControl);
 
       const outlineControl = document.createElement('div');
       outlineControl.className = 'family-config-item family-config-group outline-config';
@@ -3125,7 +3178,7 @@ if (typeof document !== 'undefined') {
         }
       });
 
-      familyPanel.appendChild(outlineControl);
+      familyScopeSection.appendChild(outlineControl);
 
       const extensionControl = document.createElement('div');
       extensionControl.className = 'family-config-item family-config-group';
@@ -3244,7 +3297,7 @@ if (typeof document !== 'undefined') {
 
       extensionControl.appendChild(extensionLabel);
       extensionControl.appendChild(extensionHint);
-      familyPanel.appendChild(extensionControl);
+      familyScopeSection.appendChild(extensionControl);
 
       const stretchControl = document.createElement('div');
       stretchControl.className = 'family-config-item family-config-group';
@@ -3254,7 +3307,7 @@ if (typeof document !== 'undefined') {
       stretchToggle.type = 'checkbox';
       stretchToggle.className = 'extension-toggle-input';
       stretchLabel.appendChild(stretchToggle);
-      stretchLabel.appendChild(document.createTextNode(' Extensión'));
+      stretchLabel.appendChild(document.createTextNode(' Alargamiento'));
       const stretchHint = document.createElement('span');
       stretchHint.className = 'control-hint';
 
@@ -3271,7 +3324,7 @@ if (typeof document !== 'undefined') {
           stretchToggle.indeterminate =
             hasOverrides || (!allTrue && !allFalse && !stretchToggle.disabled);
           if (stretchToggle.disabled) {
-            stretchHint.textContent = 'Sin figuras compatibles con la extensión';
+            stretchHint.textContent = 'Sin figuras compatibles con el alargamiento';
             stretchHint.classList.add('hint-active');
           } else if (hasOverrides) {
             stretchHint.textContent = 'Con personalizaciones por familia';
@@ -3295,7 +3348,7 @@ if (typeof document !== 'undefined') {
           } else if (!isShapeExtendable(shape)) {
             stretchToggle.checked = false;
             stretchToggle.disabled = true;
-            stretchHint.textContent = 'Extensión no disponible para esta figura';
+            stretchHint.textContent = 'Alargamiento no disponible para esta figura';
             stretchHint.classList.add('hint-active');
           } else {
             stretchToggle.disabled = false;
@@ -3345,7 +3398,7 @@ if (typeof document !== 'undefined') {
 
       stretchControl.appendChild(stretchLabel);
       stretchControl.appendChild(stretchHint);
-      familyPanel.appendChild(stretchControl);
+      familyScopeSection.appendChild(stretchControl);
 
       updateParameterControls = () => {
         updateHeightControl();
@@ -3475,7 +3528,7 @@ if (typeof document !== 'undefined') {
         updateLineControl();
       });
 
-      familyPanel.appendChild(lineControl);
+      familyScopeSection.appendChild(lineControl);
 
       familyTargetSelect.addEventListener('change', () => {
         updateColorControl();
@@ -3506,7 +3559,7 @@ if (typeof document !== 'undefined') {
         buildFamilyPanel();
       });
       resetBtn.style.gridColumn = '1 / -1';
-      familyPanel.appendChild(resetBtn);
+      familyScopeSection.appendChild(resetBtn);
 
       const exportBtn = document.createElement('button');
       exportBtn.id = 'export-config';
@@ -3543,9 +3596,53 @@ if (typeof document !== 'undefined') {
 
       exportBtn.style.gridColumn = '1 / -1';
       importBtn.style.gridColumn = '1 / -1';
-      familyPanel.appendChild(exportBtn);
-      familyPanel.appendChild(importBtn);
-      familyPanel.appendChild(importInput);
+      familyScopeSection.appendChild(exportBtn);
+      familyScopeSection.appendChild(importBtn);
+      familyScopeSection.appendChild(importInput);
+
+      updateScopeVisibility = (forceRefresh = false) => {
+        const scope = scopeSelect.value || 'familia';
+        instrumentScopeSection.classList.toggle('hidden', scope !== 'instrumento');
+        familyScopeSection.classList.toggle('hidden', scope === 'instrumento');
+        targetControl.classList.toggle('hidden', scope !== 'familia');
+        familyScopeSection.classList.toggle('scope-mode-global', scope === 'global');
+
+        const globalOption = familyTargetSelect.querySelector('option[value=""]');
+        if (globalOption) {
+          const hideGlobal = scope === 'familia';
+          globalOption.hidden = hideGlobal;
+          globalOption.disabled = hideGlobal;
+        }
+
+        if (scope === 'global') {
+          if (familyTargetSelect.value !== '') {
+            familyTargetSelect.value = '';
+            dispatchFamilyTargetChange();
+          } else if (forceRefresh) {
+            refreshFamilyControls();
+          }
+        } else if (scope === 'familia') {
+          if (!familyTargetSelect.value) {
+            const firstFamily = Array.from(familyTargetSelect.options).find(
+              (opt) => opt.value,
+            );
+            if (firstFamily) {
+              familyTargetSelect.value = firstFamily.value;
+              dispatchFamilyTargetChange();
+            } else if (forceRefresh) {
+              refreshFamilyControls();
+            }
+          } else if (forceRefresh) {
+            refreshFamilyControls();
+          }
+        } else if (scope === 'instrumento' && forceRefresh) {
+          updateInstrumentColorControl();
+        }
+      };
+
+      scopeSelect.addEventListener('change', () => updateScopeVisibility(true));
+
+      updateScopeVisibility(true);
     }
 
     function showAssignmentModal(tracks) {
