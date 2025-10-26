@@ -16,6 +16,7 @@ const {
   resetStartOffset,
   applyGlowEffect,
   startAutoFPSLoop,
+  startFixedFPSLoop,
   computeVelocityHeight,
   setVelocityBase,
   getVelocityBase,
@@ -131,6 +132,12 @@ const writeStoredNumber = (key, value) => {
   writeStoredValue(key, String(value));
 };
 
+const readStoredString = (key, fallback, validator = () => true) => {
+  const raw = readStoredValue(key);
+  if (typeof raw !== 'string') return fallback;
+  return validator(raw) ? raw : fallback;
+};
+
 // Estado de activación de instrumentos
 const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
 
@@ -138,6 +145,65 @@ const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
 const FRAME_DT_MIN = 8;
 const FRAME_DT_MAX = 32;
 let superSampling = 2;
+
+const FPS_MODE_KEY = 'fpsMode';
+const FIXED_FPS_KEY = 'fixedFps';
+const FPS_MODE_FIXED = 'fixed';
+const FPS_MODE_AUTO = 'auto';
+const FPS_MODE_OPTIONS = [FPS_MODE_AUTO, FPS_MODE_FIXED];
+const FIXED_FPS_DEFAULT = 90;
+const FIXED_FPS_MIN = 30;
+const FIXED_FPS_MAX = 240;
+
+let fpsMode = readStoredString(FPS_MODE_KEY, FPS_MODE_FIXED, (value) =>
+  FPS_MODE_OPTIONS.includes(value)
+);
+let fixedFPS = readStoredNumber(
+  FIXED_FPS_KEY,
+  FIXED_FPS_DEFAULT,
+  (value) => value >= FIXED_FPS_MIN && value <= FIXED_FPS_MAX,
+);
+
+const clampFixedFPS = (value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fixedFPS;
+  }
+  const rounded = Math.round(value);
+  return Math.min(FIXED_FPS_MAX, Math.max(FIXED_FPS_MIN, rounded));
+};
+
+function setFPSMode(mode) {
+  const normalized = FPS_MODE_OPTIONS.includes(mode) ? mode : FPS_MODE_FIXED;
+  fpsMode = normalized;
+  writeStoredValue(FPS_MODE_KEY, normalized);
+  return fpsMode;
+}
+
+function getFPSMode() {
+  fpsMode = readStoredString(FPS_MODE_KEY, fpsMode, (value) =>
+    FPS_MODE_OPTIONS.includes(value)
+  );
+  return fpsMode;
+}
+
+function setFixedFPS(value) {
+  const clamped = clampFixedFPS(value);
+  fixedFPS = clamped;
+  writeStoredNumber(FIXED_FPS_KEY, fixedFPS);
+  return fixedFPS;
+}
+
+function getFixedFPS() {
+  fixedFPS = readStoredNumber(
+    FIXED_FPS_KEY,
+    fixedFPS,
+    (value) => value >= FIXED_FPS_MIN && value <= FIXED_FPS_MAX,
+  );
+  return fixedFPS;
+}
+
+getFPSMode();
+getFixedFPS();
 
 function setSuperSampling(val) {
   if (typeof val === 'number' && Number.isFinite(val) && val >= 1 && val <= 2) {
@@ -4019,7 +4085,15 @@ if (typeof document !== 'undefined') {
     });
 
     // Reproducción básica Play/Stop con animación y controles de búsqueda
-    const uiControls = initializeUIControls({
+    let uiControls;
+
+    const refreshFPSControlsUI = () => {
+      if (uiControls && typeof uiControls.refreshFPSControls === 'function') {
+        uiControls.refreshFPSControls(getFPSMode(), getFixedFPS());
+      }
+    };
+
+    uiControls = initializeUIControls({
       isPlaying: () => audioPlayer.isPlaying(),
       onPlay: async () => {
         const ctx = audioPlayer.getAudioContext();
@@ -4052,7 +4126,31 @@ if (typeof document !== 'undefined') {
           canvas.style.cursor = 'default';
         }
       },
+      fpsMode: getFPSMode(),
+      fpsValue: getFixedFPS(),
+      onFPSModeChange: (mode) => {
+        const next = setFPSMode(mode);
+        refreshFPSControlsUI();
+        if (!prefersReducedMotion()) {
+          if (next === FPS_MODE_FIXED) {
+            setFixedFPS(getFixedFPS());
+          }
+          if (audioPlayer.isPlaying()) {
+            startAnimationLoop();
+          }
+        }
+        return next;
+      },
+      onFPSValueChange: (value) => {
+        const next = setFixedFPS(value);
+        refreshFPSControlsUI();
+        if (!prefersReducedMotion() && audioPlayer.isPlaying() && getFPSMode() === FPS_MODE_FIXED) {
+          startAnimationLoop();
+        }
+        return next;
+      },
     });
+    refreshFPSControlsUI();
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -4460,21 +4558,35 @@ if (typeof document !== 'undefined') {
       }
     }
 
-    function startAnimation() {
+    const animationLoop = (dt, _now, forcedCurrentSec) => {
+      const currentSec =
+        typeof forcedCurrentSec === 'number'
+          ? forcedCurrentSec
+          : audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
+      adjustSupersampling(dt);
+      renderFrame(currentSec);
+      if (!audioPlayer.isPlaying()) stopAnimation();
+    };
+
+    function startAnimationLoop() {
+      if (stopLoop) {
+        stopLoop();
+        stopLoop = null;
+      }
       if (prefersReducedMotion()) {
         renderFrame(audioPlayer.getCurrentTime() + audioOffsetMs / 1000);
         return;
       }
-      const loopFn = (dt, _now, forcedCurrentSec) => {
-        const currentSec =
-          typeof forcedCurrentSec === 'number'
-            ? forcedCurrentSec
-            : audioPlayer.getCurrentTime() + audioOffsetMs / 1000;
-        adjustSupersampling(dt);
-        renderFrame(currentSec);
-        if (!audioPlayer.isPlaying()) stopAnimation();
-      };
-      stopLoop = startAutoFPSLoop(loopFn, FRAME_DT_MIN, FRAME_DT_MAX);
+      const mode = getFPSMode();
+      if (mode === FPS_MODE_FIXED) {
+        stopLoop = startFixedFPSLoop(animationLoop, getFixedFPS());
+      } else {
+        stopLoop = startAutoFPSLoop(animationLoop, FRAME_DT_MIN, FRAME_DT_MAX);
+      }
+    }
+
+    function startAnimation() {
+      startAnimationLoop();
     }
 
     function stopAnimation() {
@@ -5582,6 +5694,7 @@ if (typeof module !== 'undefined') {
     computeNoteWidth,
     calculateCanvasSize,
     startAutoFPSLoop,
+    startFixedFPSLoop,
     computeVelocityHeight,
     setVelocityBase,
     getVelocityBase,
@@ -5600,6 +5713,10 @@ if (typeof module !== 'undefined') {
     renderOutline,
     setSuperSampling,
     getSuperSampling,
+    setFPSMode,
+    getFPSMode,
+    setFixedFPS,
+    getFixedFPS,
     preprocessTempoMap,
     ticksToSeconds,
     setFamilyCustomization,

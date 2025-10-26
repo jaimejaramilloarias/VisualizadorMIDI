@@ -13,6 +13,11 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 <button id="aspect-16-9"></button>
 <button id="aspect-9-16"></button>
 <button id="full-screen"></button>
+<select id="fps-mode">
+  <option value="auto">Auto</option>
+  <option value="fixed">Fijo</option>
+</select>
+<input id="fps-value" />
 </body></html>`);
 
 global.document = dom.window.document;
@@ -23,6 +28,8 @@ let stopCalls = 0;
 let forwardCalls = 0;
 let backwardCalls = 0;
 let refreshCalls = 0;
+const modeChanges = [];
+const fpsChanges = [];
 
 initializeUI({
   isPlaying: () => playing,
@@ -47,6 +54,16 @@ initializeUI({
   onAspect169: () => {},
   onAspect916: () => {},
   onFullScreen: () => {},
+  fpsMode: 'fixed',
+  fpsValue: 90,
+  onFPSModeChange: (mode) => {
+    modeChanges.push(mode);
+    return mode;
+  },
+  onFPSValueChange: (value) => {
+    fpsChanges.push(value);
+    return value;
+  },
 });
 
 document.getElementById('play-stop').click();
@@ -62,5 +79,19 @@ assert.strictEqual(stopCalls, 1);
 assert.strictEqual(forwardCalls, 2);
 assert.strictEqual(backwardCalls, 2);
 assert.strictEqual(refreshCalls, 1);
+
+const modeSelect = document.getElementById('fps-mode');
+const fpsInput = document.getElementById('fps-value');
+modeSelect.value = 'auto';
+modeSelect.dispatchEvent(new dom.window.Event('change'));
+assert.strictEqual(modeSelect.disabled, false);
+assert.strictEqual(fpsInput.disabled, true);
+modeSelect.value = 'fixed';
+modeSelect.dispatchEvent(new dom.window.Event('change'));
+fpsInput.value = '120';
+fpsInput.dispatchEvent(new dom.window.Event('change'));
+
+assert.deepStrictEqual(modeChanges, ['auto', 'fixed']);
+assert.strictEqual(fpsChanges[fpsChanges.length - 1], 120);
 
 console.log('Pruebas de integración de UI completadas');
