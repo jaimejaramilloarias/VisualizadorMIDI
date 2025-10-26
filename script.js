@@ -2345,6 +2345,7 @@ if (typeof document !== 'undefined') {
 
       instrumentSelect.addEventListener('change', () => {
         updateInstrumentColorControl();
+        syncFamilyTargetWithInstrument();
       });
 
       instrumentFamilySelect.addEventListener('change', () => {
@@ -2362,6 +2363,7 @@ if (typeof document !== 'undefined') {
         requestImmediateRender();
         updateInstrumentColorControl();
         updateColorControl();
+        syncFamilyTargetWithInstrument();
       });
 
       instrumentShapeSelect.addEventListener('change', () => {
@@ -2558,16 +2560,9 @@ if (typeof document !== 'undefined') {
 
       instrumentScopeSection.appendChild(instrumentConfig);
 
-      const targetControl = document.createElement('div');
-      targetControl.className = 'family-config-item family-target-control';
-      const targetLabel = document.createElement('span');
-      targetLabel.className = 'family-target-title';
-      targetLabel.id = 'family-target-label';
-      targetLabel.textContent = 'Familia:';
       const familyTargetSelect = createFamilySelector();
       familyTargetSelect.id = 'family-target-select';
       familyTargetSelect.setAttribute('role', 'group');
-      familyTargetSelect.setAttribute('aria-labelledby', 'family-target-label');
       const dispatchFamilyTargetChange = () => {
         let evt = null;
         if (typeof window !== 'undefined' && typeof window.Event === 'function') {
@@ -2587,11 +2582,30 @@ if (typeof document !== 'undefined') {
           familyTargetSelect.dispatchEvent(evt);
         }
       };
-      targetControl.appendChild(targetLabel);
-      targetControl.appendChild(familyTargetSelect);
-      targetControl.dataset.help =
-        'Elige si los ajustes afectan a todas las familias o solo a una.';
-      familyScopeSection.appendChild(targetControl);
+
+      const syncFamilyTargetWithInstrument = () => {
+        const scope = scopeSelect.value || 'familia';
+        if (scope === 'global') {
+          familyTargetSelect.value = '';
+          dispatchFamilyTargetChange();
+          return;
+        }
+        if (scope === 'familia' || scope === 'instrumento') {
+          const selectedInstrument =
+            instrumentSelect && instrumentSelect.value ? instrumentSelect.value : '';
+          if (!selectedInstrument) {
+            familyTargetSelect.value = '';
+            dispatchFamilyTargetChange();
+            return;
+          }
+          const track = currentTracks.find((t) => t.name === selectedInstrument);
+          const assigned = assignedFamilies[selectedInstrument];
+          const detected = track ? track.detectedFamily || track.family : '';
+          const targetFamily = assigned || detected || '';
+          familyTargetSelect.value = targetFamily;
+          dispatchFamilyTargetChange();
+        }
+      };
 
       const toneControl = document.createElement('div');
       toneControl.className = 'family-config-item family-config-group';
@@ -2764,7 +2778,7 @@ if (typeof document !== 'undefined') {
       const shapeControl = document.createElement('div');
       shapeControl.className = 'family-config-item family-config-group';
       const shapeLabel = document.createElement('label');
-      shapeLabel.textContent = 'Figura de familia:';
+      shapeLabel.textContent = 'Figura:';
       const shapeOptions = document.createElement('div');
       shapeOptions.className = 'shape-options';
       const shapeHint = document.createElement('span');
@@ -3670,25 +3684,8 @@ if (typeof document !== 'undefined') {
         const scope = scopeSelect.value || 'familia';
         instrumentScopeSection.classList.toggle('hidden', scope !== 'instrumento');
         familyScopeSection.classList.toggle('hidden', scope === 'instrumento');
-        targetControl.classList.toggle('hidden', scope !== 'familia');
+        syncFamilyTargetWithInstrument();
         familyScopeSection.classList.toggle('scope-mode-global', scope === 'global');
-
-        const globalButton = familyTargetSelect.querySelector(
-          '.family-target-button[data-value=""]',
-        );
-        if (globalButton) {
-          const hideGlobal = scope === 'familia';
-          globalButton.classList.toggle('hidden', hideGlobal);
-          globalButton.disabled = hideGlobal;
-          if (hideGlobal && familyTargetSelect.value === '') {
-            const firstVisible = Array.from(
-              familyTargetSelect.querySelectorAll('.family-target-button[data-value]'),
-            ).find((btn) => btn.dataset.value && !btn.classList.contains('hidden') && !btn.disabled);
-            if (firstVisible) {
-              familyTargetSelect.setValueSilently(firstVisible.dataset.value);
-            }
-          }
-        }
 
         if (scope === 'global') {
           if (familyTargetSelect.value !== '') {
@@ -3698,17 +3695,7 @@ if (typeof document !== 'undefined') {
             refreshFamilyControls();
           }
         } else if (scope === 'familia') {
-          if (!familyTargetSelect.value) {
-            const firstFamily = Array.from(
-              familyTargetSelect.querySelectorAll('.family-target-button[data-value]'),
-            ).find((btn) => btn.dataset.value && !btn.classList.contains('hidden') && !btn.disabled);
-            if (firstFamily) {
-              familyTargetSelect.value = firstFamily.dataset.value;
-              dispatchFamilyTargetChange();
-            } else if (forceRefresh) {
-              refreshFamilyControls();
-            }
-          } else if (forceRefresh) {
+          if (forceRefresh) {
             refreshFamilyControls();
           }
         } else if (scope === 'instrumento' && forceRefresh) {
