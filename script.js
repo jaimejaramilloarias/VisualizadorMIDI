@@ -3977,11 +3977,15 @@ if (typeof document !== 'undefined') {
           rawXStart,
           canvas.width,
         );
+        const bumpScale = baseHeight > 0 ? height / baseHeight : 1;
+        const scaledWidth = rawWidth * bumpScale;
+        const scaledXCenter = rawXStart + rawWidth / 2;
+        const scaledXStart = scaledXCenter - scaledWidth / 2;
         const y =
           canvas.height - (clamped - NOTE_MIN + 1) * noteHeight -
           (height - noteHeight) / 2;
-        const snappedXStart = snapHalf(rawXStart);
-        const snappedWidth = Math.max(0.5, snapHalf(rawWidth));
+        const snappedXStart = snapHalf(scaledXStart);
+        const snappedWidth = Math.max(0.5, snapHalf(scaledWidth));
         const snappedXEnd = snappedXStart + snappedWidth;
         const snappedY = snapHalf(y);
         const snappedHeight = Math.max(0.5, snapHalf(height));
