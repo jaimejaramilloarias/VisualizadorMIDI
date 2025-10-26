@@ -499,41 +499,37 @@ function traceDiamond(ctx, x, y, width, height, inset = 0) {
 function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
   const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
   const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
   const effectiveWidth = Math.max(width - insetX * 2, 0);
   const effectiveHeight = Math.max(height - insetY * 2, 0);
-  const outerRadiusX = effectiveWidth / 2;
-  const outerRadiusY = effectiveHeight / 2;
-  const innerRadiusX = outerRadiusX * 0.55;
-  const innerRadiusY = outerRadiusY * 0.55;
-  const outerHandleX = outerRadiusX * 0.82;
-  const outerHandleY = outerRadiusY * 0.82;
-  const innerHandleX = innerRadiusX * 0.68;
-  const innerHandleY = innerRadiusY * 0.68;
+  if (effectiveWidth <= 0 || effectiveHeight <= 0) return;
 
-  const toPoint = (angle, radiusX, radiusY) => ({
-    x: centerX + Math.cos(angle) * radiusX,
-    y: centerY + Math.sin(angle) * radiusY,
-  });
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const halfWidth = effectiveWidth / 2;
+  const halfHeight = effectiveHeight / 2;
 
-  const start = toPoint(-Math.PI / 2, outerRadiusX, outerRadiusY);
-  ctx.moveTo(start.x, start.y);
+  const corners = [
+    { x: centerX, y: centerY - halfHeight },
+    { x: centerX + halfWidth, y: centerY },
+    { x: centerX, y: centerY + halfHeight },
+    { x: centerX - halfWidth, y: centerY },
+  ];
+
+  const concavity = 0.45;
+  const controls = [
+    { x: centerX + halfWidth * concavity, y: centerY - halfHeight * concavity },
+    { x: centerX + halfWidth * concavity, y: centerY + halfHeight * concavity },
+    { x: centerX - halfWidth * concavity, y: centerY + halfHeight * concavity },
+    { x: centerX - halfWidth * concavity, y: centerY - halfHeight * concavity },
+  ];
+
+  ctx.moveTo(corners[0].x, corners[0].y);
 
   for (let i = 0; i < 4; i++) {
-    const baseAngle = -Math.PI / 2 + i * (Math.PI / 2);
-    const innerAngle = baseAngle + Math.PI / 4;
-    const nextOuterAngle = baseAngle + Math.PI / 2;
-
-    const control1 = toPoint(baseAngle + Math.PI / 10, outerHandleX, outerHandleY);
-    const control2 = toPoint(innerAngle - Math.PI / 10, innerHandleX, innerHandleY);
-    const innerPoint = toPoint(innerAngle, innerRadiusX, innerRadiusY);
-    ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, innerPoint.x, innerPoint.y);
-
-    const control3 = toPoint(innerAngle + Math.PI / 10, innerHandleX, innerHandleY);
-    const control4 = toPoint(nextOuterAngle - Math.PI / 10, outerHandleX, outerHandleY);
-    const nextOuter = toPoint(nextOuterAngle, outerRadiusX, outerRadiusY);
-    ctx.bezierCurveTo(control3.x, control3.y, control4.x, control4.y, nextOuter.x, nextOuter.y);
+    const nextIndex = (i + 1) % 4;
+    const control = controls[i];
+    const nextCorner = corners[nextIndex];
+    ctx.bezierCurveTo(control.x, control.y, control.x, control.y, nextCorner.x, nextCorner.y);
   }
 
   ctx.closePath();
