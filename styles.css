@@ -23,20 +23,35 @@ body {
 
 #top-menu,
 #bottom-menu {
-  display: flex;
-  gap: 10px;
   margin: 10px;
   background: #1a1a1a;
   padding: 10px;
   border-radius: 6px;
 }
 
+#top-menu {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 960px);
+  box-sizing: border-box;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  justify-items: stretch;
+  align-items: stretch;
+}
+
+#top-menu button {
+  width: 100%;
+  min-height: 38px;
+}
+
 /* Layout específico para el menú inferior para mantener
    un formato organizado y simétrico */
 #bottom-menu {
+  display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
 }
 
 #toggle-family-panel {
@@ -165,6 +180,48 @@ input:hover {
   border-radius: 6px;
 }
 
+.family-target-control {
+  gap: 12px;
+}
+
+.family-target-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.family-target-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.family-target-button {
+  background: #1f1f1f;
+  border: 1px solid #444;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.family-target-button:hover {
+  background: #2a2a2a;
+  transform: translateY(-1px);
+}
+
+.family-target-button.active {
+  background: #4caf50;
+  border-color: #66bb6a;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.35);
+  transform: translateY(-1px);
+}
+
+.family-target-button.hidden {
+  display: none;
+}
+
 .family-config-item label {
   min-width: 0;
   font-weight: 600;
@@ -189,6 +246,46 @@ input:hover {
 .family-config-group select,
 .family-config-group input[type='number'] {
   width: 100%;
+}
+
+.shape-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.shape-option-button {
+  background: #1f1f1f;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.shape-option-button:hover {
+  background: #2a2a2a;
+  transform: translateY(-1px);
+}
+
+.shape-option-button.active {
+  background: #2196f3;
+  border-color: #42a5f5;
+  color: #0a0a0a;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.35);
+  transform: translateY(-1px);
+}
+
+.shape-options.mixed .shape-option-button {
+  opacity: 0.7;
+}
+
+.shape-options.mixed .shape-option-button.active {
+  background: #1f1f1f;
+  border-color: #444;
+  color: inherit;
+  box-shadow: none;
+  transform: none;
 }
 
 .color-palette {

@@ -1559,19 +1559,68 @@ if (typeof document !== 'undefined') {
       };
 
       const createFamilySelector = () => {
-        const select = document.createElement('select');
-        const globalOption = document.createElement('option');
-        globalOption.value = '';
-        globalOption.textContent = 'Global';
-        select.appendChild(globalOption);
+        const container = document.createElement('div');
+        container.className = 'family-target-selector';
+        const buttons = [];
+        let currentValue = '';
+
+        const updateActiveButtons = () => {
+          buttons.forEach((btn) => {
+            const isActive = btn.dataset.value === currentValue;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+          });
+        };
+
+        const setValue = (value, { triggerEvent = false } = {}) => {
+          const normalized = typeof value === 'string' ? value : '';
+          if (normalized === currentValue) return;
+          currentValue = normalized;
+          container.dataset.value = currentValue;
+          updateActiveButtons();
+          if (triggerEvent) {
+            const changeEvent = new Event('change', { bubbles: true });
+            container.dispatchEvent(changeEvent);
+          }
+        };
+
+        const addButton = (value, label) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.value = value;
+          button.textContent = label;
+          button.className = 'family-target-button';
+          button.setAttribute('aria-pressed', 'false');
+          button.addEventListener('click', () => {
+            if (button.disabled) return;
+            setValue(value, { triggerEvent: true });
+          });
+          container.appendChild(button);
+          buttons.push(button);
+        };
+
+        addButton('', 'Global');
         FAMILY_LIST.forEach((family) => {
           if (!FAMILY_PRESETS[family]) return;
-          const option = document.createElement('option');
-          option.value = family;
-          option.textContent = family;
-          select.appendChild(option);
+          addButton(family, family);
         });
-        return select;
+
+        Object.defineProperty(container, 'value', {
+          get() {
+            return currentValue;
+          },
+          set(value) {
+            setValue(value);
+          },
+        });
+
+        container.getButtons = () => buttons.slice();
+        container.updateActiveButtons = updateActiveButtons;
+        container.setValueSilently = (value) => setValue(value);
+
+        setValue('', { triggerEvent: false });
+
+        return container;
       };
 
       const createInstrumentFamilySelector = () => {
@@ -2511,11 +2560,14 @@ if (typeof document !== 'undefined') {
 
       const targetControl = document.createElement('div');
       targetControl.className = 'family-config-item family-target-control';
-      const targetLabel = document.createElement('label');
+      const targetLabel = document.createElement('span');
+      targetLabel.className = 'family-target-title';
+      targetLabel.id = 'family-target-label';
       targetLabel.textContent = 'Familia:';
-      targetLabel.setAttribute('for', 'family-target-select');
       const familyTargetSelect = createFamilySelector();
       familyTargetSelect.id = 'family-target-select';
+      familyTargetSelect.setAttribute('role', 'group');
+      familyTargetSelect.setAttribute('aria-labelledby', 'family-target-label');
       const dispatchFamilyTargetChange = () => {
         let evt = null;
         if (typeof window !== 'undefined' && typeof window.Event === 'function') {
@@ -2713,51 +2765,65 @@ if (typeof document !== 'undefined') {
       shapeControl.className = 'family-config-item family-config-group';
       const shapeLabel = document.createElement('label');
       shapeLabel.textContent = 'Figura de familia:';
-      const shapeSelect = document.createElement('select');
-      SHAPE_OPTIONS.forEach((opt) => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        shapeSelect.appendChild(option);
-      });
+      const shapeOptions = document.createElement('div');
+      shapeOptions.className = 'shape-options';
       const shapeHint = document.createElement('span');
       shapeHint.className = 'control-hint';
 
-      const updateShapeControl = () => {
-        const { shape, mixed } = getShapeState(familyTargetSelect.value);
-        if (shapeSelect.querySelector(`option[value="${shape}"]`)) {
-          shapeSelect.value = shape;
-        } else if (SHAPE_OPTIONS[0]) {
-          shapeSelect.value = SHAPE_OPTIONS[0].value;
-        }
-        const currentOption = SHAPE_OPTIONS.find((opt) => opt.value === shapeSelect.value);
-        shapeHint.textContent = mixed
-          ? 'Valores variados'
-          : currentOption
-          ? currentOption.label
-          : '';
-        shapeHint.classList.toggle('hint-active', mixed);
-      };
+      const shapeButtons = [];
 
-      shapeSelect.addEventListener('change', () => {
-        const shape = shapeSelect.value;
-        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
-          setFamilyCustomization(
-            family,
-            { shape },
-            currentTracks,
-            notes,
-            getEditStartTime(),
-          ),
-        );
-        renderFrame(lastTime);
-        updateShapeControl();
-        updateParameterControls();
-        updateInstrumentColorControl();
+      SHAPE_OPTIONS.forEach((opt) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'shape-option-button';
+        button.dataset.value = opt.value;
+        button.textContent = opt.label;
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+          if (button.disabled) return;
+          const shape = button.dataset.value;
+          familiesFromSelection(familyTargetSelect.value).forEach((family) =>
+            setFamilyCustomization(
+              family,
+              { shape },
+              currentTracks,
+              notes,
+              getEditStartTime(),
+            ),
+          );
+          renderFrame(lastTime);
+          updateShapeControl();
+          updateParameterControls();
+          updateInstrumentColorControl();
+        });
+        shapeOptions.appendChild(button);
+        shapeButtons.push({ button, option: opt });
       });
 
+      const updateShapeControl = () => {
+        const { shape, mixed } = getShapeState(familyTargetSelect.value);
+        const available = shapeButtons.find(({ button }) => button.dataset.value === shape);
+        const fallback = shapeButtons[0] || null;
+        const activeButton = !mixed && (available || fallback);
+        const activeValue = activeButton ? activeButton.button.dataset.value : null;
+        shapeButtons.forEach(({ button }) => {
+          const isActive = !mixed && button.dataset.value === activeValue;
+          button.classList.toggle('active', isActive);
+          button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+        shapeOptions.classList.toggle('mixed', mixed);
+        if (mixed) {
+          shapeHint.textContent = 'Valores variados';
+          shapeHint.classList.add('hint-active');
+        } else {
+          const option = (available || fallback)?.option;
+          shapeHint.textContent = option ? option.label : '';
+          shapeHint.classList.remove('hint-active');
+        }
+      };
+
       shapeControl.appendChild(shapeLabel);
-      shapeControl.appendChild(shapeSelect);
+      shapeControl.appendChild(shapeOptions);
       shapeControl.appendChild(shapeHint);
       familyScopeSection.appendChild(shapeControl);
 
@@ -3607,11 +3673,21 @@ if (typeof document !== 'undefined') {
         targetControl.classList.toggle('hidden', scope !== 'familia');
         familyScopeSection.classList.toggle('scope-mode-global', scope === 'global');
 
-        const globalOption = familyTargetSelect.querySelector('option[value=""]');
-        if (globalOption) {
+        const globalButton = familyTargetSelect.querySelector(
+          '.family-target-button[data-value=""]',
+        );
+        if (globalButton) {
           const hideGlobal = scope === 'familia';
-          globalOption.hidden = hideGlobal;
-          globalOption.disabled = hideGlobal;
+          globalButton.classList.toggle('hidden', hideGlobal);
+          globalButton.disabled = hideGlobal;
+          if (hideGlobal && familyTargetSelect.value === '') {
+            const firstVisible = Array.from(
+              familyTargetSelect.querySelectorAll('.family-target-button[data-value]'),
+            ).find((btn) => btn.dataset.value && !btn.classList.contains('hidden') && !btn.disabled);
+            if (firstVisible) {
+              familyTargetSelect.setValueSilently(firstVisible.dataset.value);
+            }
+          }
         }
 
         if (scope === 'global') {
@@ -3623,11 +3699,11 @@ if (typeof document !== 'undefined') {
           }
         } else if (scope === 'familia') {
           if (!familyTargetSelect.value) {
-            const firstFamily = Array.from(familyTargetSelect.options).find(
-              (opt) => opt.value,
-            );
+            const firstFamily = Array.from(
+              familyTargetSelect.querySelectorAll('.family-target-button[data-value]'),
+            ).find((btn) => btn.dataset.value && !btn.classList.contains('hidden') && !btn.disabled);
             if (firstFamily) {
-              familyTargetSelect.value = firstFamily.value;
+              familyTargetSelect.value = firstFamily.dataset.value;
               dispatchFamilyTargetChange();
             } else if (forceRefresh) {
               refreshFamilyControls();
