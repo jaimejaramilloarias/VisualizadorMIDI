@@ -12,6 +12,10 @@ function initializeUI({
   onAspect169,
   onAspect916,
   onFullScreen,
+  fpsMode,
+  fpsValue,
+  onFPSModeChange,
+  onFPSValueChange,
 }) {
   const playBtn = document.getElementById('play-stop');
   const forwardBtn = document.getElementById('seek-forward');
@@ -23,6 +27,56 @@ function initializeUI({
   const aspect169Btn = document.getElementById('aspect-16-9');
   const aspect916Btn = document.getElementById('aspect-9-16');
   const fullScreenBtn = document.getElementById('full-screen');
+  const fpsModeSelect = document.getElementById('fps-mode');
+  const fpsValueInput = document.getElementById('fps-value');
+
+  const updateFPSAvailability = () => {
+    if (fpsValueInput) {
+      const fixedSelected = fpsModeSelect && fpsModeSelect.value === 'fixed';
+      fpsValueInput.disabled = !fixedSelected;
+    }
+  };
+
+  if (fpsModeSelect) {
+    if (typeof fpsMode === 'string') {
+      const option = fpsModeSelect.querySelector(`option[value="${fpsMode}"]`);
+      if (option) {
+        fpsModeSelect.value = fpsMode;
+      }
+    }
+    updateFPSAvailability();
+    fpsModeSelect.addEventListener('change', () => {
+      const selected = fpsModeSelect.value === 'fixed' ? 'fixed' : 'auto';
+      let nextMode = selected;
+      if (typeof onFPSModeChange === 'function') {
+        const result = onFPSModeChange(selected);
+        if (typeof result === 'string') {
+          nextMode = result;
+        }
+      }
+      const option = fpsModeSelect.querySelector(`option[value="${nextMode}"]`);
+      if (option) {
+        fpsModeSelect.value = nextMode;
+      }
+      updateFPSAvailability();
+    });
+  }
+
+  if (fpsValueInput) {
+    if (typeof fpsValue === 'number' && Number.isFinite(fpsValue)) {
+      fpsValueInput.value = String(fpsValue);
+    }
+    updateFPSAvailability();
+    fpsValueInput.addEventListener('change', () => {
+      if (typeof onFPSValueChange === 'function') {
+        const parsed = Number(fpsValueInput.value);
+        const result = onFPSValueChange(parsed);
+        if (typeof result === 'number' && Number.isFinite(result)) {
+          fpsValueInput.value = String(result);
+        }
+      }
+    });
+  }
 
   playBtn.addEventListener('click', () => {
     if (isPlaying()) {
@@ -58,6 +112,20 @@ function initializeUI({
     aspect169Btn,
     aspect916Btn,
     fullScreenBtn,
+    fpsModeSelect,
+    fpsValueInput,
+    refreshFPSControls: (mode, value) => {
+      if (fpsModeSelect && typeof mode === 'string') {
+        const option = fpsModeSelect.querySelector(`option[value="${mode}"]`);
+        if (option) {
+          fpsModeSelect.value = mode;
+        }
+      }
+      if (fpsValueInput && typeof value === 'number' && Number.isFinite(value)) {
+        fpsValueInput.value = String(value);
+      }
+      updateFPSAvailability();
+    },
   };
 }
 

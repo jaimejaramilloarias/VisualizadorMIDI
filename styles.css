@@ -44,6 +44,32 @@ body {
   min-height: 38px;
 }
 
+#fps-control-group {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #181818;
+  align-content: start;
+  grid-column: span 2;
+}
+
+#fps-control-group label {
+  font-weight: 600;
+}
+
+#fps-control-group select,
+#fps-control-group input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#fps-value:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Layout específico para el menú inferior para mantener
    un formato organizado y simétrico */
 #bottom-menu {

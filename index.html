@@ -78,6 +78,30 @@
       title="Pantalla completa"
       data-help="Expande el canvas a pantalla completa con supersampling."
     >Pantalla completa</button>
+    <div
+      id="fps-control-group"
+      class="fps-control"
+      data-help="Selecciona si la animación sigue la frecuencia de actualización de tu pantalla o usa un valor fijo."
+    >
+      <label for="fps-mode">Modo de FPS</label>
+      <select
+        id="fps-mode"
+        title="Define cómo se sincroniza la animación con la pantalla"
+      >
+        <option value="auto">Automático (según pantalla)</option>
+        <option value="fixed">Fijo</option>
+      </select>
+      <label for="fps-value">FPS fijos</label>
+      <input
+        type="number"
+        id="fps-value"
+        min="30"
+        max="240"
+        step="1"
+        value="90"
+        title="Especifica los fotogramas por segundo cuando se usa el modo fijo"
+      />
+    </div>
   </nav>
 
   <canvas

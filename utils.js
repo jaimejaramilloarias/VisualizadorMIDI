@@ -1735,6 +1735,57 @@ function startAutoFPSLoop(callback, minDt = 8, maxDt = 32) {
   return () => cancelAnimationFrame(id);
 }
 
+function startFixedFPSLoop(callback, targetFps = 60) {
+  if (prefersReducedMotion()) {
+    const now = performance.now();
+    callback(0, now);
+    return () => {};
+  }
+
+  const fps = Math.max(1, Number.isFinite(targetFps) ? Math.round(targetFps) : 60);
+  const frameDuration = 1000 / fps;
+  let last = performance.now();
+  let accumulator = 0;
+  let initialized = false;
+  let id;
+  let active = true;
+
+  function step(now) {
+    if (!active) return;
+    const current = Number.isFinite(now) ? now : performance.now();
+    if (!initialized) {
+      last = current;
+      initialized = true;
+      accumulator = 0;
+      callback(0, current);
+    } else {
+      const delta = current - last;
+      last = current;
+      if (Number.isFinite(delta) && delta > 0) {
+        accumulator += delta;
+      }
+      const maxCatchUp = frameDuration * 4;
+      if (accumulator > maxCatchUp) {
+        accumulator = maxCatchUp;
+      }
+      let steps = 0;
+      const maxSteps = 8;
+      while (accumulator >= frameDuration && steps < maxSteps) {
+        callback(frameDuration, current);
+        accumulator -= frameDuration;
+        steps++;
+      }
+    }
+    id = requestAnimationFrame(step);
+  }
+
+  id = requestAnimationFrame(step);
+  return () => {
+    active = false;
+    cancelAnimationFrame(id);
+  };
+}
+
 // Preprocesa el mapa de tempo agregando acumulados de segundos
 function preprocessTempoMap(tempoMap, timeDivision) {
   let lastTick = 0;
@@ -1838,6 +1889,7 @@ const utils = {
   canStartPlayback,
   prefersReducedMotion,
   startAutoFPSLoop,
+  startFixedFPSLoop,
   preprocessTempoMap,
   ticksToSeconds,
 };
