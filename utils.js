@@ -508,37 +508,43 @@ function traceFourPointStar(ctx, x, y, width, height, inset = 0) {
   const halfWidth = effectiveWidth / 2;
   const halfHeight = effectiveHeight / 2;
 
-  const corners = [
-    { x: centerX, y: centerY - halfHeight },
-    { x: centerX + halfWidth, y: centerY },
-    { x: centerX, y: centerY + halfHeight },
-    { x: centerX - halfWidth, y: centerY },
-  ];
+  const segmentsPerQuadrant = 24;
+  const totalSegments = segmentsPerQuadrant * 4;
+  ctx.moveTo(centerX, centerY - halfHeight);
 
-  const concavityStart = 1.35;
-  const concavityEnd = 1.35;
-
-  ctx.moveTo(corners[0].x, corners[0].y);
-
-  for (let i = 0; i < 4; i++) {
-    const nextIndex = (i + 1) % 4;
-    const startCorner = corners[i];
-    const nextCorner = corners[nextIndex];
-    const midX = (startCorner.x + nextCorner.x) / 2;
-    const midY = (startCorner.y + nextCorner.y) / 2;
-    const inwardX = centerX - midX;
-    const inwardY = centerY - midY;
-    const control1 = {
-      x: startCorner.x + inwardX * concavityStart,
-      y: startCorner.y + inwardY * concavityStart,
-    };
-    const control2 = {
-      x: nextCorner.x + inwardX * concavityEnd,
-      y: nextCorner.y + inwardY * concavityEnd,
-    };
-    ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, nextCorner.x, nextCorner.y);
+  for (let i = 1; i <= totalSegments; i++) {
+    const angle = -Math.PI / 2 + (i / totalSegments) * Math.PI * 2;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const scaledCos = Math.sign(cos) * Math.pow(Math.abs(cos), 3);
+    const scaledSin = Math.sign(sin) * Math.pow(Math.abs(sin), 3);
+    const px = centerX + halfWidth * scaledCos;
+    const py = centerY + halfHeight * scaledSin;
+    ctx.lineTo(px, py);
   }
 
+  ctx.closePath();
+}
+
+function traceHexagon(ctx, x, y, width, height, inset = 0) {
+  const insetX = typeof inset === 'object' ? inset.insetX || 0 : inset;
+  const insetY = typeof inset === 'object' ? inset.insetY || 0 : inset;
+  const effectiveWidth = Math.max(width - insetX * 2, 0);
+  const effectiveHeight = Math.max(height - insetY * 2, 0);
+  if (effectiveWidth <= 0 || effectiveHeight <= 0) return;
+
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const halfWidth = effectiveWidth / 2;
+  const halfHeight = effectiveHeight / 2;
+
+  ctx.moveTo(centerX, centerY - halfHeight);
+  for (let i = 1; i < 6; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI) / 3;
+    const px = centerX + halfWidth * Math.cos(angle);
+    const py = centerY + halfHeight * Math.sin(angle);
+    ctx.lineTo(px, py);
+  }
   ctx.closePath();
 }
 
@@ -728,6 +734,43 @@ const SHAPE_METADATA = {
       traceDiamond(ctx, x, y, width, height);
     },
   },
+  hexagon: {
+    label: 'Hexágono',
+    sharp: true,
+    draw(ctx, x, y, width, height) {
+      traceHexagon(ctx, x, y, width, height);
+    },
+  },
+  hexagonDouble: {
+    label: 'Hexágono doble',
+    sharp: true,
+    layers: [
+      {
+        color: 'primary',
+        draw(ctx, x, y, width, height) {
+          traceHexagon(ctx, x, y, width, height);
+        },
+      },
+      {
+        color: 'secondary',
+        draw(ctx, x, y, width, height) {
+          const frame = getScaledFrame(x, y, width, height, 0.72);
+          traceHexagon(ctx, frame.x, frame.y, frame.width, frame.height);
+        },
+      },
+      {
+        color: 'primary',
+        draw(ctx, x, y, width, height) {
+          const frame = getScaledFrame(x, y, width, height, 0.414);
+          traceHexagon(ctx, frame.x, frame.y, frame.width, frame.height);
+        },
+      },
+    ],
+    secondaryFill: '#000000',
+    draw(ctx, x, y, width, height) {
+      traceHexagon(ctx, x, y, width, height);
+    },
+  },
   fourPointStar: {
     label: 'Estrella de 4 puntas',
     sharp: true,
@@ -864,6 +907,8 @@ const SHAPE_ORDER = [
   'roundedSquareDouble',
   'diamond',
   'diamondDouble',
+  'hexagon',
+  'hexagonDouble',
   'fourPointStar',
   'fourPointStarDouble',
   'sixPointStar',
@@ -877,6 +922,7 @@ const NON_EXTENDABLE_SHAPES = new Set([
   'squareDouble',
   'roundedSquareDouble',
   'diamondDouble',
+  'hexagonDouble',
   'fourPointStarDouble',
   'sixPointStar',
   'sixPointStarDouble',

@@ -291,6 +291,8 @@ window.DEFAULT_CONFIG = {
     "roundedSquareDouble": true,
     "diamond": true,
     "diamondDouble": true,
+    "hexagon": true,
+    "hexagonDouble": true,
     "fourPointStar": true,
     "fourPointStarDouble": true,
     "sixPointStar": true,
