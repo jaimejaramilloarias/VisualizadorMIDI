@@ -414,85 +414,39 @@ function computeGlowAlpha(
   return 1 - clamped;
 }
 
-// Aplica un efecto de brillo con desenfoque alrededor de la figura
-function applyGlowEffect(ctx, shape, x, y, width, height, alpha, family) {
+function easeOutCubic(value) {
+  const clamped = Math.min(Math.max(value, 0), 1);
+  return 1 - (1 - clamped) * (1 - clamped) * (1 - clamped);
+}
+
+function lightenHexColor(hex, factor) {
+  if (!hex || typeof hex !== 'string') return hex;
+  const trimmed = hex.trim();
+  if (!/^#?[0-9a-fA-F]{6}$/.test(trimmed)) return hex;
+  const normalized = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  const eased = easeOutCubic(Math.min(Math.max(factor, 0), 1));
+  const mixFactor = Math.min(1, eased * 0.9);
+  return interpolateColor(normalized, '#ffffff', mixFactor);
+}
+
+// Ajusta el tono del color base para simular el antiguo resplandor en el NOTE ON
+function applyGlowEffect(baseColor, secondaryColor, alpha, family) {
   const strength = getGlowStrength(family);
-  if (alpha <= 0 || strength <= 0 || !ctx) return;
-
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
-  const spreadX = (width / 2) * (1.6 + strength * 0.9);
-  const spreadY = (height / 2) * (1.8 + strength * 1.1);
-  const innerRadius = Math.min(width, height) * 0.2;
-  const outerRadius = Math.max(spreadX, spreadY);
-  const baseGlow = Math.min(1, alpha * (0.6 + strength * 0.25));
-  const hazeAlpha = Math.min(0.55, 0.18 + strength * 0.12) * alpha;
-  const blurAmount = 18 * (1 + strength * 0.8);
-
-  ctx.save();
-
-  const supportsGradient =
-    typeof ctx.createRadialGradient === 'function' &&
-    typeof ctx.ellipse === 'function';
-
-  if (supportsGradient) {
-    const previousComposite = ctx.globalCompositeOperation || 'source-over';
-    const gradient = ctx.createRadialGradient(
-      centerX,
-      centerY,
-      innerRadius,
-      centerX,
-      centerY,
-      outerRadius,
-    );
-    gradient.addColorStop(0, `rgba(255, 255, 255, ${0.38 * baseGlow})`);
-    gradient.addColorStop(0.35, `rgba(255, 255, 255, ${0.22 * baseGlow})`);
-    gradient.addColorStop(0.7, `rgba(255, 255, 255, ${0.08 * baseGlow})`);
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, spreadX, spreadY, 0, 0, Math.PI * 2);
-    ctx.shadowBlur = blurAmount;
-    ctx.shadowColor = `rgba(255, 255, 255, ${0.25 * baseGlow})`;
-    ctx.fill();
-    ctx.globalCompositeOperation = previousComposite;
-  } else {
-    const previousComposite = ctx.globalCompositeOperation || 'source-over';
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = baseGlow;
-    ctx.shadowBlur = blurAmount;
-    ctx.shadowColor = `rgba(255, 255, 255, ${0.25 * baseGlow})`;
-    if (typeof ctx.beginPath === 'function' && typeof ctx.rect === 'function') {
-      ctx.beginPath();
-      ctx.rect(
-        centerX - spreadX,
-        centerY - spreadY,
-        spreadX * 2,
-        spreadY * 2,
-      );
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.fill();
-    }
-    ctx.globalCompositeOperation = previousComposite;
+  if (!(alpha > 0) || strength <= 0) {
+    return { fill: baseColor, secondary: secondaryColor };
   }
 
-  if (hazeAlpha > 0 && typeof ctx.ellipse === 'function') {
-    const prevComposite = ctx.globalCompositeOperation || 'source-over';
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = hazeAlpha;
-    ctx.shadowBlur = blurAmount * 0.75;
-    ctx.shadowColor = `rgba(255, 255, 255, ${0.18 * baseGlow})`;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY, spreadX * 1.2, spreadY * 1.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = prevComposite;
-  }
+  const amplified = Math.min(Math.max(alpha * strength, 0), 1);
+  const fill = lightenHexColor(baseColor, amplified);
+  const secondary =
+    secondaryColor && typeof secondaryColor === 'string'
+      ? lightenHexColor(secondaryColor, amplified * 0.7)
+      : secondaryColor;
 
-  ctx.restore();
+  return {
+    fill: fill || baseColor,
+    secondary: secondary || secondaryColor,
+  };
 }
 
 function computeNoteStrokeWidth(width = 0, height = 0) {

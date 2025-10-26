@@ -40,41 +40,49 @@ approx(computeGlowAlpha(0, 0), 1); // Inicio del brillo
 approx(computeGlowAlpha(0.1, 0), 2 / 3); // Mitad del efecto extendido
 approx(computeGlowAlpha(0.3, 0), 0); // Efecto terminado
 
-// Prueba para applyGlowEffect con desenfoque solo vertical
+function brightness(hex) {
+  const normalized = hex.replace('#', '');
+  const num = parseInt(normalized, 16);
+  const r = (num >> 16) & 0xff;
+  const g = (num >> 8) & 0xff;
+  const b = num & 0xff;
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 setGlowStrength(1.5);
-const glowCtx = {
-  shadowBlur: 0,
-  shadowColor: null,
-  fillStyle: null,
-  ellipses: [],
-  gradients: [],
-  save() {},
-  restore() {},
-  beginPath() {},
-  ellipse(cx, cy, rx, ry) {
-    this.ellipses.push({ cx, cy, rx, ry });
-  },
-  rect() {},
-  fillCalled: 0,
-  fill() {
-    this.fillCalled += 1;
-  },
-  createRadialGradient() {
-    const stops = [];
-    this.gradients.push(stops);
-    return {
-      addColorStop(pos, color) {
-        stops.push({ pos, color });
-      },
-    };
-  },
-};
-applyGlowEffect(glowCtx, 'square', 0, 0, 10, 10, 0.5);
-assert(glowCtx.ellipses.length > 0, 'el glow debe dibujar un halo elíptico');
-const largestGlow = glowCtx.ellipses.reduce((max, e) => Math.max(max, e.rx, e.ry), 0);
-assert(largestGlow > 10, 'el resplandor debe extenderse más allá de la figura');
-assert(glowCtx.shadowBlur > 0, 'shadowBlur no aplicado');
-assert(glowCtx.gradients.length > 0, 'el glow debe utilizar un gradiente suave');
-assert(glowCtx.fillCalled > 0, 'fill no llamado en glow');
+const baseFill = '#336699';
+const baseSecondary = '#112244';
+const subtleTint = applyGlowEffect(baseFill, baseSecondary, 0.15, 'Metales');
+const strongTint = applyGlowEffect(baseFill, baseSecondary, 0.9, 'Metales');
+assert(
+  strongTint.fill !== baseFill,
+  'el color de relleno debe cambiar cuando el glow está activo',
+);
+assert(
+  brightness(strongTint.fill) > brightness(baseFill),
+  'el color iluminado debe ser más brillante que el original',
+);
+assert(
+  brightness(strongTint.secondary) >= brightness(baseSecondary),
+  'la capa secundaria también debe aclararse',
+);
+assert(
+  brightness(strongTint.fill) > brightness(subtleTint.fill),
+  'una activación fuerte debe aclarar más que una suave',
+);
+
+setGlowStrength(0);
+const disabledTint = applyGlowEffect(baseFill, baseSecondary, 0.9, 'Metales');
+assert.strictEqual(disabledTint.fill, baseFill, 'sin fuerza el color debe quedar intacto');
+assert.strictEqual(
+  disabledTint.secondary,
+  baseSecondary,
+  'sin fuerza la capa secundaria no debe cambiar',
+);
+setGlowStrength(1.5);
+
+const idleTint = applyGlowEffect(baseFill, baseSecondary, 0, 'Metales');
+assert.strictEqual(idleTint.fill, baseFill, 'sin alpha no debe haber cambio');
+assert.strictEqual(idleTint.secondary, baseSecondary, 'el secundario debe mantenerse');
 
 console.log('Pruebas de efectos visuales completadas');
