@@ -326,6 +326,7 @@ if (typeof document !== 'undefined') {
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerControls = document.getElementById('developer-controls');
+    let globalSettingsContainer = null;
     const assignmentModal = document.getElementById('assignment-modal');
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
@@ -1448,6 +1449,11 @@ if (typeof document !== 'undefined') {
       ssItem.dataset.help =
         'Factor de supersampling inicial aplicado al canvas.';
       developerControls.appendChild(ssItem);
+
+      globalSettingsContainer = document.createElement('div');
+      globalSettingsContainer.id = 'global-visual-settings';
+      globalSettingsContainer.className = 'dev-control-section';
+      developerControls.appendChild(globalSettingsContainer);
     }
     // Inicializa los mensajes de ayuda flotantes
     initHelpMessages();
@@ -1522,10 +1528,16 @@ if (typeof document !== 'undefined') {
       const devControls = document.getElementById('developer-controls');
       familyPanel.innerHTML = '';
       if (devControls) familyPanel.appendChild(devControls);
+      if (globalSettingsContainer) {
+        globalSettingsContainer.innerHTML = '';
+      }
+
+      const customizationContainer = document.createElement('div');
+      customizationContainer.className = 'customization-sections';
 
       const scopeSelectorControl = document.createElement('div');
       scopeSelectorControl.className =
-        'family-config-item family-target-control scope-selector';
+        'dev-control family-target-control scope-selector';
       const scopeLabel = document.createElement('label');
       scopeLabel.textContent = 'Aplicar cambios a:';
       scopeLabel.setAttribute('for', 'config-scope-select');
@@ -1551,9 +1563,18 @@ if (typeof document !== 'undefined') {
       const familyScopeSection = document.createElement('div');
       familyScopeSection.className = 'config-scope-section scope-familia';
 
-      familyPanel.appendChild(scopeSelectorControl);
-      familyPanel.appendChild(instrumentScopeSection);
-      familyPanel.appendChild(familyScopeSection);
+      const appendToGlobalSettings = (element) => {
+        if (globalSettingsContainer) {
+          globalSettingsContainer.appendChild(element);
+        } else {
+          familyPanel.appendChild(element);
+        }
+      };
+
+      appendToGlobalSettings(scopeSelectorControl);
+      customizationContainer.appendChild(instrumentScopeSection);
+      customizationContainer.appendChild(familyScopeSection);
+      familyPanel.appendChild(customizationContainer);
 
       let updateHeightControl = () => {};
       let updateGlowControl = () => {};
@@ -1848,7 +1869,7 @@ if (typeof document !== 'undefined') {
       };
 
       const bgItem = document.createElement('div');
-      bgItem.className = 'family-config-item';
+      bgItem.className = 'dev-control';
       const bgLabel = document.createElement('label');
       bgLabel.textContent = 'Color del canvas';
       const bgInput = document.createElement('input');
@@ -1861,10 +1882,10 @@ if (typeof document !== 'undefined') {
       });
       bgItem.appendChild(bgLabel);
       bgItem.appendChild(bgInput);
-      familyPanel.appendChild(bgItem);
+      appendToGlobalSettings(bgItem);
 
       const bgImageItem = document.createElement('div');
-      bgImageItem.className = 'family-config-item family-config-group';
+      bgImageItem.className = 'dev-control family-config-group';
       const bgImageLabel = document.createElement('label');
       bgImageLabel.textContent = 'Imagen de fondo:';
       const bgImageInfo = document.createElement('span');
@@ -1956,10 +1977,10 @@ if (typeof document !== 'undefined') {
       bgImageItem.appendChild(bgImageButtons);
       bgImageItem.appendChild(bgImageInfo);
       bgImageItem.appendChild(bgImageInput);
-      familyPanel.appendChild(bgImageItem);
+      appendToGlobalSettings(bgImageItem);
 
       const bgOpacityItem = document.createElement('div');
-      bgOpacityItem.className = 'family-config-item family-config-group';
+      bgOpacityItem.className = 'dev-control family-config-group';
       const bgOpacityLabel = document.createElement('label');
       bgOpacityLabel.textContent = 'Opacidad imagen (%):';
       const bgOpacityInput = document.createElement('input');
@@ -1991,7 +2012,7 @@ if (typeof document !== 'undefined') {
       bgOpacityItem.appendChild(bgOpacityLabel);
       bgOpacityItem.appendChild(bgOpacityInput);
       bgOpacityItem.appendChild(bgOpacityHint);
-      familyPanel.appendChild(bgOpacityItem);
+      appendToGlobalSettings(bgOpacityItem);
 
       updateBackgroundImageControl();
       updateBackgroundOpacityControl();

@@ -128,6 +128,16 @@ input:hover {
   grid-column: 1 / -1;
 }
 
+.dev-control-section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  border-top: 1px solid #333;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
 .dev-control {
   display: grid;
   gap: 8px;
@@ -355,13 +365,22 @@ input:hover {
 }
 
 .scope-selector {
-  margin-bottom: 8px;
+  margin: 0;
+}
+
+.customization-sections {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  align-content: start;
 }
 
 .config-scope-section {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
+  align-content: start;
 }
 
 .config-scope-section.hidden {
