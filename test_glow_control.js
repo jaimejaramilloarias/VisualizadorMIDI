@@ -14,19 +14,32 @@ const ctx = {
   shadowBlur: 0,
   shadowColor: null,
   fillStyle: null,
+  ellipses: [],
+  gradients: [],
   save() {},
   restore() {},
   beginPath() {},
-  rect(x, y, w, h) {
-    this.w = w;
-    this.h = h;
+  ellipse(cx, cy, rx, ry) {
+    this.ellipses.push({ cx, cy, rx, ry });
   },
+  rect() {},
   fill() {},
+  createRadialGradient() {
+    const stops = [];
+    this.gradients.push(stops);
+    return {
+      addColorStop(pos, color) {
+        stops.push({ pos, color });
+      },
+    };
+  },
 };
 
 applyGlowEffect(ctx, 'square', 0, 0, 10, 10, 0.5, 'Metales');
 assert(ctx.shadowBlur > 20, 'blur no escalado');
-assert.strictEqual(ctx.w, 10, 'el ancho no debe cambiar');
-assert(ctx.h > 10, 'la altura debe escalarse');
+assert(ctx.ellipses.length > 0, 'el glow debe generar un halo amplio');
+const haloRadius = ctx.ellipses.reduce((max, e) => Math.max(max, e.rx, e.ry), 0);
+assert(haloRadius > 10, 'el halo debe superar el tamaño de la figura');
+assert(ctx.gradients.length > 0, 'el glow debe utilizar gradientes');
 
 console.log('Pruebas de control de glow completadas');
