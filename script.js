@@ -1626,6 +1626,46 @@ if (typeof document !== 'undefined') {
       scopeSelectorControl.appendChild(scopeLabel);
       scopeSelectorControl.appendChild(scopeSelect);
 
+      const scopeFamilyWrapper = document.createElement('div');
+      scopeFamilyWrapper.className = 'scope-family-wrapper';
+      const scopeFamilyLabel = document.createElement('label');
+      scopeFamilyLabel.textContent = 'Familia objetivo:';
+      scopeFamilyLabel.setAttribute('for', 'family-target-select');
+      scopeFamilyWrapper.appendChild(scopeFamilyLabel);
+
+      const familyTargetSelect = createFamilySelector();
+      familyTargetSelect.id = 'family-target-select';
+      scopeFamilyWrapper.appendChild(familyTargetSelect);
+
+      const scopeFamilyHint = document.createElement('span');
+      scopeFamilyHint.className = 'control-hint scope-family-hint';
+      scopeFamilyWrapper.appendChild(scopeFamilyHint);
+
+      scopeSelectorControl.appendChild(scopeFamilyWrapper);
+
+      const updateScopeFamilyHint = () => {
+        if (!scopeFamilyHint) return;
+        const scope = scopeSelect.value || 'familia';
+        if (scope === 'familia') {
+          if (familyTargetSelect.value) {
+            scopeFamilyHint.textContent = `Cambios para ${familyTargetSelect.value}`;
+            scopeFamilyHint.classList.remove('hint-active');
+          } else {
+            scopeFamilyHint.textContent =
+              'Todas las familias (elige una para cambios específicos)';
+            scopeFamilyHint.classList.add('hint-active');
+          }
+        } else if (scope === 'instrumento') {
+          scopeFamilyHint.textContent =
+            'Sincronizado con el instrumento seleccionado';
+          scopeFamilyHint.classList.add('hint-active');
+        } else {
+          scopeFamilyHint.textContent =
+            'Configuración global para todas las familias';
+          scopeFamilyHint.classList.add('hint-active');
+        }
+      };
+
       const instrumentScopeSection = document.createElement('div');
       instrumentScopeSection.className = 'config-scope-section scope-instrumento';
 
@@ -1669,70 +1709,23 @@ if (typeof document !== 'undefined') {
           .join('')}`;
       };
 
-      const createFamilySelector = () => {
-        const container = document.createElement('div');
-        container.className = 'family-target-selector';
-        const buttons = [];
-        let currentValue = '';
-
-        const updateActiveButtons = () => {
-          buttons.forEach((btn) => {
-            const isActive = btn.dataset.value === currentValue;
-            btn.classList.toggle('active', isActive);
-            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-          });
-        };
-
-        const setValue = (value, { triggerEvent = false } = {}) => {
-          const normalized = typeof value === 'string' ? value : '';
-          if (normalized === currentValue) return;
-          currentValue = normalized;
-          container.dataset.value = currentValue;
-          updateActiveButtons();
-          if (triggerEvent) {
-            const changeEvent = new Event('change', { bubbles: true });
-            container.dispatchEvent(changeEvent);
-          }
-        };
-
-        const addButton = (value, label) => {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.dataset.value = value;
-          button.textContent = label;
-          button.className = 'family-target-button';
-          button.setAttribute('aria-pressed', 'false');
-          button.addEventListener('click', () => {
-            if (button.disabled) return;
-            setValue(value, { triggerEvent: true });
-          });
-          container.appendChild(button);
-          buttons.push(button);
-        };
-
-        addButton('', 'Global');
+      function createFamilySelector() {
+        const select = document.createElement('select');
+        select.className = 'family-target-select';
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = 'Todas las familias';
+        select.appendChild(allOption);
         FAMILY_LIST.forEach((family) => {
           if (!FAMILY_PRESETS[family]) return;
-          addButton(family, family);
+          const option = document.createElement('option');
+          option.value = family;
+          option.textContent = family;
+          select.appendChild(option);
         });
-
-        Object.defineProperty(container, 'value', {
-          get() {
-            return currentValue;
-          },
-          set(value) {
-            setValue(value);
-          },
-        });
-
-        container.getButtons = () => buttons.slice();
-        container.updateActiveButtons = updateActiveButtons;
-        container.setValueSilently = (value) => setValue(value);
-
-        setValue('', { triggerEvent: false });
-
-        return container;
-      };
+        select.value = '';
+        return select;
+      }
 
       const createInstrumentFamilySelector = () => {
         const select = document.createElement('select');
@@ -2697,9 +2690,6 @@ if (typeof document !== 'undefined') {
 
       instrumentScopeSection.appendChild(instrumentConfig);
 
-      const familyTargetSelect = createFamilySelector();
-      familyTargetSelect.id = 'family-target-select';
-      familyTargetSelect.setAttribute('role', 'group');
       const dispatchFamilyTargetChange = () => {
         let evt = null;
         if (typeof window !== 'undefined' && typeof window.Event === 'function') {
@@ -3763,6 +3753,7 @@ if (typeof document !== 'undefined') {
         updateShapeControl();
         updateParameterControls();
         updateLineControl();
+        updateScopeFamilyHint();
       });
 
       refreshFamilyControls = () => {
@@ -3831,6 +3822,8 @@ if (typeof document !== 'undefined') {
         const scope = scopeSelect.value || 'familia';
         instrumentScopeSection.classList.toggle('hidden', scope !== 'instrumento');
         familyScopeSection.classList.toggle('hidden', scope === 'instrumento');
+        scopeFamilyWrapper.classList.toggle('hidden', scope !== 'familia');
+        familyTargetSelect.disabled = scope !== 'familia';
         syncFamilyTargetWithInstrument();
         familyScopeSection.classList.toggle('scope-mode-global', scope === 'global');
 
@@ -3848,11 +3841,16 @@ if (typeof document !== 'undefined') {
         } else if (scope === 'instrumento' && forceRefresh) {
           updateInstrumentColorControl();
         }
+        updateScopeFamilyHint();
       };
 
-      scopeSelect.addEventListener('change', () => updateScopeVisibility(true));
+      scopeSelect.addEventListener('change', () => {
+        updateScopeVisibility(true);
+        updateScopeFamilyHint();
+      });
 
       updateScopeVisibility(true);
+      updateScopeFamilyHint();
     }
 
     function showAssignmentModal(tracks) {
