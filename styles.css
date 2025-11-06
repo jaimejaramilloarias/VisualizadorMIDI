@@ -134,12 +134,12 @@ input:hover {
   display: none;
   margin: 0 10px 12px;
   background: #1a1a1a;
-  padding: 14px;
+  padding: 10px;
   width: calc(100% - 20px);
   box-sizing: border-box;
   font-size: inherit;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
   border-radius: 12px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
@@ -150,11 +150,11 @@ input:hover {
 
 #developer-controls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
   width: 100%;
-  margin-bottom: 12px;
-  padding: 12px;
+  margin-bottom: 10px;
+  padding: 10px;
   background: linear-gradient(160deg, #202020, #171717);
   border-radius: 10px;
   box-sizing: border-box;
@@ -173,10 +173,10 @@ input:hover {
 
 .dev-control {
   display: grid;
-  gap: 6px;
-  align-items: start;
+  gap: 4px;
+  align-items: center;
   background: #202020;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid #2b2b2b;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -211,7 +211,7 @@ input:hover {
 .inst-button-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
 }
 
 .inst-button-row button {
@@ -220,13 +220,27 @@ input:hover {
 
 .family-config-item {
   display: grid;
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: minmax(120px, 0.9fr) 1fr;
+  align-items: center;
+  gap: 6px 10px;
   background: #202020;
-  padding: 10px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid #2b2b2b;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.family-config-item > label {
+  grid-column: 1;
+}
+
+.family-config-item > :not(label):not(.control-hint) {
+  grid-column: 2;
+}
+
+.family-config-item .control-hint {
+  grid-column: 1 / -1;
+  justify-self: end;
 }
 
 .family-target-control {
@@ -286,7 +300,7 @@ input:hover {
   align-items: center;
   background: transparent;
   padding: 0;
-  gap: 10px;
+  gap: 4px 8px;
 }
 
 .family-checkbox-item label {
@@ -294,7 +308,7 @@ input:hover {
 }
 
 .family-config-group {
-  gap: 8px;
+  gap: 6px;
 }
 
 .family-config-group select,
@@ -302,50 +316,20 @@ input:hover {
   width: 100%;
 }
 
-.shape-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
+.shape-select {
+  width: 100%;
+  min-height: 30px;
 }
 
-.shape-option-button {
-  background: #1f1f1f;
-  border: 1px solid #444;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-weight: 600;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-}
-
-.shape-option-button:hover {
-  background: #2a2a2a;
-  transform: translateY(-1px);
-}
-
-.shape-option-button.active {
-  background: #2196f3;
-  border-color: #42a5f5;
-  color: #0a0a0a;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.35);
-  transform: translateY(-1px);
-}
-
-.shape-options.mixed .shape-option-button {
-  opacity: 0.7;
-}
-
-.shape-options.mixed .shape-option-button.active {
-  background: #1f1f1f;
-  border-color: #444;
-  color: inherit;
-  box-shadow: none;
-  transform: none;
+.shape-select.mixed {
+  font-style: italic;
+  opacity: 0.85;
 }
 
 .color-palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -356,10 +340,10 @@ input:hover {
 
 .color-swatch {
   --swatch-color: #ffffff;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 5px;
   border: 2px solid transparent;
   background: var(--swatch-color);
   cursor: pointer;
@@ -415,17 +399,17 @@ input:hover {
 .customization-sections {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
   align-content: start;
 }
 
 .config-scope-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
   align-content: start;
-  padding: 12px;
+  padding: 10px;
   border-radius: 10px;
   border: 1px solid #262626;
   background: linear-gradient(160deg, #181818, #141414);
