@@ -2908,66 +2908,73 @@ if (typeof document !== 'undefined') {
       shapeControl.className = 'family-config-item family-config-group';
       const shapeLabel = document.createElement('label');
       shapeLabel.textContent = 'Figura:';
-      const shapeOptions = document.createElement('div');
-      shapeOptions.className = 'shape-options';
+      const shapeSelect = document.createElement('select');
+      shapeSelect.className = 'shape-select';
+      const shapePlaceholder = document.createElement('option');
+      shapePlaceholder.value = '';
+      shapePlaceholder.textContent = 'Selecciona figura';
+      shapeSelect.appendChild(shapePlaceholder);
       const shapeHint = document.createElement('span');
       shapeHint.className = 'control-hint';
 
-      const shapeButtons = [];
-
       SHAPE_OPTIONS.forEach((opt) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'shape-option-button';
-        button.dataset.value = opt.value;
-        button.textContent = opt.label;
-        button.setAttribute('aria-pressed', 'false');
-        button.addEventListener('click', () => {
-          if (button.disabled) return;
-          const shape = button.dataset.value;
-          familiesFromSelection(familyTargetSelect.value).forEach((family) =>
-            setFamilyCustomization(
-              family,
-              { shape },
-              currentTracks,
-              notes,
-              getEditStartTime(),
-              { force: shouldForceFamilyOverride() },
-            ),
-          );
-          renderFrame(lastTime);
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        shapeSelect.appendChild(option);
+      });
+
+      shapeSelect.addEventListener('change', () => {
+        const shape = shapeSelect.value;
+        if (!shape) {
           updateShapeControl();
-          updateParameterControls();
-          updateInstrumentColorControl();
-        });
-        shapeOptions.appendChild(button);
-        shapeButtons.push({ button, option: opt });
+          return;
+        }
+        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
+          setFamilyCustomization(
+            family,
+            { shape },
+            currentTracks,
+            notes,
+            getEditStartTime(),
+            { force: shouldForceFamilyOverride() },
+          ),
+        );
+        renderFrame(lastTime);
+        updateShapeControl();
+        updateParameterControls();
+        updateInstrumentColorControl();
       });
 
       const updateShapeControl = () => {
         const { shape, mixed } = getShapeState(familyTargetSelect.value);
-        const available = shapeButtons.find(({ button }) => button.dataset.value === shape);
-        const fallback = shapeButtons[0] || null;
-        const activeButton = !mixed && (available || fallback);
-        const activeValue = activeButton ? activeButton.button.dataset.value : null;
-        shapeButtons.forEach(({ button }) => {
-          const isActive = !mixed && button.dataset.value === activeValue;
-          button.classList.toggle('active', isActive);
-          button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        });
-        shapeOptions.classList.toggle('mixed', mixed);
         if (mixed) {
+          shapeSelect.value = '';
+          shapeSelect.classList.add('mixed');
           shapeHint.textContent = 'Valores variados';
           shapeHint.classList.add('hint-active');
+          return;
+        }
+        shapeSelect.classList.remove('mixed');
+        const fallback = SHAPE_OPTIONS[0] ? SHAPE_OPTIONS[0].value : '';
+        const effectiveShape = shape || fallback;
+        if (effectiveShape) {
+          shapeSelect.value = effectiveShape;
         } else {
-          const option = (available || fallback)?.option;
-          shapeHint.textContent = option ? option.label : '';
+          shapeSelect.value = '';
+        }
+        const option = SHAPE_OPTIONS.find((opt) => opt.value === effectiveShape);
+        if (option) {
+          shapeHint.textContent = option.label;
           shapeHint.classList.remove('hint-active');
+        } else {
+          shapeHint.textContent = '';
+          shapeHint.classList.add('hint-active');
         }
       };
 
       shapeControl.appendChild(shapeLabel);
-      shapeControl.appendChild(shapeOptions);
+      shapeControl.appendChild(shapeSelect);
       shapeControl.appendChild(shapeHint);
       familyScopeSection.appendChild(shapeControl);
 
