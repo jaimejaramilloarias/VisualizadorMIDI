@@ -2,62 +2,110 @@
 /* Estilos básicos para la estructura inicial */
 :root {
   --global-font-size: 0.8rem;
+  --layout-width: 1280px;
+  --spacing-unit: 12px;
+  --panel-radius: 14px;
+  --panel-background: #161616;
   font-family: 'Verdana', sans-serif;
 }
+
 body {
   margin: 0;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   background-color: #111;
   color: #fff;
   font-family: inherit;
   font-size: var(--global-font-size);
+  padding: var(--spacing-unit) 0;
+}
+
+#app-container {
+  width: var(--layout-width);
+  max-width: var(--layout-width);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-unit);
+  padding: var(--spacing-unit);
+  box-sizing: border-box;
 }
 
 #app-title {
-  margin: 12px 0 6px;
+  margin: 0;
   font-size: 2.2rem;
   font-weight: 700;
+  text-align: center;
 }
 
 #top-menu,
 #bottom-menu {
-  margin: 6px 10px;
-  background: #161616;
-  padding: 8px 10px;
-  border-radius: 10px;
+  background: var(--panel-background);
+  border-radius: var(--panel-radius);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  padding: var(--spacing-unit);
+  display: grid;
+  gap: var(--spacing-unit);
 }
 
 #top-menu {
-  display: grid;
-  gap: 6px;
-  width: min(100%, 960px);
-  box-sizing: border-box;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
 }
 
-#top-menu button,
-#top-menu .fps-control select,
-#top-menu .fps-control input {
-  width: 100%;
+.control-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+  padding: var(--spacing-unit);
+  background: linear-gradient(160deg, #191919, #141414);
+  border-radius: calc(var(--panel-radius) - 2px);
+  border: 1px solid #262626;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
-#top-menu button {
-  min-height: 32px;
+.control-block-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.control-grid {
+  display: grid;
+  gap: var(--spacing-unit);
+  grid-auto-rows: minmax(44px, auto);
+}
+
+.control-grid.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.control-grid.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.control-grid > button,
+.control-grid > select,
+.control-grid > input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 #fps-control-group {
   display: grid;
-  gap: 6px;
-  padding: 6px 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-unit);
+  padding: var(--spacing-unit);
   border: 1px solid #2a2a2a;
-  border-radius: 8px;
+  border-radius: 10px;
   background: linear-gradient(160deg, #191919, #141414);
-  align-content: start;
-  grid-column: span 2;
+  align-items: end;
+  grid-column: 1 / -1;
 }
 
 #fps-control-group label {
@@ -67,6 +115,7 @@ body {
 #fps-control-group select,
 #fps-control-group input {
   width: 100%;
+  min-height: 44px;
   box-sizing: border-box;
 }
 
@@ -75,28 +124,20 @@ body {
   cursor: not-allowed;
 }
 
-/* Layout específico para el menú inferior para mantener
-   un formato organizado y simétrico */
 #bottom-menu {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-#toggle-family-panel {
-  flex: 0 0 40px;
-  min-width: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 #bottom-menu button {
-  text-align: center;
+  min-height: 44px;
 }
 
-#tap-tempo-mode {
-  flex: 1 1 160px;
-  min-width: 150px;
+#toggle-family-panel {
+  font-size: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 button,
@@ -105,21 +146,21 @@ input {
   background: #2c2c2c;
   border: 1px solid #444;
   color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: calc(var(--spacing-unit) * 0.5);
+  border-radius: 8px;
   font-size: inherit;
   font-family: inherit;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
 .icon-button {
-  width: 36px;
-  min-width: 36px;
-  display: flex;
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  font-size: 1.1rem;
+  padding: 0;
+  font-size: 1.4rem;
 }
 
 button:hover,
@@ -130,17 +171,30 @@ input:hover {
   cursor: pointer;
 }
 
+button[data-action='tap-tempo'].active {
+  border-color: #ff9800;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.35);
+  background: linear-gradient(160deg, #2f2110, #1f1409);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid #5a5a5a;
+  outline-offset: 2px;
+}
+
 #family-config-panel {
   display: none;
-  margin: 0 10px 12px;
+  margin: 0;
   background: #1a1a1a;
-  padding: 10px;
-  width: calc(100% - 20px);
+  padding: var(--spacing-unit);
+  width: 100%;
   box-sizing: border-box;
   font-size: inherit;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-  border-radius: 12px;
+  gap: var(--spacing-unit);
+  border-radius: var(--panel-radius);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -151,12 +205,12 @@ input:hover {
 #developer-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
+  gap: var(--spacing-unit);
   width: 100%;
-  margin-bottom: 10px;
-  padding: 10px;
+  margin-bottom: var(--spacing-unit);
+  padding: var(--spacing-unit);
   background: linear-gradient(160deg, #202020, #171717);
-  border-radius: 10px;
+  border-radius: calc(var(--panel-radius) - 2px);
   box-sizing: border-box;
   font-size: inherit;
   grid-column: 1 / -1;
@@ -527,9 +581,13 @@ input:hover {
 }
 
 #visualizer {
+  display: block;
+  width: 100%;
   border: 1px solid #444;
+  border-radius: var(--panel-radius);
   height: 720px;
   background-color: #000;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 #assignment-modal {
@@ -609,12 +667,13 @@ input:hover {
 }
 
 #tap-tempo-panel {
-  margin: 16px auto;
-  max-width: 960px;
+  margin: 0;
+  max-width: var(--layout-width);
+  width: 100%;
   background: rgba(20, 20, 20, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--panel-radius);
+  padding: var(--spacing-unit);
   color: #f5f5f5;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   position: relative;
@@ -627,7 +686,7 @@ input:hover {
 #tap-tempo-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--spacing-unit);
   align-items: center;
   justify-content: space-between;
 }
