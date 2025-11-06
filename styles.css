@@ -220,42 +220,41 @@ input:hover {
   gap: 12px;
 }
 
-.family-target-title {
-  font-weight: 600;
-  font-size: 0.95rem;
+.scope-selector {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: end;
+  gap: 10px;
 }
 
-.family-target-selector {
+.scope-selector > label {
+  font-weight: 600;
+}
+
+.scope-selector > select {
+  width: 100%;
+}
+
+.scope-family-wrapper {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  grid-column: 1 / -1;
 }
 
-.family-target-button {
-  background: #1f1f1f;
-  border: 1px solid #444;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-}
-
-.family-target-button:hover {
-  background: #2a2a2a;
-  transform: translateY(-1px);
-}
-
-.family-target-button.active {
-  background: #4caf50;
-  border-color: #66bb6a;
-  color: #111;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.35);
-  transform: translateY(-1px);
-}
-
-.family-target-button.hidden {
+.scope-family-wrapper.hidden {
   display: none;
+}
+
+.scope-family-wrapper label {
+  font-weight: 600;
+}
+
+.scope-family-hint {
+  text-align: left;
+}
+
+.family-target-select {
+  width: 100%;
 }
 
 .family-config-item label {
