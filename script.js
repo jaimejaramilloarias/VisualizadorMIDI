@@ -132,6 +132,8 @@ const writeStoredNumber = (key, value) => {
   writeStoredValue(key, String(value));
 };
 
+const DEFAULT_SECONDARY_COLOR = '#FFFFFF';
+
 const readStoredString = (key, fallback, validator = () => true) => {
   const raw = readStoredValue(key);
   if (typeof raw !== 'string') return fallback;
@@ -144,7 +146,7 @@ const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
 // Parámetros de fluidez de animación
 const FRAME_DT_MIN = 8;
 const FRAME_DT_MAX = 32;
-let superSampling = 2;
+let superSampling = 1.4;
 
 const FPS_MODE_KEY = 'fpsMode';
 const FIXED_FPS_KEY = 'fixedFps';
@@ -155,7 +157,7 @@ const FIXED_FPS_DEFAULT = 90;
 const FIXED_FPS_MIN = 30;
 const FIXED_FPS_MAX = 240;
 
-let fpsMode = readStoredString(FPS_MODE_KEY, FPS_MODE_FIXED, (value) =>
+let fpsMode = readStoredString(FPS_MODE_KEY, FPS_MODE_AUTO, (value) =>
   FPS_MODE_OPTIONS.includes(value)
 );
 let fixedFPS = readStoredNumber(
@@ -173,7 +175,7 @@ const clampFixedFPS = (value) => {
 };
 
 function setFPSMode(mode) {
-  const normalized = FPS_MODE_OPTIONS.includes(mode) ? mode : FPS_MODE_FIXED;
+  const normalized = FPS_MODE_OPTIONS.includes(mode) ? mode : FPS_MODE_AUTO;
   fpsMode = normalized;
   writeStoredValue(FPS_MODE_KEY, normalized);
   return fpsMode;
@@ -1557,7 +1559,7 @@ if (typeof document !== 'undefined') {
       const preset =
         FAMILY_PRESETS[targetFamily] ||
         FAMILY_DEFAULTS[targetFamily] ||
-        { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+        { shape: 'circle', color: '#ffa500', secondaryColor: DEFAULT_SECONDARY_COLOR };
       track.family = targetFamily;
       const override = instrumentCustomizations[trackName] || null;
       if (!override || !override.shape) {
@@ -1566,7 +1568,7 @@ if (typeof document !== 'undefined') {
       if (!override || !override.color) {
         track.color = getInstrumentColor(preset);
       }
-      track.secondaryColor = preset.secondaryColor || '#000000';
+      track.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
       if (override) {
         override.family = targetFamily;
       }
@@ -1823,14 +1825,14 @@ if (typeof document !== 'undefined') {
         let mixed = false;
         families.forEach((family) => {
           const preset = FAMILY_PRESETS[family] || {};
-          const color = (preset.secondaryColor || '#000000').toLowerCase();
+          const color = (preset.secondaryColor || DEFAULT_SECONDARY_COLOR).toLowerCase();
           if (baseColor === null) {
             baseColor = color;
           } else if (baseColor !== color) {
             mixed = true;
           }
         });
-        if (baseColor === null) baseColor = '#000000';
+        if (baseColor === null) baseColor = DEFAULT_SECONDARY_COLOR;
         return { color: baseColor, mixed };
       };
 
@@ -2370,7 +2372,7 @@ if (typeof document !== 'undefined') {
       instrumentOutlineColorLabel.textContent = 'Color del contorno:';
       const instrumentOutlineColorInput = document.createElement('input');
       instrumentOutlineColorInput.type = 'color';
-      instrumentOutlineColorInput.value = '#ffffff';
+      instrumentOutlineColorInput.value = '#FFFFFF';
       const instrumentOutlineColorAutoLabel = document.createElement('label');
       instrumentOutlineColorAutoLabel.className = 'outline-color-auto';
       const instrumentOutlineColorAuto = document.createElement('input');
@@ -2448,7 +2450,7 @@ if (typeof document !== 'undefined') {
           applyInstrumentOutlineUpdate({ color: null });
         } else {
           instrumentOutlineColorInput.disabled = false;
-          applyInstrumentOutlineUpdate({ color: instrumentOutlineColorInput.value || '#ffffff' });
+          applyInstrumentOutlineUpdate({ color: instrumentOutlineColorInput.value || '#FFFFFF' });
         }
       });
 
@@ -2558,7 +2560,7 @@ if (typeof document !== 'undefined') {
           instrumentOutlineOpacityHint.textContent = '';
           instrumentOutlineOpacityHint.classList.add('hint-active');
           instrumentOutlineColorAuto.checked = true;
-          instrumentOutlineColorInput.value = '#ffffff';
+          instrumentOutlineColorInput.value = '#FFFFFF';
           instrumentOutlineColorHint.textContent = '';
           instrumentOutlineColorHint.classList.add('hint-active');
           return;
@@ -2674,7 +2676,7 @@ if (typeof document !== 'undefined') {
         const effectiveColor = effectiveOutline.color || null;
         instrumentOutlineColorAuto.checked = effectiveColor === null;
         instrumentOutlineColorInput.disabled = instrumentOutlineColorAuto.checked;
-        instrumentOutlineColorInput.value = effectiveColor || '#ffffff';
+        instrumentOutlineColorInput.value = effectiveColor || '#FFFFFF';
         if (outlineHas('color')) {
           if (outlineOverride.color === null) {
             instrumentOutlineColorHint.textContent = 'Forzado al color de la figura';
@@ -2868,14 +2870,14 @@ if (typeof document !== 'undefined') {
       secondaryLabel.textContent = 'Color secundario:';
       const secondaryInput = document.createElement('input');
       secondaryInput.type = 'color';
-      secondaryInput.value = '#000000';
+      secondaryInput.value = DEFAULT_SECONDARY_COLOR;
       const secondaryHint = document.createElement('span');
       secondaryHint.className = 'control-hint';
 
       updateSecondaryColorControl = () => {
         const { color, mixed } = getSecondaryColorState(familyTargetSelect.value);
         if (mixed) {
-          secondaryInput.value = '#000000';
+          secondaryInput.value = DEFAULT_SECONDARY_COLOR;
           secondaryHint.textContent = 'Valores variados';
           secondaryHint.classList.add('hint-active');
         } else {
@@ -3202,7 +3204,7 @@ if (typeof document !== 'undefined') {
       outlineColorLabel.textContent = 'Color del contorno:';
       const outlineColorInput = document.createElement('input');
       outlineColorInput.type = 'color';
-      outlineColorInput.value = '#ffffff';
+      outlineColorInput.value = '#FFFFFF';
       const outlineColorAutoLabel = document.createElement('label');
       outlineColorAutoLabel.className = 'outline-color-auto';
       const outlineColorAuto = document.createElement('input');
@@ -3241,7 +3243,7 @@ if (typeof document !== 'undefined') {
           outlineColorAuto.indeterminate = false;
           outlineColorAuto.checked = color === null;
           outlineColorInput.disabled = outlineColorAuto.checked;
-          outlineColorInput.value = color || '#ffffff';
+          outlineColorInput.value = color || '#FFFFFF';
           if (color) {
             outlineColorHint.textContent = color.toUpperCase();
             outlineColorHint.classList.remove('hint-active');
@@ -3332,8 +3334,8 @@ if (typeof document !== 'undefined') {
           outlineColorHint.textContent = 'Color de la figura';
           outlineColorHint.classList.add('hint-active');
         } else {
-          outlineColorInput.value = colorBase || '#ffffff';
-          outlineColorHint.textContent = (colorBase || '#ffffff').toUpperCase();
+          outlineColorInput.value = colorBase || '#FFFFFF';
+          outlineColorHint.textContent = (colorBase || '#FFFFFF').toUpperCase();
           outlineColorHint.classList.remove('hint-active');
         }
       };
@@ -3402,7 +3404,7 @@ if (typeof document !== 'undefined') {
         if (outlineColorAuto.checked) {
           applyOutlineUpdate({ color: null });
         } else {
-          applyOutlineUpdate({ color: outlineColorInput.value || '#ffffff' });
+          applyOutlineUpdate({ color: outlineColorInput.value || '#FFFFFF' });
         }
       });
 
@@ -4236,7 +4238,7 @@ if (typeof document !== 'undefined') {
               velocity: ev.velocity,
               color: track.color || '#ffa500',
               shape: track.shape || 'circle',
-              secondaryColor: track.secondaryColor || '#000000',
+              secondaryColor: track.secondaryColor || DEFAULT_SECONDARY_COLOR,
               family: track.family,
               instrument: track.instrument,
               trackName: track.name,
@@ -4663,25 +4665,93 @@ const FAMILY_DEFAULTS = {
   'Maderas de timbre "redondo"': {
     shape: 'roundedSquare',
     color: '#0000ff',
-    secondaryColor: '#000000',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
   },
-  'Dobles cañas': { shape: 'sixPointStar', color: '#8a2be2', secondaryColor: '#000000' },
-  'Saxofones': { shape: 'fourPointStar', color: '#a0522d', secondaryColor: '#000000' },
-  Metales: { shape: 'roundedSquare', color: '#ffff00', secondaryColor: '#000000' },
-  Cornos: { shape: 'roundedSquareDouble', color: '#ffff00', secondaryColor: '#000000' },
-  'Percusión menor': { shape: 'square', color: '#808080', secondaryColor: '#000000' },
-  Tambores: { shape: 'circle', color: '#808080', secondaryColor: '#000000' },
-  Platillos: { shape: 'circleDouble', color: '#808080', secondaryColor: '#000000' },
-  Placas: { shape: 'diamondDouble', color: '#ff0000', secondaryColor: '#000000' },
-  Auxiliares: { shape: 'roundedSquareDouble', color: '#4b0082', secondaryColor: '#000000' },
-  'Cuerdas frotadas': { shape: 'diamond', color: '#ffa500', secondaryColor: '#000000' },
-  'Cuerdas pulsadas': { shape: 'triangle', color: '#008000', secondaryColor: '#000000' },
-  Voces: { shape: 'squareDouble', color: '#808080', secondaryColor: '#000000' },
-  'Custom 1': { shape: 'square', color: '#ffffff', secondaryColor: '#000000' },
-  'Custom 2': { shape: 'square', color: '#ffffff', secondaryColor: '#000000' },
-  'Custom 3': { shape: 'square', color: '#ffffff', secondaryColor: '#000000' },
-  'Custom 4': { shape: 'square', color: '#ffffff', secondaryColor: '#000000' },
-  'Custom 5': { shape: 'square', color: '#ffffff', secondaryColor: '#000000' },
+  'Dobles cañas': {
+    shape: 'sixPointStar',
+    color: '#8a2be2',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Saxofones': {
+    shape: 'fourPointStar',
+    color: '#a0522d',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Metales: {
+    shape: 'roundedSquare',
+    color: '#ffff00',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Cornos: {
+    shape: 'roundedSquareDouble',
+    color: '#ffff00',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Percusión menor': {
+    shape: 'square',
+    color: '#808080',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Tambores: {
+    shape: 'circle',
+    color: '#808080',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Platillos: {
+    shape: 'circleDouble',
+    color: '#808080',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Placas: {
+    shape: 'diamondDouble',
+    color: '#ff0000',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Auxiliares: {
+    shape: 'roundedSquareDouble',
+    color: '#4b0082',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Cuerdas frotadas': {
+    shape: 'diamond',
+    color: '#ffa500',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Cuerdas pulsadas': {
+    shape: 'triangle',
+    color: '#008000',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  Voces: {
+    shape: 'squareDouble',
+    color: '#808080',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Custom 1': {
+    shape: 'square',
+    color: '#FFFFFF',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Custom 2': {
+    shape: 'square',
+    color: '#FFFFFF',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Custom 3': {
+    shape: 'square',
+    color: '#FFFFFF',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Custom 4': {
+    shape: 'square',
+    color: '#FFFFFF',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
+  'Custom 5': {
+    shape: 'square',
+    color: '#FFFFFF',
+    secondaryColor: DEFAULT_SECONDARY_COLOR,
+  },
 };
 
 // Copia mutable de los valores predeterminados
@@ -4804,7 +4874,7 @@ if (typeof localStorage !== 'undefined') {
     if (cfg.secondaryColor) {
       preset.secondaryColor = cfg.secondaryColor;
     } else if (!preset.secondaryColor) {
-      preset.secondaryColor = '#000000';
+      preset.secondaryColor = DEFAULT_SECONDARY_COLOR;
     }
     let resolvedColor = cfg.color;
     if (!resolvedColor && cfg.colorBright && cfg.colorDark) {
@@ -5070,7 +5140,7 @@ function renderOutline(
   const opacity = typeof outlineConfig.opacity === 'number' ? outlineConfig.opacity : 1;
   const intensity = clamp(baseAlpha * opacity, 0, 1);
   if (!(intensity > 0)) return;
-  const strokeColor = outlineConfig.color || note.color || '#ffffff';
+  const strokeColor = outlineConfig.color || note.color || '#FFFFFF';
   const strokeWidth =
     typeof outlineConfig.width === 'number' && Number.isFinite(outlineConfig.width)
       ? outlineConfig.width
@@ -5216,7 +5286,11 @@ function setFamilyCustomization(
   { force = false } = {},
 ) {
   const basePreset =
-    FAMILY_PRESETS[family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+    FAMILY_PRESETS[family] || {
+      shape: 'circle',
+      color: '#ffa500',
+      secondaryColor: DEFAULT_SECONDARY_COLOR,
+    };
   const preset = { ...basePreset };
   let resolvedColor = color;
   if (!resolvedColor && colorBright && colorDark) {
@@ -5234,7 +5308,7 @@ function setFamilyCustomization(
   if (secondaryColor) {
     preset.secondaryColor = secondaryColor;
   } else if (!preset.secondaryColor) {
-    preset.secondaryColor = '#000000';
+    preset.secondaryColor = DEFAULT_SECONDARY_COLOR;
   }
   FAMILY_PRESETS[family] = {
     shape: preset.shape,
@@ -5361,7 +5435,7 @@ function setInstrumentCustomization(
     if (validShape) {
       note.shape = validShape;
     }
-    note.secondaryColor = track.secondaryColor || '#000000';
+    note.secondaryColor = track.secondaryColor || DEFAULT_SECONDARY_COLOR;
   });
 }
 
@@ -5379,10 +5453,10 @@ function clearInstrumentCustomization(
   const preset =
     FAMILY_PRESETS[track.family] ||
     FAMILY_DEFAULTS[track.family] ||
-    { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+    { shape: 'circle', color: '#ffa500', secondaryColor: DEFAULT_SECONDARY_COLOR };
   track.shape = preset.shape;
   track.color = getInstrumentColor(preset);
-  track.secondaryColor = preset.secondaryColor || '#000000';
+  track.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
   const effectiveFrom = typeof fromTime === 'number' && fromTime > 0 ? fromTime : 0;
   notes.forEach((note) => {
     if ((note.trackName ?? note.instrument) !== trackName) return;
@@ -5408,17 +5482,25 @@ function resetFamilyCustomizations(tracks = [], notes = []) {
   resetOutlineSettings();
   tracks.forEach((t) => {
     const preset =
-      FAMILY_PRESETS[t.family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+      FAMILY_PRESETS[t.family] || {
+        shape: 'circle',
+        color: '#ffa500',
+        secondaryColor: DEFAULT_SECONDARY_COLOR,
+      };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
-    t.secondaryColor = preset.secondaryColor || '#000000';
+    t.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
   });
   notes.forEach((n) => {
     const preset =
-      FAMILY_PRESETS[n.family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+      FAMILY_PRESETS[n.family] || {
+        shape: 'circle',
+        color: '#ffa500',
+        secondaryColor: DEFAULT_SECONDARY_COLOR,
+      };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
-    n.secondaryColor = preset.secondaryColor || '#000000';
+    n.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
   });
   if (typeof renderFrame === 'function') {
     renderFrame(lastTime);
@@ -5555,7 +5637,7 @@ function importConfiguration(json, tracks = [], notes = []) {
     if (cfg.secondaryColor) {
       preset.secondaryColor = cfg.secondaryColor;
     } else if (!preset.secondaryColor) {
-      preset.secondaryColor = '#000000';
+      preset.secondaryColor = DEFAULT_SECONDARY_COLOR;
     }
     let resolvedColor = cfg.color;
     if (!resolvedColor && cfg.colorBright && cfg.colorDark) {
@@ -5598,20 +5680,28 @@ function importConfiguration(json, tracks = [], notes = []) {
     const fam = assignedFamilies[t.name] || t.family;
     t.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+      FAMILY_PRESETS[fam] || {
+        shape: 'circle',
+        color: '#ffa500',
+        secondaryColor: DEFAULT_SECONDARY_COLOR,
+      };
     t.shape = preset.shape;
     t.color = getInstrumentColor(preset);
-    t.secondaryColor = preset.secondaryColor || '#000000';
+    t.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
   });
   notes.forEach((n) => {
     const key = n.trackName ?? n.instrument;
     const fam = assignedFamilies[key] || n.family;
     n.family = fam;
     const preset =
-      FAMILY_PRESETS[fam] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+      FAMILY_PRESETS[fam] || {
+        shape: 'circle',
+        color: '#ffa500',
+        secondaryColor: DEFAULT_SECONDARY_COLOR,
+      };
     n.shape = preset.shape;
     n.color = getInstrumentColor(preset);
-    n.secondaryColor = preset.secondaryColor || '#000000';
+    n.secondaryColor = preset.secondaryColor || DEFAULT_SECONDARY_COLOR;
   });
   applyInstrumentCustomizationsToData(tracks, notes);
 }
@@ -5648,7 +5738,11 @@ function assignTrackInfo(tracks) {
     const instrument = resolveInstrumentName(t.name);
     const family = INSTRUMENT_FAMILIES[instrument] || 'Desconocida';
     const preset =
-      FAMILY_PRESETS[family] || { shape: 'circle', color: '#ffa500', secondaryColor: '#000000' };
+      FAMILY_PRESETS[family] || {
+        shape: 'circle',
+        color: '#ffa500',
+        secondaryColor: DEFAULT_SECONDARY_COLOR,
+      };
     const color = getInstrumentColor(preset);
     return {
       ...t,
@@ -5656,7 +5750,7 @@ function assignTrackInfo(tracks) {
       family,
       shape: preset.shape,
       color,
-      secondaryColor: preset.secondaryColor || '#000000',
+      secondaryColor: preset.secondaryColor || DEFAULT_SECONDARY_COLOR,
       detectedFamily: family,
       detectedShape: preset.shape,
       detectedColor: color,

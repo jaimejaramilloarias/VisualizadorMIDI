@@ -36,7 +36,7 @@ setShapeExtensionsEnabled(false);
 assert.strictEqual(getShapeExtension('circle'), false);
 setShapeExtensionsEnabled(true);
 assert.strictEqual(getShapeExtension('circle'), true);
-assert.strictEqual(getShapeExtension('circleDouble'), false);
+assert.strictEqual(getShapeExtension('circleDouble'), true);
 
 setShapeStretchEnabled(false);
 assert.strictEqual(getShapeStretch('circle'), false);
@@ -51,12 +51,22 @@ const doubleNote = {
 };
 result = computeDynamicBounds(
   doubleNote,
-  2,
+  1,
   canvasWidth,
   pixelsPerSecond,
   baseWidth,
   'circleDouble',
 );
 assert.strictEqual(result.width, baseWidth);
+
+result = computeDynamicBounds(
+  doubleNote,
+  2,
+  canvasWidth,
+  pixelsPerSecond,
+  baseWidth,
+  'circleDouble',
+);
+assert.strictEqual(result.width, baseWidth + (finalWidth - baseWidth) / 2);
 
 console.log('Pruebas de control de extensión de figuras completadas');

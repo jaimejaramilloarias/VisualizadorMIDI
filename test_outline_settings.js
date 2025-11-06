@@ -55,7 +55,7 @@ const tracks = [
     detectedFamily: FAMILY,
     shape: 'circle',
     color: '#ffffff',
-    secondaryColor: '#000000',
+    secondaryColor: '#FFFFFF',
   },
 ];
 const notes = [];

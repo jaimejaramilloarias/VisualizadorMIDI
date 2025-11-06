@@ -59,62 +59,62 @@ window.DEFAULT_CONFIG = {
     "Metales": {
       "color": "#edd113",
       "shape": "roundedSquare",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Cornos": {
       "color": "#edbe13",
       "shape": "roundedSquareDouble",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Maderas de timbre \"redondo\"": {
       "color": "#769df3",
       "shape": "roundedSquare",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Dobles cañas": {
       "color": "#c23afd",
       "shape": "sixPointStar",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Saxofones": {
       "color": "#ce8767",
       "shape": "fourPointStar",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Placas": {
       "color": "#ff0000",
       "shape": "diamondDouble",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Auxiliares": {
       "color": "#347875",
       "shape": "roundedSquareDouble",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Cuerdas frotadas": {
       "color": "#41e342",
       "shape": "diamond",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Cuerdas pulsadas": {
       "color": "#1abeb4",
       "shape": "triangle",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Voces": {
       "color": "#bebebe",
       "shape": "squareDouble",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Custom 1": {
       "color": "#d52b2b",
       "shape": "diamond",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     },
     "Percusión menor": {
       "color": "#a78269",
       "shape": "square",
-      "secondaryColor": "#000000"
+      "secondaryColor": "#FFFFFF"
     }
   },
   "enabledInstruments": {
@@ -270,16 +270,16 @@ window.DEFAULT_CONFIG = {
     "Percusion": true,
     "Violin": true
   },
-  "velocityBase": 127,
+  "velocityBase": 67,
   "opacityScale": {
     "edge": 0,
-    "mid": 0.5
+    "mid": 1
   },
-  "glowStrength": 1.5,
-  "bumpControl": 1.2,
+  "glowStrength": 0.1,
+  "bumpControl": 1.1,
   "visibleSeconds": 8,
   "heightScale": {
-    "global": 2,
+    "global": 1.8,
     "families": {}
   },
   "shapeExtensions": {
