@@ -16,41 +16,46 @@ body {
 }
 
 #app-title {
-  margin: 20px 0 10px;
-  font-size: 2.5rem;
+  margin: 12px 0 6px;
+  font-size: 2.2rem;
   font-weight: 700;
 }
 
 #top-menu,
 #bottom-menu {
-  margin: 10px;
-  background: #1a1a1a;
-  padding: 10px;
-  border-radius: 6px;
+  margin: 6px 10px;
+  background: #161616;
+  padding: 8px 10px;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 #top-menu {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   width: min(100%, 960px);
   box-sizing: border-box;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  justify-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   align-items: stretch;
 }
 
-#top-menu button {
+#top-menu button,
+#top-menu .fps-control select,
+#top-menu .fps-control input {
   width: 100%;
-  min-height: 38px;
+}
+
+#top-menu button {
+  min-height: 32px;
 }
 
 #fps-control-group {
   display: grid;
   gap: 6px;
-  padding: 8px;
-  border: 1px solid #333;
-  border-radius: 6px;
-  background: #181818;
+  padding: 6px 8px;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #191919, #141414);
   align-content: start;
   grid-column: span 2;
 }
@@ -97,14 +102,14 @@ body {
 button,
 select,
 input {
-  background: #333;
-  border: 1px solid #555;
+  background: #2c2c2c;
+  border: 1px solid #444;
   color: #fff;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
   font-size: inherit;
   font-family: inherit;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .icon-button {
@@ -120,20 +125,23 @@ input {
 button:hover,
 select:hover,
 input:hover {
-  background: #444;
+  background: #3a3a3a;
+  border-color: #5a5a5a;
   cursor: pointer;
 }
 
 #family-config-panel {
   display: none;
-  margin: 0 10px 10px;
-  background: #222;
-  padding: 16px;
+  margin: 0 10px 12px;
+  background: #1a1a1a;
+  padding: 14px;
   width: calc(100% - 20px);
   box-sizing: border-box;
   font-size: inherit;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 14px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 #family-config-panel.active {
@@ -143,15 +151,16 @@ input:hover {
 #developer-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding: 12px;
-  background: #1c1c1c;
-  border-radius: 8px;
+  background: linear-gradient(160deg, #202020, #171717);
+  border-radius: 10px;
   box-sizing: border-box;
   font-size: inherit;
   grid-column: 1 / -1;
+  border: 1px solid #2b2b2b;
 }
 
 .dev-control-section {
@@ -159,18 +168,18 @@ input:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  border-top: 1px solid #333;
-  padding-top: 12px;
-  margin-top: 4px;
+  align-content: start;
 }
 
 .dev-control {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-items: start;
-  background: #2a2a2a;
-  padding: 12px;
-  border-radius: 6px;
+  background: #202020;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2b2b2b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .dev-control label {
@@ -187,9 +196,11 @@ input:hover {
   grid-column: 1 / -1;
   display: grid;
   gap: 10px;
-  background: #2a2a2a;
+  background: #202020;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
+  border: 1px solid #2b2b2b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .inst-section h4 {
@@ -211,9 +222,11 @@ input:hover {
   display: grid;
   gap: 8px;
   align-items: start;
-  background: #2a2a2a;
-  padding: 12px;
-  border-radius: 6px;
+  background: #202020;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #2b2b2b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .family-target-control {
@@ -224,6 +237,11 @@ input:hover {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   align-items: end;
   gap: 10px;
+  background: #202020;
+  border: 1px solid #2b2b2b;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .scope-selector > label {
@@ -241,8 +259,9 @@ input:hover {
   grid-column: 1 / -1;
 }
 
-.scope-family-wrapper.hidden {
-  display: none;
+.scope-family-wrapper.scope-disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .scope-family-wrapper label {
@@ -397,7 +416,7 @@ input:hover {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 14px;
   align-content: start;
 }
 
@@ -406,10 +425,37 @@ input:hover {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
   align-content: start;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #262626;
+  background: linear-gradient(160deg, #181818, #141414);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
-.config-scope-section.hidden {
-  display: none !important;
+.config-scope-section.scope-disabled {
+  opacity: 0.62;
+  filter: saturate(0.75);
+  pointer-events: none;
+}
+
+.config-scope-section.scope-active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.customization-sections[data-scope='global'] .scope-familia {
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35), 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.scope-mode-global {
+  background: linear-gradient(160deg, #162c22, #101b15);
+  border-color: #0f8a68;
+}
+
+.scope-mode-global .family-config-item,
+.scope-mode-global .dev-control {
+  border-color: rgba(16, 185, 129, 0.35);
 }
 
 .bg-image-buttons {

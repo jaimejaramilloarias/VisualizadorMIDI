@@ -3820,27 +3820,40 @@ if (typeof document !== 'undefined') {
 
       updateScopeVisibility = (forceRefresh = false) => {
         const scope = scopeSelect.value || 'familia';
-        instrumentScopeSection.classList.toggle('hidden', scope !== 'instrumento');
-        familyScopeSection.classList.toggle('hidden', scope === 'instrumento');
-        scopeFamilyWrapper.classList.toggle('hidden', scope !== 'familia');
-        familyTargetSelect.disabled = scope !== 'familia';
-        syncFamilyTargetWithInstrument();
-        familyScopeSection.classList.toggle('scope-mode-global', scope === 'global');
+        customizationContainer.dataset.scope = scope;
 
-        if (scope === 'global') {
+        const isInstrumentScope = scope === 'instrumento';
+        const isFamilyScope = scope === 'familia';
+        const isGlobalScope = scope === 'global';
+
+        instrumentScopeSection.classList.toggle('scope-disabled', !isInstrumentScope);
+        instrumentScopeSection.classList.toggle('scope-active', isInstrumentScope);
+
+        const familySectionActive = isFamilyScope || isGlobalScope;
+        familyScopeSection.classList.toggle('scope-disabled', !familySectionActive);
+        familyScopeSection.classList.toggle('scope-active', isFamilyScope);
+        familyScopeSection.classList.toggle('scope-mode-global', isGlobalScope);
+
+        scopeFamilyWrapper.classList.toggle('scope-disabled', !isFamilyScope);
+        familyTargetSelect.disabled = !isFamilyScope;
+
+        syncFamilyTargetWithInstrument();
+
+        if (isGlobalScope) {
           if (familyTargetSelect.value !== '') {
             familyTargetSelect.value = '';
             dispatchFamilyTargetChange();
           } else if (forceRefresh) {
             refreshFamilyControls();
           }
-        } else if (scope === 'familia') {
+        } else if (isFamilyScope) {
           if (forceRefresh) {
             refreshFamilyControls();
           }
-        } else if (scope === 'instrumento' && forceRefresh) {
+        } else if (isInstrumentScope && forceRefresh) {
           updateInstrumentColorControl();
         }
+
         updateScopeFamilyHint();
       };
 
