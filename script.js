@@ -397,7 +397,9 @@ if (typeof document !== 'undefined') {
     const modalInstrumentList = document.getElementById('modal-instrument-list');
     const modalFamilyZones = document.getElementById('modal-family-zones');
     const applyAssignmentsBtn = document.getElementById('apply-assignments');
-    const tapTempoBtn = document.getElementById('tap-tempo-mode');
+    const tapTempoButtons = Array.from(
+      document.querySelectorAll('[data-action="tap-tempo"]')
+    );
     const tapTempoPanel = document.getElementById('tap-tempo-panel');
     const startTapTempoBtn = document.getElementById('start-tap-tempo');
     const stopTapTempoBtn = document.getElementById('stop-tap-tempo');
@@ -524,7 +526,7 @@ if (typeof document !== 'undefined') {
       if (!tapTempoModeActive) return;
       tapTempoModeActive = false;
       if (tapTempoPanel) tapTempoPanel.classList.add('hidden');
-      if (tapTempoBtn) tapTempoBtn.classList.remove('active');
+      tapTempoButtons.forEach((btn) => btn.classList.remove('active'));
       hideTooltip();
       hoveredHandleKey = null;
       updateCursor();
@@ -534,7 +536,7 @@ if (typeof document !== 'undefined') {
       if (tapTempoModeActive) return;
       tapTempoModeActive = true;
       if (tapTempoPanel) tapTempoPanel.classList.remove('hidden');
-      if (tapTempoBtn) tapTempoBtn.classList.add('active');
+      tapTempoButtons.forEach((btn) => btn.classList.add('active'));
       syncWaveformCanvasSize();
       renderWaveform();
       updateCursor();
@@ -1132,13 +1134,15 @@ if (typeof document !== 'undefined') {
       return closest;
     }
 
-    if (tapTempoBtn) {
-      tapTempoBtn.addEventListener('click', () => {
-        if (tapTempoModeActive) {
-          deactivateTapTempoMode();
-        } else {
-          activateTapTempoMode();
-        }
+    if (tapTempoButtons.length) {
+      tapTempoButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (tapTempoModeActive) {
+            deactivateTapTempoMode();
+          } else {
+            activateTapTempoMode();
+          }
+        });
       });
     }
 
