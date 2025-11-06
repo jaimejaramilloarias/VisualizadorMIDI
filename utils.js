@@ -79,13 +79,13 @@ function validateColorRange(bright, dark) {
     lumDark = getLuminance(dark);
     diff = lumBright - lumDark;
     iterations++;
-    if (bright === '#ffffff' && dark === '#000000') break;
+    if (bright === '#FFFFFF' && dark === '#000000') break;
   }
   return { bright, dark };
 }
 
 // Parámetros configurables de opacidad
-let opacityScale = { edge: 0, mid: 0.5 };
+let opacityScale = { edge: 0, mid: 1 };
 
 function setOpacityScale(edge, mid) {
   opacityScale = { edge, mid };
@@ -125,7 +125,7 @@ function computeOpacity(xStart, xEnd, canvasWidth) {
 }
 
 // Control global y por familia para el efecto "bump"
-let bumpControl = 1.2;
+let bumpControl = 1.1;
 let familyBumpControl = {};
 
 function persistBumpControl() {
@@ -241,7 +241,7 @@ function computeBumpHeight(
 }
 
 // Referencia de velocidad MIDI para altura 100%
-let velocityBase = 127;
+let velocityBase = 67;
 
 // Permite definir una nueva velocidad base
 function setVelocityBase(value) {
@@ -268,7 +268,7 @@ function computeVelocityHeight(baseHeight, velocity, reference = velocityBase) {
 }
 
 // Escala global o por familia para la altura de las figuras
-let heightScale = 2;
+let heightScale = 1.8;
 let familyHeightScale = {};
 
 function persistHeightScale() {
@@ -319,7 +319,7 @@ function getHeightScaleConfig() {
 loadHeightScale();
 
 // Control global y por familia del glow
-let glowStrength = 1.5;
+let glowStrength = 0.1;
 let familyGlowStrength = {};
 
 function persistGlowStrength() {
@@ -426,7 +426,7 @@ function lightenHexColor(hex, factor) {
   const normalized = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
   const eased = easeOutCubic(Math.min(Math.max(factor, 0), 1));
   const mixFactor = Math.min(1, eased * 0.9);
-  return interpolateColor(normalized, '#ffffff', mixFactor);
+  return interpolateColor(normalized, '#FFFFFF', mixFactor);
 }
 
 // Ajusta el tono del color base para simular el antiguo resplandor en el NOTE ON
@@ -572,9 +572,14 @@ function traceHexagon(ctx, x, y, width, height, inset = 0) {
   const halfWidth = effectiveWidth / 2;
   const halfHeight = effectiveHeight / 2;
 
-  ctx.moveTo(centerX, centerY - halfHeight);
+  const rotation = Math.PI / 2;
+  const startAngle = -Math.PI / 2 + rotation;
+  ctx.moveTo(
+    centerX + halfWidth * Math.cos(startAngle),
+    centerY + halfHeight * Math.sin(startAngle),
+  );
   for (let i = 1; i < 6; i++) {
-    const angle = -Math.PI / 2 + (i * Math.PI) / 3;
+    const angle = startAngle + (i * Math.PI) / 3;
     const px = centerX + halfWidth * Math.cos(angle);
     const py = centerY + halfHeight * Math.sin(angle);
     ctx.lineTo(px, py);
@@ -646,7 +651,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       traceEllipse(ctx, x, y, width, height);
     },
@@ -683,7 +688,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       ctx.rect(x, y, width, height);
     },
@@ -721,7 +726,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       const radius = Math.min(width, height) * 0.25;
       traceRoundedSquare(ctx, x, y, width, height, radius);
@@ -763,7 +768,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       traceDiamond(ctx, x, y, width, height);
     },
@@ -800,7 +805,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       traceHexagon(ctx, x, y, width, height);
     },
@@ -843,7 +848,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       traceFourPointStar(ctx, x, y, width, height);
     },
@@ -887,7 +892,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
   },
   triangle: {
     label: 'Triángulo',
@@ -925,7 +930,7 @@ const SHAPE_METADATA = {
         },
       },
     ],
-    secondaryFill: '#000000',
+    secondaryFill: '#FFFFFF',
     draw(ctx, x, y, width, height) {
       traceTriangle(ctx, x, y, width, height);
     },
@@ -951,30 +956,20 @@ const SHAPE_ORDER = [
   'triangleDouble',
 ];
 
-const NON_EXTENDABLE_SHAPES = new Set([
-  'circleDouble',
-  'squareDouble',
-  'roundedSquareDouble',
-  'diamondDouble',
-  'hexagonDouble',
-  'fourPointStarDouble',
-  'sixPointStar',
-  'sixPointStarDouble',
-  'triangleDouble',
-]);
+const NON_EXTENDABLE_SHAPES = new Set();
 
 const SHAPE_OPTIONS = SHAPE_ORDER.map((value) => ({ value, label: SHAPE_METADATA[value].label }));
 
 const DOUBLE_SHAPE_PATTERN = /double$/i;
-const DEFAULT_SECONDARY_LAYER_COLOR = '#000000';
+const DEFAULT_SECONDARY_LAYER_COLOR = '#FFFFFF';
 const isDoubleShape = (shape) => typeof shape === 'string' && DOUBLE_SHAPE_PATTERN.test(shape);
 
 const OUTLINE_MODES = ['full', 'pre', 'post'];
 const OUTLINE_DEFAULTS = Object.freeze({
-  enabled: false,
+  enabled: true,
   mode: 'full',
-  width: 3,
-  color: null,
+  width: 2.5,
+  color: '#FFFFFF',
   opacity: 1,
 });
 let outlineSettings = { ...OUTLINE_DEFAULTS };
@@ -1157,14 +1152,14 @@ function drawNoteShape(
 
 // Estado de alargamiento progresivo por figura alargada
 const SHAPE_EXTENSION_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
-  acc[value] = !isDoubleShape(value) && !NON_EXTENDABLE_SHAPES.has(value);
+  acc[value] = !NON_EXTENDABLE_SHAPES.has(value);
   return acc;
 }, {});
 let shapeExtensions = { ...SHAPE_EXTENSION_DEFAULTS };
 let familyShapeExtensions = {};
 
 const SHAPE_STRETCH_DEFAULTS = SHAPE_ORDER.reduce((acc, value) => {
-  acc[value] = !isDoubleShape(value) && !NON_EXTENDABLE_SHAPES.has(value);
+  acc[value] = !NON_EXTENDABLE_SHAPES.has(value);
   return acc;
 }, {});
 let shapeStretch = { ...SHAPE_STRETCH_DEFAULTS };
@@ -1197,15 +1192,10 @@ function loadShapeExtensions() {
   NON_EXTENDABLE_SHAPES.forEach((shape) => {
     shapeExtensions[shape] = false;
   });
-  Object.keys(shapeExtensions).forEach((shape) => {
-    if (isDoubleShape(shape)) {
-      shapeExtensions[shape] = false;
-    }
-  });
 }
 
 function isShapeExtendable(shape) {
-  return !!(shape && !isDoubleShape(shape) && !NON_EXTENDABLE_SHAPES.has(shape));
+  return !!(shape && !NON_EXTENDABLE_SHAPES.has(shape));
 }
 
 function getShapeExtension(shape) {
@@ -1419,7 +1409,7 @@ function isStretchEnabledForFamily(shape, family) {
 loadShapeExtensions();
 loadShapeStretch();
 
-const DEFAULT_LINE_SETTINGS = { enabled: false, opacity: 0.3, width: 8 };
+const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.3, width: 4.2 };
 let familyLineSettings = {};
 let familyTravelSettings = {};
 const DEFAULT_TRAVEL_EFFECT = true;

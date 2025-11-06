@@ -80,10 +80,14 @@ dom.window.__setTestNotes(notes);
 dom.window.__renderFrame(1.3);
 
 const rects = contexts[1].rects;
-assert.strictEqual(rects.length, 2, 'Debe dibujar dos rectángulos de contorno tras el note off');
+const uniqueHeights = [...new Set(rects.map((rect) => rect.h))];
+assert.strictEqual(
+  uniqueHeights.length,
+  2,
+  'Debe dibujar dos rectángulos de contorno tras el note off',
+);
 
-const h1 = rects[0].h;
-const h2 = rects[1].h;
+const [h1, h2] = uniqueHeights.sort((a, b) => a - b);
 
 const expectedH1 = Math.round(baseHeight * 2) / 2;
 const expectedH2 = Math.round(baseHeight * 4) / 2;

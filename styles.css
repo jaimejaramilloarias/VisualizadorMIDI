@@ -41,6 +41,14 @@ body {
   text-align: center;
 }
 
+#app-subtitle {
+  margin: 0;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  text-align: center;
+  color: #d0d0d0;
+}
+
 #top-menu,
 #bottom-menu {
   background: var(--panel-background);

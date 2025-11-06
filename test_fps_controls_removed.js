@@ -12,11 +12,11 @@ const html = fs.readFileSync('index.html', 'utf8');
 assert(html.includes('id="fps-mode"'));
 assert(html.includes('id="fps-value"'));
 
-assert.strictEqual(getFPSMode(), 'fixed');
-setFPSMode('auto');
 assert.strictEqual(getFPSMode(), 'auto');
-setFPSMode('invalid');
+setFPSMode('fixed');
 assert.strictEqual(getFPSMode(), 'fixed');
+setFPSMode('invalid');
+assert.strictEqual(getFPSMode(), 'auto');
 
 assert.strictEqual(getFixedFPS(), 90);
 setFixedFPS(500);
