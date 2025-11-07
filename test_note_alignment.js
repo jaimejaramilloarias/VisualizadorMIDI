@@ -96,22 +96,33 @@ function applyExpectedCurve(offset, canvasWidth) {
   const normalized = absOffset / maxTravel;
   let adjustedNormalized = normalized;
   if (offset > 0) {
-    const magnetZone = 0.22;
-    const slowExponent = 3.2;
-    const slowBlend = 0.22;
-    const magnetExponent = 0.68;
-    if (normalized <= magnetZone) {
-      const safeZone = Math.max(magnetZone, Number.EPSILON);
-      const magnetT = Math.max(0, Math.min(1, normalized / safeZone));
-      const easedMagnet = Math.pow(magnetT, Math.max(Number.EPSILON, magnetExponent));
-      adjustedNormalized = magnetZone * easedMagnet;
-    } else {
-      const regionT = (normalized - magnetZone) / (1 - magnetZone);
-      const easedSlow =
-        slowBlend * regionT +
-        (1 - slowBlend) * Math.pow(Math.max(0, regionT), slowExponent);
-      adjustedNormalized = magnetZone + (1 - magnetZone) * Math.min(1, easedSlow);
-    }
+    const slowSpeed = 0.08;
+    const fastSpeed = 1.5;
+    const curveStrength = 6;
+    const pivot = 0.2;
+    // La versión de prueba replica la misma curva logística utilizada en el
+    // código de producción para validar el desplazamiento progresivo.
+
+    const log1p = Math.log1p || ((value) => Math.log(1 + value));
+    const expArgument = curveStrength * (normalized - pivot);
+    const expAhead = Math.exp(expArgument);
+    const expPivot = Math.exp(-curveStrength * pivot);
+    const expTail = Math.exp(curveStrength * (1 - pivot));
+    const invCurveStrength = 1 / curveStrength;
+    const integralTerm =
+      normalized -
+      invCurveStrength * log1p(expAhead) +
+      invCurveStrength * log1p(expPivot);
+    const normalization =
+      slowSpeed +
+      (fastSpeed - slowSpeed) *
+        (1 -
+          invCurveStrength * log1p(expTail) +
+          invCurveStrength * log1p(expPivot));
+    const curvedNormalized =
+      slowSpeed * normalized + (fastSpeed - slowSpeed) * integralTerm;
+    adjustedNormalized =
+      normalization > 0 ? curvedNormalized / normalization : curvedNormalized;
     adjustedNormalized = Math.max(0, Math.min(1, adjustedNormalized));
   } else {
     const progress = 0.5 + normalized * 0.5;
