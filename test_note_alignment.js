@@ -75,6 +75,10 @@ const notes = [
 
 function computeCurvedX(note, time, center, canvasWidth, pixelsPerSecond) {
   const offset = (note.start - time) * pixelsPerSecond;
+  if (time > note.end) {
+    const linear = center + offset;
+    return Math.round(linear * 2) / 2;
+  }
   const curvedOffset = applyExpectedCurve(offset, canvasWidth);
   return Math.round((center + curvedOffset) * 2) / 2;
 }
@@ -92,13 +96,20 @@ function applyExpectedCurve(offset, canvasWidth) {
   const normalized = absOffset / maxTravel;
   let adjustedNormalized = normalized;
   if (offset > 0) {
-    const progress = (1 - normalized) * 0.5;
-    if (progress > 0.25) {
-      const segmentT = Math.min((progress - 0.25) / 0.25, 1);
-      const eased = segmentT + 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
-      const adjustedProgress = 0.25 + eased * 0.25;
-      adjustedNormalized = Math.max(0, 1 - adjustedProgress / 0.5);
+    const magnetZone = 0.25;
+    const slowExponent = 2.5;
+    const magnetExponent = 0.35;
+    if (normalized <= magnetZone) {
+      const safeZone = Math.max(magnetZone, Number.EPSILON);
+      const magnetT = Math.max(0, Math.min(1, normalized / safeZone));
+      const easedMagnet = Math.pow(magnetT, magnetExponent);
+      adjustedNormalized = magnetZone * easedMagnet;
+    } else {
+      const regionT = (normalized - magnetZone) / (1 - magnetZone);
+      const easedSlow = 1 - Math.pow(Math.max(0, 1 - regionT), slowExponent);
+      adjustedNormalized = magnetZone + (1 - magnetZone) * easedSlow;
     }
+    adjustedNormalized = Math.max(normalized, Math.min(1, adjustedNormalized));
   } else {
     const progress = 0.5 + normalized * 0.5;
     if (progress < 0.75) {
@@ -127,14 +138,15 @@ const beforeStart = offscreen.rects[0];
 const linearFuture = center + (notes[0].start - 1.5) * pixelsPerSecond;
 const curvedFuture = computeCurvedX(notes[0], 1.5, center, canvas.width, pixelsPerSecond);
 assert(Math.abs(beforeStart.x - curvedFuture) <= 0.5, 'El avance futuro debe respetar la curva de aceleración previa al NOTE ON');
-assert(beforeStart.x <= linearFuture - 0.25, 'La aceleración previa debe acercar la figura al centro respecto al desplazamiento lineal');
+assert(beforeStart.x >= linearFuture + 0.25, 'El viaje previo debe mantener la figura a mayor distancia que el desplazamiento lineal');
 
 offscreen.rects.length = 0;
-dom.window.__renderFrame(4);
+const timeAfter = 4.2;
+dom.window.__renderFrame(timeAfter);
 const afterEnd = offscreen.rects[0];
-const linearPast = center + (notes[0].start - 4) * pixelsPerSecond;
-const curvedPast = computeCurvedX(notes[0], 4, center, canvas.width, pixelsPerSecond);
-assert(Math.abs(afterEnd.x - curvedPast) <= 0.5, 'El retroceso debe respetar la curva de desaceleración posterior al NOTE OFF');
-assert(afterEnd.x >= linearPast + 0.5, 'La desaceleración posterior debe mantener la figura más cerca del centro que el desplazamiento lineal');
+const linearPast = center + (notes[0].start - timeAfter) * pixelsPerSecond;
+const curvedPast = computeCurvedX(notes[0], timeAfter, center, canvas.width, pixelsPerSecond);
+assert(Math.abs(afterEnd.x - curvedPast) <= 0.5, 'El retroceso posterior al NOTE OFF debe seguir el desplazamiento lineal');
+assert(Math.abs(afterEnd.x - linearPast) <= 0.5, 'Sin curva tras el NOTE OFF: la figura debe seguir la posición lineal.');
 
 console.log('Pruebas de alineación de notas completadas');

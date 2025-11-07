@@ -1587,26 +1587,21 @@ function applyTravelCurve(offset, canvasWidth) {
   let adjustedNormalized = normalized;
 
   if (offset > 0) {
-    const magnetZone = 0.4;
-    const slowExponent = 3;
-    const magnetStrength = 10;
+    const magnetZone = 0.25;
+    const slowExponent = 2.5;
+    const magnetExponent = 0.35;
 
-    // Las notas que viajan desde la derecha avanzan lentamente hasta entrar en la
-    // "zona del imán" (magnetZone). Una vez que cruzan ese umbral, se aplica una
-    // potencia muy alta para que parezca que una fuerza magnética las acelera de
-    // forma exagerada hacia el centro.
-
-    if (normalized >= magnetZone) {
-      const slowT = (normalized - magnetZone) / (1 - magnetZone);
-      const easedSlow = 1 - Math.pow(1 - slowT, slowExponent);
-      adjustedNormalized = magnetZone + (1 - magnetZone) * easedSlow;
-    } else {
+    if (normalized <= magnetZone) {
       const safeZone = Math.max(magnetZone, Number.EPSILON);
       const magnetT = Math.max(0, Math.min(1, normalized / safeZone));
-      const accelerated = Math.pow(magnetT, magnetStrength);
-      adjustedNormalized = magnetZone * accelerated;
+      const easedMagnet = Math.pow(magnetT, magnetExponent);
+      adjustedNormalized = magnetZone * easedMagnet;
+    } else {
+      const regionT = (normalized - magnetZone) / (1 - magnetZone);
+      const easedSlow = 1 - Math.pow(Math.max(0, 1 - regionT), slowExponent);
+      adjustedNormalized = magnetZone + (1 - magnetZone) * easedSlow;
     }
-    adjustedNormalized = Math.max(0, Math.min(1, adjustedNormalized));
+    adjustedNormalized = Math.max(normalized, Math.min(1, adjustedNormalized));
   } else {
     const progress = 0.5 + normalized * 0.5;
     if (progress < 0.75) {
@@ -1631,7 +1626,11 @@ function computeDynamicBounds(
 ) {
   const center = canvasWidth / 2;
   const linearOffset = (note.start - currentSec) * pixelsPerSecond;
-  const xStart = center + applyTravelCurve(linearOffset, canvasWidth);
+  const shouldCurve = currentSec <= note.end;
+  const curvedOffset = shouldCurve
+    ? applyTravelCurve(linearOffset, canvasWidth)
+    : linearOffset;
+  const xStart = center + curvedOffset;
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
   const effectiveShape = shape || note.shape;
   const doubleShape = isDoubleShape(effectiveShape);
