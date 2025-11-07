@@ -1587,21 +1587,24 @@ function applyTravelCurve(offset, canvasWidth) {
   let adjustedNormalized = normalized;
 
   if (offset > 0) {
-    const magnetZone = 0.25;
-    const slowExponent = 2.5;
-    const magnetExponent = 0.35;
+    const magnetZone = 0.22;
+    const slowExponent = 3.2;
+    const slowBlend = 0.22;
+    const magnetExponent = 0.68;
 
     if (normalized <= magnetZone) {
       const safeZone = Math.max(magnetZone, Number.EPSILON);
       const magnetT = Math.max(0, Math.min(1, normalized / safeZone));
-      const easedMagnet = Math.pow(magnetT, magnetExponent);
+      const easedMagnet = Math.pow(magnetT, Math.max(Number.EPSILON, magnetExponent));
       adjustedNormalized = magnetZone * easedMagnet;
     } else {
       const regionT = (normalized - magnetZone) / (1 - magnetZone);
-      const easedSlow = 1 - Math.pow(Math.max(0, 1 - regionT), slowExponent);
-      adjustedNormalized = magnetZone + (1 - magnetZone) * easedSlow;
+      const easedSlow =
+        slowBlend * regionT +
+        (1 - slowBlend) * Math.pow(Math.max(0, regionT), slowExponent);
+      adjustedNormalized = magnetZone + (1 - magnetZone) * Math.min(1, easedSlow);
     }
-    adjustedNormalized = Math.max(normalized, Math.min(1, adjustedNormalized));
+    adjustedNormalized = Math.max(0, Math.min(1, adjustedNormalized));
   } else {
     const progress = 0.5 + normalized * 0.5;
     if (progress < 0.75) {
