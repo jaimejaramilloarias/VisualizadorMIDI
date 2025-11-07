@@ -11,6 +11,7 @@ const {
   getHeightScaleConfig,
   getShapeStretch,
   getFamilyStretch,
+  getTravelEffectConfig,
 } = require('./script.js');
 const { getOutlineSettings, resetOutlineSettings } = require('./utils.js');
 
@@ -37,7 +38,11 @@ const config = {
     Metales: { color: '#123456', shape: 'diamond', secondaryColor: '#222222' },
   },
   instrumentCustomizations: {
-    Flauta: { color: '#abcdef', shape: 'triangle' },
+    Flauta: {
+      color: '#abcdef',
+      shape: 'triangle',
+      travel: { enabled: false, intensity: 1.2, magnetZone: 0.9 },
+    },
   },
   enabledInstruments: { Flauta: true },
   velocityBase: 80,
@@ -85,7 +90,10 @@ const config = {
   familyExtensions: { Metales: true },
   familyStretch: { Metales: false },
   familyLineSettings: {},
-  familyTravelSettings: {},
+  familyTravelSettings: {
+    global: { enabled: true, intensity: 1, magnetZone: 1 },
+    families: { Metales: { enabled: false, intensity: 0.85, magnetZone: 1.1 } },
+  },
   outlineSettings: {
     global: {
       enabled: true,
@@ -137,6 +145,10 @@ assert.deepStrictEqual(getHeightScaleConfig(), { global: 2, families: {} });
 assert.strictEqual(getShapeStretch('roundedSquare'), false);
 assert.strictEqual(getShapeStretch('diamond'), false);
 assert.strictEqual(getFamilyStretch('Metales'), false);
+const travelConfig = getTravelEffectConfig('Metales');
+assert.strictEqual(travelConfig.enabled, false);
+assert.strictEqual(Math.round(travelConfig.intensity * 100) / 100, 0.85);
+assert.strictEqual(Math.round(travelConfig.magnetZone * 100) / 100, 1.1);
 
 const exported = JSON.parse(exportConfiguration());
 assert.deepStrictEqual(exported, config);
