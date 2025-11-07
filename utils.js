@@ -1574,11 +1574,11 @@ function applyTravelCurve(offset, canvasWidth) {
 
   const margin = Math.max(canvasWidth * 0.1, 80);
   const maxTravel = canvasWidth / 2 + margin;
-  const absOffset = Math.abs(offset);
   if (!Number.isFinite(maxTravel) || maxTravel <= 0) {
     return offset;
   }
 
+  const absOffset = Math.abs(offset);
   if (absOffset >= maxTravel) {
     return offset;
   }
@@ -1587,13 +1587,26 @@ function applyTravelCurve(offset, canvasWidth) {
   let adjustedNormalized = normalized;
 
   if (offset > 0) {
-    const progress = (1 - normalized) * 0.5;
-    if (progress > 0.25) {
-      const segmentT = Math.min((progress - 0.25) / 0.25, 1);
-      const eased = segmentT + 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
-      const adjustedProgress = 0.25 + eased * 0.25;
-      adjustedNormalized = Math.max(0, 1 - adjustedProgress / 0.5);
+    const magnetZone = 0.4;
+    const slowExponent = 3;
+    const magnetStrength = 10;
+
+    // Las notas que viajan desde la derecha avanzan lentamente hasta entrar en la
+    // "zona del imán" (magnetZone). Una vez que cruzan ese umbral, se aplica una
+    // potencia muy alta para que parezca que una fuerza magnética las acelera de
+    // forma exagerada hacia el centro.
+
+    if (normalized >= magnetZone) {
+      const slowT = (normalized - magnetZone) / (1 - magnetZone);
+      const easedSlow = 1 - Math.pow(1 - slowT, slowExponent);
+      adjustedNormalized = magnetZone + (1 - magnetZone) * easedSlow;
+    } else {
+      const safeZone = Math.max(magnetZone, Number.EPSILON);
+      const magnetT = Math.max(0, Math.min(1, normalized / safeZone));
+      const accelerated = Math.pow(magnetT, magnetStrength);
+      adjustedNormalized = magnetZone * accelerated;
     }
+    adjustedNormalized = Math.max(0, Math.min(1, adjustedNormalized));
   } else {
     const progress = 0.5 + normalized * 0.5;
     if (progress < 0.75) {
