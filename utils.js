@@ -1411,8 +1411,19 @@ loadShapeStretch();
 
 const DEFAULT_LINE_SETTINGS = { enabled: true, opacity: 0.3, width: 4.2 };
 let familyLineSettings = {};
+
+const TRAVEL_INTENSITY_MIN = 0;
+const TRAVEL_INTENSITY_MAX = 2;
+const TRAVEL_MAGNET_MIN = 0.5;
+const TRAVEL_MAGNET_MAX = 2;
+const DEFAULT_TRAVEL_EFFECT = {
+  enabled: true,
+  intensity: 1,
+  magnetZone: 1,
+};
+let travelEffectGlobal = { ...DEFAULT_TRAVEL_EFFECT };
 let familyTravelSettings = {};
-const DEFAULT_TRAVEL_EFFECT = true;
+let travelSettingsLoaded = false;
 
 function sanitizeLineSettings(config = {}) {
   const sanitized = { ...DEFAULT_LINE_SETTINGS };
@@ -1483,60 +1494,209 @@ function resetFamilyLineSettings() {
   persistFamilyLineSettings();
 }
 
+function sanitizeTravelEffectConfig(config = {}, { partial = false } = {}) {
+  const sanitized = partial ? {} : { ...DEFAULT_TRAVEL_EFFECT };
+  if (Object.prototype.hasOwnProperty.call(config, 'enabled')) {
+    sanitized.enabled = !!config.enabled;
+  } else if (!partial && typeof sanitized.enabled !== 'boolean') {
+    sanitized.enabled = DEFAULT_TRAVEL_EFFECT.enabled;
+  }
+  if (Object.prototype.hasOwnProperty.call(config, 'intensity')) {
+    const raw = Number(config.intensity);
+    if (Number.isFinite(raw)) {
+      sanitized.intensity = Math.min(
+        Math.max(raw, TRAVEL_INTENSITY_MIN),
+        TRAVEL_INTENSITY_MAX,
+      );
+    }
+  } else if (!partial && typeof sanitized.intensity !== 'number') {
+    sanitized.intensity = DEFAULT_TRAVEL_EFFECT.intensity;
+  }
+  if (Object.prototype.hasOwnProperty.call(config, 'magnetZone')) {
+    const raw = Number(config.magnetZone);
+    if (Number.isFinite(raw)) {
+      sanitized.magnetZone = Math.min(
+        Math.max(raw, TRAVEL_MAGNET_MIN),
+        TRAVEL_MAGNET_MAX,
+      );
+    }
+  } else if (!partial && typeof sanitized.magnetZone !== 'number') {
+    sanitized.magnetZone = DEFAULT_TRAVEL_EFFECT.magnetZone;
+  }
+  return sanitized;
+}
+
 function loadFamilyTravelSettings() {
+  if (travelSettingsLoaded) return;
+  travelSettingsLoaded = true;
   if (typeof localStorage === 'undefined') return;
   const stored = localStorage.getItem('familyTravelSettings');
   if (!stored) return;
   try {
     const parsed = JSON.parse(stored);
-    if (parsed && typeof parsed === 'object') {
-      familyTravelSettings = Object.entries(parsed).reduce((acc, [family, enabled]) => {
-        acc[family] = !!enabled;
+    if (!parsed || typeof parsed !== 'object') return;
+    let globalConfig = DEFAULT_TRAVEL_EFFECT;
+    let familyConfig = {};
+    if (parsed && typeof parsed === 'boolean') {
+      globalConfig = { ...DEFAULT_TRAVEL_EFFECT, enabled: !!parsed };
+    } else if (Array.isArray(parsed)) {
+      parsed.forEach((entry) => {
+        if (!entry || typeof entry !== 'object') return;
+        if (!entry.family) return;
+        familyConfig[entry.family] = sanitizeTravelEffectConfig(entry, { partial: true });
+      });
+    } else if (
+      Object.prototype.hasOwnProperty.call(parsed, 'global') ||
+      Object.prototype.hasOwnProperty.call(parsed, 'families')
+    ) {
+      if (parsed.global && typeof parsed.global === 'object') {
+        globalConfig = sanitizeTravelEffectConfig(parsed.global);
+      } else if (typeof parsed.global === 'boolean') {
+        globalConfig = {
+          ...DEFAULT_TRAVEL_EFFECT,
+          enabled: parsed.global,
+        };
+      }
+      if (parsed.families && typeof parsed.families === 'object') {
+        familyConfig = Object.entries(parsed.families).reduce((acc, [family, cfg]) => {
+          if (!family) return acc;
+          if (cfg && typeof cfg === 'object') {
+            acc[family] = sanitizeTravelEffectConfig(cfg, { partial: true });
+          } else if (typeof cfg === 'boolean') {
+            acc[family] = { enabled: !!cfg };
+          }
+          return acc;
+        }, {});
+      }
+    } else {
+      familyConfig = Object.entries(parsed).reduce((acc, [family, value]) => {
+        if (!family) return acc;
+        if (value && typeof value === 'object') {
+          acc[family] = sanitizeTravelEffectConfig(value, { partial: true });
+        } else {
+          acc[family] = { enabled: !!value };
+        }
         return acc;
       }, {});
     }
+    travelEffectGlobal = sanitizeTravelEffectConfig(globalConfig);
+    familyTravelSettings = familyConfig;
   } catch {
+    travelEffectGlobal = { ...DEFAULT_TRAVEL_EFFECT };
     familyTravelSettings = {};
   }
 }
 
 function persistFamilyTravelSettings() {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem('familyTravelSettings', JSON.stringify(familyTravelSettings));
+  localStorage.setItem(
+    'familyTravelSettings',
+    JSON.stringify({
+      global: travelEffectGlobal,
+      families: familyTravelSettings,
+    }),
+  );
+}
+
+function getTravelEffectConfig(family) {
+  if (!travelSettingsLoaded) loadFamilyTravelSettings();
+  const base = { ...travelEffectGlobal };
+  if (family && Object.prototype.hasOwnProperty.call(familyTravelSettings, family)) {
+    const override = familyTravelSettings[family];
+    if (override && typeof override === 'object') {
+      return { ...base, ...override };
+    }
+  }
+  return base;
+}
+
+function updateTravelEffectConfig(family, updates = {}) {
+  const sanitized = sanitizeTravelEffectConfig(updates, { partial: true });
+  const hasChanges = Object.keys(sanitized).length > 0;
+  if (!family) {
+    if (hasChanges) {
+      travelEffectGlobal = { ...travelEffectGlobal, ...sanitized };
+    }
+    if (Object.keys(familyTravelSettings).length > 0 && hasChanges) {
+      familyTravelSettings = {};
+    }
+  } else if (hasChanges) {
+    const current = familyTravelSettings[family] || {};
+    familyTravelSettings[family] = { ...current, ...sanitized };
+  }
+  travelSettingsLoaded = true;
+  persistFamilyTravelSettings();
+  return getTravelEffectConfig(family);
 }
 
 function isTravelEffectEnabled(family) {
-  if (!Object.keys(familyTravelSettings).length) loadFamilyTravelSettings();
-  if (family && Object.prototype.hasOwnProperty.call(familyTravelSettings, family)) {
-    return !!familyTravelSettings[family];
-  }
-  return DEFAULT_TRAVEL_EFFECT;
+  return !!getTravelEffectConfig(family).enabled;
 }
 
 function setTravelEffectEnabled(family, enabled) {
-  if (!family) return;
-  familyTravelSettings[family] = !!enabled;
-  persistFamilyTravelSettings();
+  updateTravelEffectConfig(family, { enabled });
 }
 
 function getTravelEffectSettings() {
-  if (!Object.keys(familyTravelSettings).length) loadFamilyTravelSettings();
-  return { ...familyTravelSettings };
+  if (!travelSettingsLoaded) loadFamilyTravelSettings();
+  return {
+    global: { ...travelEffectGlobal },
+    families: Object.entries(familyTravelSettings).reduce((acc, [family, cfg]) => {
+      acc[family] = { ...cfg };
+      return acc;
+    }, {}),
+  };
 }
 
 function setTravelEffectSettings(settings = {}) {
-  familyTravelSettings = Object.entries(settings || {}).reduce(
-    (acc, [family, enabled]) => {
-      acc[family] = !!enabled;
+  if (!settings || typeof settings !== 'object') {
+    travelEffectGlobal = { ...DEFAULT_TRAVEL_EFFECT };
+    familyTravelSettings = {};
+    travelSettingsLoaded = true;
+    persistFamilyTravelSettings();
+    return;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(settings, 'global') ||
+    Object.prototype.hasOwnProperty.call(settings, 'families')
+  ) {
+    travelEffectGlobal = sanitizeTravelEffectConfig(settings.global || {});
+    if (settings.families && typeof settings.families === 'object') {
+      familyTravelSettings = Object.entries(settings.families).reduce(
+        (acc, [family, cfg]) => {
+          if (!family) return acc;
+          if (cfg && typeof cfg === 'object') {
+            acc[family] = sanitizeTravelEffectConfig(cfg, { partial: true });
+          } else if (typeof cfg === 'boolean') {
+            acc[family] = { enabled: !!cfg };
+          }
+          return acc;
+        },
+        {},
+      );
+    } else {
+      familyTravelSettings = {};
+    }
+  } else {
+    familyTravelSettings = Object.entries(settings).reduce((acc, [family, value]) => {
+      if (!family) return acc;
+      if (value && typeof value === 'object') {
+        acc[family] = sanitizeTravelEffectConfig(value, { partial: true });
+      } else {
+        acc[family] = { enabled: !!value };
+      }
       return acc;
-    },
-    {},
-  );
+    }, {});
+    travelEffectGlobal = { ...DEFAULT_TRAVEL_EFFECT };
+  }
+  travelSettingsLoaded = true;
   persistFamilyTravelSettings();
 }
 
 function resetTravelEffectSettings() {
+  travelEffectGlobal = { ...DEFAULT_TRAVEL_EFFECT };
   familyTravelSettings = {};
+  travelSettingsLoaded = true;
   persistFamilyTravelSettings();
 }
 
@@ -1569,7 +1729,7 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
 }
 
 // Calcula la posición y el ancho de una figura alargada considerando la línea de presente
-function applyTravelCurve(offset, canvasWidth) {
+function applyTravelCurve(offset, canvasWidth, config = DEFAULT_TRAVEL_EFFECT) {
   if (!Number.isFinite(offset) || offset === 0) return offset;
 
   const margin = Math.max(canvasWidth * 0.1, 80);
@@ -1585,6 +1745,16 @@ function applyTravelCurve(offset, canvasWidth) {
 
   const normalized = absOffset / maxTravel;
   let adjustedNormalized = normalized;
+  const intensityRaw = config && typeof config.intensity === 'number' ? config.intensity : DEFAULT_TRAVEL_EFFECT.intensity;
+  const magnetRaw = config && typeof config.magnetZone === 'number' ? config.magnetZone : DEFAULT_TRAVEL_EFFECT.magnetZone;
+  const intensityFactor = Math.min(
+    Math.max(intensityRaw, TRAVEL_INTENSITY_MIN),
+    TRAVEL_INTENSITY_MAX,
+  );
+  const magnetFactor = Math.min(
+    Math.max(magnetRaw, TRAVEL_MAGNET_MIN),
+    TRAVEL_MAGNET_MAX,
+  );
 
   if (offset > 0) {
     const slowSpeed = 0.08;
@@ -1613,20 +1783,34 @@ function applyTravelCurve(offset, canvasWidth) {
           invCurveStrength * log1p(expPivot));
     const curvedNormalized =
       slowSpeed * normalized + (fastSpeed - slowSpeed) * integralTerm;
-    adjustedNormalized =
+    let logisticNormalized =
       normalization > 0 ? curvedNormalized / normalization : curvedNormalized;
-    adjustedNormalized = Math.max(0, Math.min(1, adjustedNormalized));
+    logisticNormalized = Math.max(0, Math.min(1, logisticNormalized));
+    const zoneAdjusted =
+      normalized + (logisticNormalized - normalized) * magnetFactor;
+    adjustedNormalized = Math.max(0, Math.min(1, zoneAdjusted));
   } else {
     const progress = 0.5 + normalized * 0.5;
     if (progress < 0.75) {
       const segmentT = Math.max((progress - 0.5) / 0.25, 0);
       const eased = segmentT - 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
       const adjustedProgress = 0.5 + eased * 0.25;
-      adjustedNormalized = Math.max(0, Math.min(1, (adjustedProgress - 0.5) / 0.5));
+      const easedNormalized = Math.max(0, Math.min(1, (adjustedProgress - 0.5) / 0.5));
+      const zoneAdjusted = normalized + (easedNormalized - normalized) * magnetFactor;
+      adjustedNormalized = Math.max(0, Math.min(1, zoneAdjusted));
     }
   }
 
-  const adjustedOffset = adjustedNormalized * maxTravel * Math.sign(offset);
+  let finalNormalized = normalized;
+  const primaryFactor = Math.min(intensityFactor, 1);
+  if (primaryFactor > 0) {
+    finalNormalized = normalized + (adjustedNormalized - normalized) * primaryFactor;
+  }
+  if (intensityFactor > 1) {
+    finalNormalized += (adjustedNormalized - finalNormalized) * (intensityFactor - 1);
+  }
+  finalNormalized = Math.max(0, Math.min(1, finalNormalized));
+  const adjustedOffset = finalNormalized * maxTravel * Math.sign(offset);
   return adjustedOffset;
 }
 
@@ -1636,13 +1820,16 @@ function computeDynamicBounds(
   canvasWidth,
   pixelsPerSecond,
   baseWidth,
-  shape = note.shape
+  shape = note.shape,
+  travelConfig = null,
 ) {
   const center = canvasWidth / 2;
   const linearOffset = (note.start - currentSec) * pixelsPerSecond;
-  const shouldCurve = currentSec <= note.end;
+  const resolvedTravel =
+    travelConfig || (note ? getTravelEffectConfig(note.family) : getTravelEffectConfig());
+  const shouldCurve = currentSec <= note.end && resolvedTravel.enabled !== false;
   const curvedOffset = shouldCurve
-    ? applyTravelCurve(linearOffset, canvasWidth)
+    ? applyTravelCurve(linearOffset, canvasWidth, resolvedTravel)
     : linearOffset;
   const xStart = center + curvedOffset;
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
@@ -1677,7 +1864,8 @@ function computeDiamondBounds(
   currentSec,
   canvasWidth,
   pixelsPerSecond,
-  baseWidth
+  baseWidth,
+  travelConfig = null,
 ) {
   return computeDynamicBounds(
     note,
@@ -1685,7 +1873,8 @@ function computeDiamondBounds(
     canvasWidth,
     pixelsPerSecond,
     baseWidth,
-    'diamond'
+    'diamond',
+    travelConfig,
   );
 }
 
@@ -1929,6 +2118,14 @@ const utils = {
   getAllFamilyLineSettings,
   setAllFamilyLineSettings,
   resetFamilyLineSettings,
+  TRAVEL_INTENSITY_MIN,
+  TRAVEL_INTENSITY_MAX,
+  TRAVEL_MAGNET_MIN,
+  TRAVEL_MAGNET_MAX,
+  DEFAULT_TRAVEL_EFFECT,
+  sanitizeTravelEffectConfig,
+  getTravelEffectConfig,
+  updateTravelEffectConfig,
   isTravelEffectEnabled,
   setTravelEffectEnabled,
   getTravelEffectSettings,

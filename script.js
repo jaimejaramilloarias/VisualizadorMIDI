@@ -62,6 +62,14 @@ const {
   getAllFamilyLineSettings,
   setAllFamilyLineSettings,
   resetFamilyLineSettings,
+  TRAVEL_INTENSITY_MIN,
+  TRAVEL_INTENSITY_MAX,
+  TRAVEL_MAGNET_MIN,
+  TRAVEL_MAGNET_MAX,
+  DEFAULT_TRAVEL_EFFECT,
+  sanitizeTravelEffectConfig,
+  getTravelEffectConfig,
+  updateTravelEffectConfig,
   isTravelEffectEnabled,
   setTravelEffectEnabled,
   getTravelEffectSettings,
@@ -1915,13 +1923,20 @@ if (typeof document !== 'undefined') {
         let opacity = null;
         let width = null;
         let travel = null;
+        let intensity = null;
+        let magnetZone = null;
         let mixedEnabled = false;
         let mixedOpacity = false;
         let mixedWidth = false;
         let mixedTravel = false;
+        let mixedIntensity = false;
+        let mixedMagnet = false;
         families.forEach((family) => {
           const settings = getFamilyLineSettings(family);
-          const travelEnabled = isTravelEffectEnabled(family);
+          const travelConfig = getTravelEffectConfig(family);
+          const travelEnabled = travelConfig.enabled !== false;
+          const travelIntensity = travelConfig.intensity ?? DEFAULT_TRAVEL_EFFECT.intensity;
+          const travelMagnet = travelConfig.magnetZone ?? DEFAULT_TRAVEL_EFFECT.magnetZone;
           if (enabled === null) {
             enabled = settings.enabled;
           } else if (enabled !== settings.enabled) {
@@ -1942,23 +1957,40 @@ if (typeof document !== 'undefined') {
           } else if (travel !== travelEnabled) {
             mixedTravel = true;
           }
+          if (intensity === null) {
+            intensity = travelIntensity;
+          } else if (Math.abs(intensity - travelIntensity) > 1e-6) {
+            mixedIntensity = true;
+          }
+          if (magnetZone === null) {
+            magnetZone = travelMagnet;
+          } else if (Math.abs(magnetZone - travelMagnet) > 1e-6) {
+            mixedMagnet = true;
+          }
         });
         if (enabled === null) {
           const defaults = getFamilyLineSettings('');
           enabled = defaults.enabled;
           opacity = defaults.opacity;
           width = defaults.width;
-          travel = isTravelEffectEnabled();
+          const defaultsTravel = getTravelEffectConfig();
+          travel = defaultsTravel.enabled !== false;
+          intensity = defaultsTravel.intensity ?? DEFAULT_TRAVEL_EFFECT.intensity;
+          magnetZone = defaultsTravel.magnetZone ?? DEFAULT_TRAVEL_EFFECT.magnetZone;
         }
         return {
           enabled,
           opacity,
           width,
           travel,
+          intensity,
+          magnetZone,
           mixedEnabled,
           mixedOpacity,
           mixedWidth,
           mixedTravel,
+          mixedIntensity,
+          mixedMagnet,
         };
       };
 
@@ -2299,6 +2331,61 @@ if (typeof document !== 'undefined') {
       instrumentShapeControl.appendChild(instrumentShapeHint);
       instrumentConfig.appendChild(instrumentShapeControl);
 
+      const instrumentTravelControl = document.createElement('div');
+      instrumentTravelControl.className = 'family-config-item family-config-group';
+      const instrumentTravelLabel = document.createElement('label');
+      instrumentTravelLabel.className = 'family-line-toggle';
+      const instrumentTravelToggle = document.createElement('input');
+      instrumentTravelToggle.type = 'checkbox';
+      instrumentTravelLabel.appendChild(instrumentTravelToggle);
+      instrumentTravelLabel.appendChild(
+        document.createTextNode(' Viaje desde NOTE ON'),
+      );
+      const instrumentTravelHint = document.createElement('span');
+      instrumentTravelHint.className = 'control-hint';
+      instrumentTravelControl.appendChild(instrumentTravelLabel);
+      instrumentTravelControl.appendChild(instrumentTravelHint);
+
+      const instrumentTravelIntensityRow = document.createElement('div');
+      instrumentTravelIntensityRow.className = 'family-line-row';
+      const instrumentTravelIntensityText = document.createElement('span');
+      instrumentTravelIntensityText.textContent = 'Intensidad';
+      const instrumentTravelIntensityControl = document.createElement('div');
+      instrumentTravelIntensityControl.className = 'family-line-range';
+      const instrumentTravelIntensityInput = document.createElement('input');
+      instrumentTravelIntensityInput.type = 'range';
+      instrumentTravelIntensityInput.min = String(Math.round(TRAVEL_INTENSITY_MIN * 100));
+      instrumentTravelIntensityInput.max = String(Math.round(TRAVEL_INTENSITY_MAX * 100));
+      instrumentTravelIntensityInput.step = '5';
+      const instrumentTravelIntensityValue = document.createElement('span');
+      instrumentTravelIntensityValue.className = 'range-value';
+      instrumentTravelIntensityControl.appendChild(instrumentTravelIntensityInput);
+      instrumentTravelIntensityControl.appendChild(instrumentTravelIntensityValue);
+      instrumentTravelIntensityRow.appendChild(instrumentTravelIntensityText);
+      instrumentTravelIntensityRow.appendChild(instrumentTravelIntensityControl);
+      instrumentTravelControl.appendChild(instrumentTravelIntensityRow);
+
+      const instrumentTravelMagnetRow = document.createElement('div');
+      instrumentTravelMagnetRow.className = 'family-line-row';
+      const instrumentTravelMagnetText = document.createElement('span');
+      instrumentTravelMagnetText.textContent = 'Zona magnética';
+      const instrumentTravelMagnetControl = document.createElement('div');
+      instrumentTravelMagnetControl.className = 'family-line-range';
+      const instrumentTravelMagnetInput = document.createElement('input');
+      instrumentTravelMagnetInput.type = 'range';
+      instrumentTravelMagnetInput.min = String(Math.round(TRAVEL_MAGNET_MIN * 100));
+      instrumentTravelMagnetInput.max = String(Math.round(TRAVEL_MAGNET_MAX * 100));
+      instrumentTravelMagnetInput.step = '5';
+      const instrumentTravelMagnetValue = document.createElement('span');
+      instrumentTravelMagnetValue.className = 'range-value';
+      instrumentTravelMagnetControl.appendChild(instrumentTravelMagnetInput);
+      instrumentTravelMagnetControl.appendChild(instrumentTravelMagnetValue);
+      instrumentTravelMagnetRow.appendChild(instrumentTravelMagnetText);
+      instrumentTravelMagnetRow.appendChild(instrumentTravelMagnetControl);
+      instrumentTravelControl.appendChild(instrumentTravelMagnetRow);
+
+      instrumentConfig.appendChild(instrumentTravelControl);
+
       const instrumentOutlineControl = document.createElement('div');
       instrumentOutlineControl.className = 'family-config-item family-config-group instrument-outline-control';
 
@@ -2454,6 +2541,36 @@ if (typeof document !== 'undefined') {
         }
       });
 
+      const applyInstrumentTravelUpdate = (updates = {}) => {
+        const trackName = instrumentSelect.value;
+        if (!trackName) return;
+        setInstrumentCustomization(
+          trackName,
+          { travel: updates },
+          currentTracks,
+          notes,
+          getEditStartTime(),
+        );
+        requestImmediateRender();
+        updateInstrumentColorControl();
+      };
+
+      instrumentTravelToggle.addEventListener('change', () => {
+        applyInstrumentTravelUpdate({ enabled: instrumentTravelToggle.checked });
+      });
+
+      instrumentTravelIntensityInput.addEventListener('input', () => {
+        const raw = parseFloat(instrumentTravelIntensityInput.value);
+        if (!Number.isFinite(raw)) return;
+        applyInstrumentTravelUpdate({ intensity: raw / 100 });
+      });
+
+      instrumentTravelMagnetInput.addEventListener('input', () => {
+        const raw = parseFloat(instrumentTravelMagnetInput.value);
+        if (!Number.isFinite(raw)) return;
+        applyInstrumentTravelUpdate({ magnetZone: raw / 100 });
+      });
+
       const instrumentResetControl = document.createElement('div');
       instrumentResetControl.className = 'family-config-item family-config-group';
       const instrumentResetBtn = document.createElement('button');
@@ -2477,6 +2594,9 @@ if (typeof document !== 'undefined') {
         instrumentOutlineOpacityInput.disabled = disabled;
         instrumentOutlineColorAuto.disabled = disabled;
         instrumentOutlineColorInput.disabled = disabled || instrumentOutlineColorAuto.checked;
+        instrumentTravelToggle.disabled = disabled;
+        instrumentTravelIntensityInput.disabled = disabled;
+        instrumentTravelMagnetInput.disabled = disabled;
       };
 
       instrumentSelect.addEventListener('change', () => {
@@ -2563,6 +2683,20 @@ if (typeof document !== 'undefined') {
           instrumentOutlineColorInput.value = '#FFFFFF';
           instrumentOutlineColorHint.textContent = '';
           instrumentOutlineColorHint.classList.add('hint-active');
+          instrumentTravelToggle.indeterminate = false;
+          instrumentTravelToggle.checked = false;
+          instrumentTravelHint.textContent = 'Selecciona un instrumento';
+          instrumentTravelHint.classList.add('hint-active');
+          instrumentTravelIntensityInput.value = String(
+            Math.round(DEFAULT_TRAVEL_EFFECT.intensity * 100),
+          );
+          instrumentTravelIntensityValue.textContent = '';
+          instrumentTravelIntensityInput.disabled = true;
+          instrumentTravelMagnetInput.value = String(
+            Math.round(DEFAULT_TRAVEL_EFFECT.magnetZone * 100),
+          );
+          instrumentTravelMagnetValue.textContent = '';
+          instrumentTravelMagnetInput.disabled = true;
           return;
         }
         setInstrumentControlsEnabled(true);
@@ -2692,6 +2826,41 @@ if (typeof document !== 'undefined') {
           instrumentOutlineColorHint.textContent = 'Color de la figura (familia)';
           instrumentOutlineColorHint.classList.add('hint-active');
         }
+
+        const travelOverride = override.travel || null;
+        const travelHas = (key) =>
+          !!(travelOverride && Object.prototype.hasOwnProperty.call(travelOverride, key));
+        const baseFamily = assignedFamily || track.family;
+        const familyTravel = getTravelEffectConfig(baseFamily);
+        const effectiveTravel = travelOverride
+          ? { ...familyTravel, ...travelOverride }
+          : familyTravel;
+        const travelActive = effectiveTravel.enabled !== false;
+        instrumentTravelToggle.indeterminate = false;
+        instrumentTravelToggle.checked = travelActive;
+        if (travelHas('enabled') || travelHas('intensity') || travelHas('magnetZone')) {
+          instrumentTravelHint.textContent = 'Viaje personalizado';
+          instrumentTravelHint.classList.remove('hint-active');
+        } else {
+          instrumentTravelHint.textContent = 'Usa configuración de familia';
+          instrumentTravelHint.classList.add('hint-active');
+        }
+        const travelIntensityPercent = Math.round(
+          (effectiveTravel.intensity ?? DEFAULT_TRAVEL_EFFECT.intensity) * 100,
+        );
+        instrumentTravelIntensityInput.value = String(travelIntensityPercent);
+        instrumentTravelIntensityValue.textContent = travelHas('intensity')
+          ? `${travelIntensityPercent}% (pers.)`
+          : `${travelIntensityPercent}% (familia)`;
+        instrumentTravelIntensityInput.disabled = !travelActive;
+        const travelMagnetPercent = Math.round(
+          (effectiveTravel.magnetZone ?? DEFAULT_TRAVEL_EFFECT.magnetZone) * 100,
+        );
+        instrumentTravelMagnetInput.value = String(travelMagnetPercent);
+        instrumentTravelMagnetValue.textContent = travelHas('magnetZone')
+          ? `${travelMagnetPercent}% (pers.)`
+          : `${travelMagnetPercent}% (familia)`;
+        instrumentTravelMagnetInput.disabled = !travelActive;
       };
 
       instrumentScopeSection.appendChild(instrumentConfig);
@@ -3705,6 +3874,44 @@ if (typeof document !== 'undefined') {
       );
       lineControl.appendChild(travelToggleLabel);
 
+      const intensityRow = document.createElement('div');
+      intensityRow.className = 'family-line-row';
+      const intensityLabel = document.createElement('span');
+      intensityLabel.textContent = 'Intensidad';
+      const intensityControl = document.createElement('div');
+      intensityControl.className = 'family-line-range';
+      const travelIntensity = document.createElement('input');
+      travelIntensity.type = 'range';
+      travelIntensity.min = String(Math.round(TRAVEL_INTENSITY_MIN * 100));
+      travelIntensity.max = String(Math.round(TRAVEL_INTENSITY_MAX * 100));
+      travelIntensity.step = '5';
+      const travelIntensityValue = document.createElement('span');
+      travelIntensityValue.className = 'range-value';
+      intensityControl.appendChild(travelIntensity);
+      intensityControl.appendChild(travelIntensityValue);
+      intensityRow.appendChild(intensityLabel);
+      intensityRow.appendChild(intensityControl);
+      lineControl.appendChild(intensityRow);
+
+      const magnetRow = document.createElement('div');
+      magnetRow.className = 'family-line-row';
+      const magnetLabel = document.createElement('span');
+      magnetLabel.textContent = 'Zona magnética';
+      const magnetControl = document.createElement('div');
+      magnetControl.className = 'family-line-range';
+      const travelMagnet = document.createElement('input');
+      travelMagnet.type = 'range';
+      travelMagnet.min = String(Math.round(TRAVEL_MAGNET_MIN * 100));
+      travelMagnet.max = String(Math.round(TRAVEL_MAGNET_MAX * 100));
+      travelMagnet.step = '5';
+      const travelMagnetValue = document.createElement('span');
+      travelMagnetValue.className = 'range-value';
+      magnetControl.appendChild(travelMagnet);
+      magnetControl.appendChild(travelMagnetValue);
+      magnetRow.appendChild(magnetLabel);
+      magnetRow.appendChild(magnetControl);
+      lineControl.appendChild(magnetRow);
+
       const updateLineControl = () => {
         const state = getLineState(familyTargetSelect.value);
         lineToggle.checked = state.enabled;
@@ -3721,6 +3928,16 @@ if (typeof document !== 'undefined') {
           : Number(state.width).toFixed(2);
         travelToggle.checked = state.travel;
         travelToggle.indeterminate = state.mixedTravel;
+        const intensityPercent = Math.round((state.intensity ?? DEFAULT_TRAVEL_EFFECT.intensity) * 100);
+        travelIntensity.value = String(intensityPercent);
+        travelIntensity.disabled = !state.travel && !state.mixedTravel;
+        travelIntensityValue.textContent = state.mixedIntensity
+          ? '—'
+          : `${intensityPercent}%`;
+        const magnetPercent = Math.round((state.magnetZone ?? DEFAULT_TRAVEL_EFFECT.magnetZone) * 100);
+        travelMagnet.value = String(magnetPercent);
+        travelMagnet.disabled = !state.travel && !state.mixedTravel;
+        travelMagnetValue.textContent = state.mixedMagnet ? '—' : `${magnetPercent}%`;
       };
 
       lineToggle.addEventListener('change', () => {
@@ -3751,9 +3968,46 @@ if (typeof document !== 'undefined') {
       travelToggle.addEventListener('change', () => {
         const enabled = travelToggle.checked;
         travelToggle.indeterminate = false;
-        familiesFromSelection(familyTargetSelect.value).forEach((family) =>
-          setTravelEffectEnabled(family, enabled),
-        );
+        const target = familyTargetSelect.value;
+        if (target) {
+          familiesFromSelection(target).forEach((family) =>
+            setTravelEffectEnabled(family, enabled),
+          );
+        } else {
+          setTravelEffectEnabled(null, enabled);
+        }
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+
+      travelIntensity.addEventListener('input', () => {
+        const raw = parseFloat(travelIntensity.value);
+        if (!Number.isFinite(raw)) return;
+        const normalized = raw / 100;
+        const target = familyTargetSelect.value;
+        if (target) {
+          familiesFromSelection(target).forEach((family) =>
+            updateTravelEffectConfig(family, { intensity: normalized }),
+          );
+        } else {
+          updateTravelEffectConfig(null, { intensity: normalized });
+        }
+        renderFrame(lastTime);
+        updateLineControl();
+      });
+
+      travelMagnet.addEventListener('input', () => {
+        const raw = parseFloat(travelMagnet.value);
+        if (!Number.isFinite(raw)) return;
+        const normalized = raw / 100;
+        const target = familyTargetSelect.value;
+        if (target) {
+          familiesFromSelection(target).forEach((family) =>
+            updateTravelEffectConfig(family, { magnetZone: normalized }),
+          );
+        } else {
+          updateTravelEffectConfig(null, { magnetZone: normalized });
+        }
         renderFrame(lastTime);
         updateLineControl();
       });
@@ -4318,10 +4572,28 @@ if (typeof document !== 'undefined') {
       const margin = Math.max(canvas.width * 0.1, 80);
 
       const snapHalf = (value) => Math.round(value * 2) / 2;
-      const computeLayoutAt = (note, time) => {
+      const resolveNoteTravelConfig = (note) => {
+        if (!note) return { ...DEFAULT_TRAVEL_EFFECT };
+        const trackKey = note.trackName ?? note.instrument;
+        const assignedFamily = trackKey ? assignedFamilies[trackKey] : null;
+        const family = assignedFamily || note.family;
+        const baseConfig = getTravelEffectConfig(family);
+        const override = trackKey ? instrumentCustomizations[trackKey] : null;
+        const travelOverride =
+          override && override.travel && typeof override.travel === 'object'
+            ? sanitizeTravelEffectConfig(override.travel, { partial: true })
+            : null;
+        if (travelOverride && Object.keys(travelOverride).length > 0) {
+          return { ...baseConfig, ...travelOverride };
+        }
+        return baseConfig;
+      };
+
+      const computeLayoutAt = (note, time, travelConfig = null) => {
         const { sizeFactor, bump } = getFamilyModifiers(note.family);
         let baseHeight = noteHeight * sizeFactor * getHeightScale(note.family);
         baseHeight = computeVelocityHeight(baseHeight, note.velocity || velocityBase);
+        const travelSettings = travelConfig || resolveNoteTravelConfig(note);
         const { xStart: rawXStart, width: rawWidth } = computeDynamicBounds(
           note,
           time,
@@ -4329,6 +4601,7 @@ if (typeof document !== 'undefined') {
           pixelsPerSecond,
           baseHeight,
           note.shape,
+          travelSettings,
         );
         const clamped = Math.min(Math.max(note.noteNumber, NOTE_MIN), NOTE_MAX);
         const height = computeBumpHeight(
@@ -4375,7 +4648,8 @@ if (typeof document !== 'undefined') {
       for (let i = startIndex; i < endIndex; i++) {
         const note = notes[i];
         if (enabledInstruments[note.trackName ?? note.instrument] === false) continue;
-        const metrics = computeLayoutAt(note, currentSec);
+        const travelConfig = resolveNoteTravelConfig(note);
+        const metrics = computeLayoutAt(note, currentSec, travelConfig);
         if (metrics.xEnd < -margin || metrics.xStart > canvas.width + margin) continue;
 
         const layout = {
@@ -4394,7 +4668,7 @@ if (typeof document !== 'undefined') {
           else trackSegments.set(trackKey, [layout]);
         }
 
-        const travelEnabled = isTravelEffectEnabled(note.family);
+        const travelEnabled = travelConfig.enabled !== false;
         if (travelEnabled && note.next && note.next.start > note.start) {
           const travelDuration = note.next.start - note.start;
           if (travelDuration > 0) {
@@ -4513,8 +4787,10 @@ if (typeof document !== 'undefined') {
         const duration = note.next.start - note.start;
         if (duration <= 0) return;
         const clamped = Math.min(Math.max(progress, 0), 1);
-        const startLayout = computeLayoutAt(note, note.start);
-        const targetLayout = computeLayoutAt(note.next, note.next.start);
+        const noteTravel = resolveNoteTravelConfig(note);
+        const nextTravel = resolveNoteTravelConfig(note.next);
+        const startLayout = computeLayoutAt(note, note.start, noteTravel);
+        const targetLayout = computeLayoutAt(note.next, note.next.start, nextTravel);
         const startShift = (currentSec - note.start) * pixelsPerSecond;
         const targetShift = (currentSec - note.next.start) * pixelsPerSecond;
         const startLeft = startLayout.alignmentX - startShift;
@@ -5017,6 +5293,16 @@ function sanitizeInstrumentCustomization(entry = {}) {
       result.family = fam;
     }
   }
+  if (Object.prototype.hasOwnProperty.call(entry, 'travel')) {
+    if (entry.travel === null) {
+      // Explicit removal is handled elsewhere
+    } else if (entry.travel && typeof entry.travel === 'object') {
+      const normalizedTravel = sanitizeTravelEffectConfig(entry.travel, { partial: true });
+      if (normalizedTravel && Object.keys(normalizedTravel).length > 0) {
+        result.travel = normalizedTravel;
+      }
+    }
+  }
   return Object.keys(result).length > 0 ? result : null;
 }
 
@@ -5420,6 +5706,17 @@ function setInstrumentCustomization(
       const normalized = sanitizeOutlineOverride(outline);
       if (Object.keys(normalized).length > 0) {
         next.outline = { ...(next.outline || {}), ...normalized };
+      }
+    }
+  }
+  if (options && Object.prototype.hasOwnProperty.call(options, 'travel')) {
+    const travelUpdates = options.travel;
+    if (travelUpdates === null) {
+      delete next.travel;
+    } else if (travelUpdates && typeof travelUpdates === 'object') {
+      const normalizedTravel = sanitizeTravelEffectConfig(travelUpdates, { partial: true });
+      if (Object.keys(normalizedTravel).length > 0) {
+        next.travel = { ...(next.travel || {}), ...normalizedTravel };
       }
     }
   }
@@ -5962,5 +6259,12 @@ if (typeof module !== 'undefined') {
     clearAllFamilyStretch,
     isStretchEnabledForFamily,
     isExtensionEnabledForFamily,
+    getTravelEffectConfig,
+    updateTravelEffectConfig,
+    isTravelEffectEnabled,
+    setTravelEffectEnabled,
+    getTravelEffectSettings,
+    setTravelEffectSettings,
+    resetTravelEffectSettings,
   };
 }
