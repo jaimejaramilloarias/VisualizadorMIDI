@@ -1569,6 +1569,45 @@ function computeNoteWidth(note, noteHeight, pixelsPerSecond) {
 }
 
 // Calcula la posición y el ancho de una figura alargada considerando la línea de presente
+function applyTravelCurve(offset, canvasWidth) {
+  if (!Number.isFinite(offset) || offset === 0) return offset;
+
+  const margin = Math.max(canvasWidth * 0.1, 80);
+  const maxTravel = canvasWidth / 2 + margin;
+  const absOffset = Math.abs(offset);
+  if (!Number.isFinite(maxTravel) || maxTravel <= 0) {
+    return offset;
+  }
+
+  if (absOffset >= maxTravel) {
+    return offset;
+  }
+
+  const normalized = absOffset / maxTravel;
+  let adjustedNormalized = normalized;
+
+  if (offset > 0) {
+    const progress = (1 - normalized) * 0.5;
+    if (progress > 0.25) {
+      const segmentT = Math.min((progress - 0.25) / 0.25, 1);
+      const eased = segmentT + 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
+      const adjustedProgress = 0.25 + eased * 0.25;
+      adjustedNormalized = Math.max(0, 1 - adjustedProgress / 0.5);
+    }
+  } else {
+    const progress = 0.5 + normalized * 0.5;
+    if (progress < 0.75) {
+      const segmentT = Math.max((progress - 0.5) / 0.25, 0);
+      const eased = segmentT - 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
+      const adjustedProgress = 0.5 + eased * 0.25;
+      adjustedNormalized = Math.max(0, Math.min(1, (adjustedProgress - 0.5) / 0.5));
+    }
+  }
+
+  const adjustedOffset = adjustedNormalized * maxTravel * Math.sign(offset);
+  return adjustedOffset;
+}
+
 function computeDynamicBounds(
   note,
   currentSec,
@@ -1578,7 +1617,8 @@ function computeDynamicBounds(
   shape = note.shape
 ) {
   const center = canvasWidth / 2;
-  const xStart = center + (note.start - currentSec) * pixelsPerSecond;
+  const linearOffset = (note.start - currentSec) * pixelsPerSecond;
+  const xStart = center + applyTravelCurve(linearOffset, canvasWidth);
   const finalWidth = (note.end - note.start) * pixelsPerSecond;
   const effectiveShape = shape || note.shape;
   const doubleShape = isDoubleShape(effectiveShape);
