@@ -73,6 +73,44 @@ const notes = [
   { start: 2, end: 4, noteNumber: 60, color: '#fff', shape: 'square', family: 'Metales', velocity: 64 },
 ];
 
+function computeCurvedX(note, time, center, canvasWidth, pixelsPerSecond) {
+  const offset = (note.start - time) * pixelsPerSecond;
+  const curvedOffset = applyExpectedCurve(offset, canvasWidth);
+  return Math.round((center + curvedOffset) * 2) / 2;
+}
+
+function applyExpectedCurve(offset, canvasWidth) {
+  if (!Number.isFinite(offset) || offset === 0) {
+    return offset;
+  }
+  const margin = Math.max(canvasWidth * 0.1, 80);
+  const maxTravel = canvasWidth / 2 + margin;
+  const absOffset = Math.abs(offset);
+  if (!Number.isFinite(maxTravel) || maxTravel <= 0 || absOffset >= maxTravel) {
+    return offset;
+  }
+  const normalized = absOffset / maxTravel;
+  let adjustedNormalized = normalized;
+  if (offset > 0) {
+    const progress = (1 - normalized) * 0.5;
+    if (progress > 0.25) {
+      const segmentT = Math.min((progress - 0.25) / 0.25, 1);
+      const eased = segmentT + 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
+      const adjustedProgress = 0.25 + eased * 0.25;
+      adjustedNormalized = Math.max(0, 1 - adjustedProgress / 0.5);
+    }
+  } else {
+    const progress = 0.5 + normalized * 0.5;
+    if (progress < 0.75) {
+      const segmentT = Math.max(Math.min((progress - 0.5) / 0.25, 1), 0);
+      const eased = segmentT - 0.8 * segmentT * segmentT * (1 - segmentT) * (1 - segmentT);
+      const adjustedProgress = 0.5 + eased * 0.25;
+      adjustedNormalized = Math.max(0, Math.min(1, (adjustedProgress - 0.5) / 0.5));
+    }
+  }
+  return Math.sign(offset) * adjustedNormalized * maxTravel;
+}
+
 dom.window.__setTestNotes(notes);
 
 const offscreen = contexts[1];
@@ -86,13 +124,17 @@ assert(Math.abs(atStart.x - center) <= 0.5, 'El borde izquierdo debe alinearse c
 offscreen.rects.length = 0;
 dom.window.__renderFrame(1.5);
 const beforeStart = offscreen.rects[0];
-const expectedFuture = Math.round((center + (notes[0].start - 1.5) * pixelsPerSecond) * 2) / 2;
-assert(Math.abs(beforeStart.x - expectedFuture) <= 0.5, 'El avance futuro debe mantener el borde alineado al NOTE ON');
+const linearFuture = center + (notes[0].start - 1.5) * pixelsPerSecond;
+const curvedFuture = computeCurvedX(notes[0], 1.5, center, canvas.width, pixelsPerSecond);
+assert(Math.abs(beforeStart.x - curvedFuture) <= 0.5, 'El avance futuro debe respetar la curva de aceleración previa al NOTE ON');
+assert(beforeStart.x <= linearFuture - 0.25, 'La aceleración previa debe acercar la figura al centro respecto al desplazamiento lineal');
 
 offscreen.rects.length = 0;
-dom.window.__renderFrame(4.5);
+dom.window.__renderFrame(4);
 const afterEnd = offscreen.rects[0];
-const expectedPast = Math.round((center + (notes[0].start - 4.5) * pixelsPerSecond) * 2) / 2;
-assert(Math.abs(afterEnd.x - expectedPast) <= 0.5, 'El retroceso pasado debe mantener el borde alineado al NOTE ON');
+const linearPast = center + (notes[0].start - 4) * pixelsPerSecond;
+const curvedPast = computeCurvedX(notes[0], 4, center, canvas.width, pixelsPerSecond);
+assert(Math.abs(afterEnd.x - curvedPast) <= 0.5, 'El retroceso debe respetar la curva de desaceleración posterior al NOTE OFF');
+assert(afterEnd.x >= linearPast + 0.5, 'La desaceleración posterior debe mantener la figura más cerca del centro que el desplazamiento lineal');
 
 console.log('Pruebas de alineación de notas completadas');
