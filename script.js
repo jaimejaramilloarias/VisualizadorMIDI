@@ -405,10 +405,14 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
-    const familyShortcutBtn = document.getElementById('open-family-panel');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerControls = document.getElementById('developer-controls');
+    const floatingWindows = new Map(
+      Array.from(document.querySelectorAll('.floating-window')).map((el) => [el.id, el]),
+    );
+    const familyWindow = floatingWindows.get('family-window');
+    const tapWindow = floatingWindows.get('tap-window');
     let globalSettingsContainer = null;
     const assignmentModal = document.getElementById('assignment-modal');
     const modalInstrumentList = document.getElementById('modal-instrument-list');
@@ -468,28 +472,70 @@ if (typeof document !== 'undefined') {
       }
     };
 
-    const ensureFamilyPanelOpen = () => {
-      if (familyPanel && !familyPanel.classList.contains('active')) {
-        familyPanel.classList.add('active');
+    const isWindowOpen = (windowEl) => windowEl && !windowEl.classList.contains('hidden');
+
+    const toggleWindowVisibility = (windowId, forceState) => {
+      const windowEl = floatingWindows.get(windowId);
+      if (!windowEl) return false;
+      const nextState =
+        typeof forceState === 'boolean' ? forceState : !isWindowOpen(windowEl);
+      windowEl.classList.toggle('hidden', !nextState);
+      if (windowEl === familyWindow && familyPanel) {
+        familyPanel.classList.toggle('active', nextState);
       }
+      return nextState;
+    };
+
+    const syncFamilyToggleLabel = () => {
       if (toggleFamilyPanelBtn) {
-        toggleFamilyPanelBtn.textContent = '▲';
+        toggleFamilyPanelBtn.textContent = isWindowOpen(familyWindow) ? '▲' : '▼';
       }
     };
 
-    if (familyPanel) {
-      familyPanel.classList.add('active');
-    }
-    if (toggleFamilyPanelBtn) {
-      toggleFamilyPanelBtn.textContent = '▲';
-    }
+    const ensureFamilyPanelOpen = () => {
+      toggleWindowVisibility('family-window', true);
+      syncFamilyToggleLabel();
+    };
 
-    if (familyShortcutBtn) {
-      familyShortcutBtn.addEventListener('click', () => {
-        focusAdvancedTab('familias');
-        ensureFamilyPanelOpen();
+    syncFamilyToggleLabel();
+
+    const windowTriggers = Array.from(document.querySelectorAll('[data-window-target]'));
+    windowTriggers.forEach((trigger) => {
+      const targetId = trigger.dataset.windowTarget;
+      const mode = trigger.dataset.windowMode === 'toggle' ? 'toggle' : 'open';
+      trigger.addEventListener('click', () => {
+        if (!targetId) return;
+        const desiredState = mode === 'toggle' ? undefined : true;
+        toggleWindowVisibility(targetId, desiredState);
+        if (targetId === 'family-window') {
+          focusAdvancedTab('familias');
+          syncFamilyToggleLabel();
+        }
+        if (targetId === 'tap-window') {
+          focusAdvancedTab('tap');
+        }
       });
-    }
+    });
+
+    const windowClosers = Array.from(document.querySelectorAll('[data-close-window]'));
+    windowClosers.forEach((btn) => {
+      const targetId = btn.dataset.closeWindow;
+      btn.addEventListener('click', () => {
+        toggleWindowVisibility(targetId, false);
+        if (targetId === 'family-window') {
+          syncFamilyToggleLabel();
+        }
+      });
+    });
+
+    floatingWindows.forEach((windowEl, id) => {
+      windowEl.addEventListener('click', (event) => {
+        if (event.target === windowEl) {
+          toggleWindowVisibility(id, false);
+          if (id === 'family-window') syncFamilyToggleLabel();
+        }
+      });
+    });
 
     const DOUBLE_SHAPE_PATTERN = /double$/i;
     const isDoubleShapeName = (shape) =>
@@ -4256,12 +4302,6 @@ if (typeof document !== 'undefined') {
       saveAssignments();
       buildFamilyPanel();
       assignmentModal.style.display = 'none';
-    });
-
-    toggleFamilyPanelBtn.addEventListener('click', () => {
-      focusAdvancedTab('familias');
-      const open = familyPanel.classList.toggle('active');
-      toggleFamilyPanelBtn.textContent = open ? '▲' : '▼';
     });
 
     buildFamilyPanel();

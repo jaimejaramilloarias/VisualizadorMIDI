@@ -154,9 +154,10 @@
                 <p class="summary-subtitle">Accesos directos a configuraciones avanzadas.</p>
                 <nav id="bottom-menu">
                   <button
-                    id="open-family-panel"
+                    id="open-family-shortcut"
+                    data-window-target="family-window"
                     title="Ir al panel de familias"
-                    data-help="Abre la pestaña de familias y despliega sus controles detallados."
+                    data-help="Abre la ventana de familias y despliega sus controles detallados."
                   >Familias</button>
                   <button
                     id="tap-tempo-mode-secondary"
@@ -189,115 +190,194 @@
         </div>
 
         <div class="advanced-stage tabbed-card" data-tab-group="advanced-tabs">
-          <div class="tab-header subtle">
-            <button class="tab-trigger active" data-tab-target="familias">Familias</button>
-            <button class="tab-trigger" data-tab-target="tap">Tap tempo</button>
+          <div class="tab-header subtle compact-tabs">
+            <div class="tab-group-label">
+              <span class="tiny-label">Avanzado</span>
+              <strong>Paneles flotantes</strong>
+            </div>
+            <div class="tab-trigger-row">
+              <button class="tab-trigger active" data-tab-target="familias">Familias</button>
+              <button class="tab-trigger" data-tab-target="tap">Tap tempo</button>
+            </div>
           </div>
           <div class="tab-panels">
             <div class="tab-panel active" data-tab-panel="familias">
-              <div class="tab-panel-header">
+              <div class="micro-card">
                 <div>
                   <div class="summary-title">Color y forma</div>
-                  <p class="summary-subtitle">Organiza cada familia sin perder la vista principal.</p>
+                  <p class="summary-subtitle">Personaliza familias en una ventana dedicada.</p>
                 </div>
-                <button
-                  id="toggle-family-panel"
-                  class="ghost-button"
-                  title="Panel de familias"
-                  data-help="Despliega el panel para personalizar color y figura de cada familia."
-                >Panel de familias</button>
+                <div class="chip-row">
+                  <button
+                    id="open-family-panel"
+                    class="chip-button"
+                    data-window-target="family-window"
+                    title="Abrir panel de familias"
+                    data-help="Abre una ventana flotante para ajustar color, forma y asignaciones de cada familia."
+                  >Abrir panel</button>
+                  <button
+                    id="toggle-family-panel"
+                    class="chip-button ghost"
+                    data-window-target="family-window"
+                    data-window-mode="toggle"
+                    title="Mostrar u ocultar el panel"
+                    data-help="Despliega u oculta la ventana de familias sin perder la configuración."
+                  >▼</button>
+                </div>
               </div>
-              <div class="panel-body">
-                <div id="family-config-panel" class="active">
-                  <div id="developer-controls"></div>
+              <div class="micro-grid">
+                <div class="micro-card muted">
+                  <p class="micro-title">Atajos rápidos</p>
+                  <p class="micro-text">Asigna familias desde el modal de instrumentos y conserva tus combinaciones favoritas.</p>
+                </div>
+                <div class="micro-card muted">
+                  <p class="micro-title">Visual compacto</p>
+                  <p class="micro-text">Los controles se agrupan por secciones para evitar desbordes y mantener todo visible.</p>
                 </div>
               </div>
             </div>
 
             <div class="tab-panel" data-tab-panel="tap">
-              <div class="tab-panel-header">
+              <div class="micro-card">
                 <div>
                   <div class="summary-title">Mapa de tempo</div>
-                  <p class="summary-subtitle">Pulsa, edita marcadores y refina la sincronía.</p>
+                  <p class="summary-subtitle">Pulsa y ajusta marcadores sin salir del lienzo.</p>
                 </div>
-                <button
-                  id="tap-tempo-mode-tertiary"
-                  data-action="tap-tempo"
-                  class="ghost-button"
-                  title="Modo tap tempo"
-                  data-help="Alterna rápidamente al panel de tap tempo."
-                >Abrir tap tempo</button>
+                <div class="chip-row">
+                  <button
+                    id="tap-tempo-mode-tertiary"
+                    data-action="tap-tempo"
+                    class="chip-button"
+                    data-window-target="tap-window"
+                    title="Abrir herramientas de tap tempo"
+                    data-help="Activa las herramientas de tap tempo en una ventana flotante."
+                  >Abrir tap tempo</button>
+                  <button
+                    class="chip-button ghost"
+                    data-window-target="tap-window"
+                    data-window-mode="toggle"
+                    title="Mostrar u ocultar la ventana de tap tempo"
+                  >▼</button>
+                </div>
               </div>
-              <div class="panel-body">
-                <div id="tap-tempo-panel" class="hidden">
-                  <div id="tap-tempo-controls">
-                    <button
-                      id="start-tap-tempo"
-                      title="Iniciar captura de tap tempo"
-                      data-help="Reproduce el audio desde el inicio y registra tus pulsos con cualquier tecla."
-                    >Iniciar tap tempo</button>
-                    <button
-                      id="stop-tap-tempo"
-                      title="Detener o reiniciar el proceso de tap tempo"
-                      data-help="Detiene la captura en curso o restaura el mapa de tempo original sin necesidad de volver a cargar el audio."
-                    >Reiniciar proceso tap tempo</button>
-                    <p id="tap-tempo-status">
-                      Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado. Usa Alt+clic para añadir marcadores,
-                      muévelos desde el punto superior con las flechas y elimínalos desde el punto inferior.
-                    </p>
-                  </div>
-                  <div id="tap-tempo-editor" class="hidden">
-                    <div class="tap-tempo-toolbar">
-                      <label>
-                        Zoom
-                        <input
-                          type="range"
-                          id="tap-zoom"
-                          min="0"
-                          max="100"
-                          value="0"
-                          title="Ajusta la cantidad de audio visible en la forma de onda"
-                        />
-                      </label>
-                      <label>
-                        Posición
-                        <input
-                          type="range"
-                          id="tap-position"
-                          min="0"
-                          max="100"
-                          value="0"
-                          title="Desplaza la ventana visible de la forma de onda"
-                        />
-                      </label>
-                      <button
-                        id="tap-marker-add"
-                        type="button"
-                        title="Agregar un nuevo marcador (también disponible con Alt+clic)"
-                      >Agregar marcador</button>
-                      <button
-                        id="tap-marker-delete"
-                        type="button"
-                        title="Eliminar el marcador seleccionado"
-                      >Eliminar marcador</button>
-                    </div>
-                    <canvas
-                      id="tap-waveform"
-                      width="1200"
-                      height="360"
-                      title="Forma de onda del audio con marcadores de tempo"
-                    ></canvas>
-                    <p class="tap-tempo-hint">
-                      Arrastra cada marcador desde el punto superior con las flechas dobles para reubicarlo. Usa Alt+clic en la forma de onda para añadir nuevos marcadores y haz clic en el punto inferior con el signo menos para eliminarlo.
-                    </p>
-                  </div>
-                  <div id="tap-tooltip" class="tooltip hidden"></div>
+              <div class="micro-grid">
+                <div class="micro-card muted">
+                  <p class="micro-title">Modo guiado</p>
+                  <p class="micro-text">Los mensajes de ayuda se alinean al cursor y se mantienen dentro de la ventana.</p>
+                </div>
+                <div class="micro-card muted">
+                  <p class="micro-title">Edición segura</p>
+                  <p class="micro-text">Los marcadores se ordenan automáticamente para evitar solapamientos accidentales.</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </section>
+    </div>
+
+    <div id="family-window" class="floating-window hidden">
+      <div class="window-shell">
+        <div class="window-header">
+          <div>
+            <p class="window-eyebrow">Ajustes avanzados</p>
+            <p class="window-title">Panel de familias</p>
+            <p class="window-subtitle">Colores, formas y asignaciones en un espacio separado.</p>
+          </div>
+          <div class="window-actions">
+            <button class="chip-button ghost" data-close-window="family-window" aria-label="Cerrar panel">×</button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div id="family-config-panel">
+            <div id="developer-controls"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tap-window" class="floating-window hidden">
+      <div class="window-shell">
+        <div class="window-header">
+          <div>
+            <p class="window-eyebrow">Sincronía</p>
+            <p class="window-title">Tap tempo y mapa</p>
+            <p class="window-subtitle">Pulsa, corrige marcadores y refina el tempo en un panel limpio.</p>
+          </div>
+          <div class="window-actions">
+            <button class="chip-button ghost" data-close-window="tap-window" aria-label="Cerrar tap tempo">×</button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="tap-window-intro">
+            <p>Inicia la captura para ver la forma de onda y manipular los marcadores sin tapar el lienzo principal.</p>
+          </div>
+          <div id="tap-tempo-panel" class="hidden">
+            <div id="tap-tempo-controls">
+              <button
+                id="start-tap-tempo"
+                title="Iniciar captura de tap tempo"
+                data-help="Reproduce el audio desde el inicio y registra tus pulsos con cualquier tecla."
+              >Iniciar tap tempo</button>
+              <button
+                id="stop-tap-tempo"
+                title="Detener o reiniciar el proceso de tap tempo"
+                data-help="Detiene la captura en curso o restaura el mapa de tempo original sin necesidad de volver a cargar el audio."
+              >Reiniciar proceso tap tempo</button>
+              <p id="tap-tempo-status">
+                Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado. Usa Alt+clic para añadir marcadores,
+                muévelos desde el punto superior con las flechas y elimínalos desde el punto inferior.
+              </p>
+            </div>
+            <div id="tap-tempo-editor" class="hidden">
+              <div class="tap-tempo-toolbar">
+                <label>
+                  Zoom
+                  <input
+                    type="range"
+                    id="tap-zoom"
+                    min="0"
+                    max="100"
+                    value="0"
+                    title="Ajusta la cantidad de audio visible en la forma de onda"
+                  />
+                </label>
+                <label>
+                  Posición
+                  <input
+                    type="range"
+                    id="tap-position"
+                    min="0"
+                    max="100"
+                    value="0"
+                    title="Desplaza la ventana visible de la forma de onda"
+                  />
+                </label>
+                <button
+                  id="tap-marker-add"
+                  type="button"
+                  title="Agregar un nuevo marcador (también disponible con Alt+clic)"
+                >Agregar marcador</button>
+                <button
+                  id="tap-marker-delete"
+                  type="button"
+                  title="Eliminar el marcador seleccionado"
+                >Eliminar marcador</button>
+              </div>
+              <canvas
+                id="tap-waveform"
+                width="1200"
+                height="360"
+                title="Forma de onda del audio con marcadores de tempo"
+              ></canvas>
+              <p class="tap-tempo-hint">
+                Arrastra cada marcador desde el punto superior con las flechas dobles para reubicarlo. Usa Alt+clic en la forma de onda para añadir nuevos marcadores y haz clic en el punto inferior con el signo menos para eliminarlo.
+              </p>
+            </div>
+            <div id="tap-tooltip" class="tooltip hidden"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <input
