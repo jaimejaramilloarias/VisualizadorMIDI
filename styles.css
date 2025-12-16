@@ -400,6 +400,96 @@ input:focus-visible {
   margin-top: calc(var(--spacing-unit) * 0.5);
 }
 
+.compact-tabs {
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing-unit) * 0.75);
+}
+
+.tab-group-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.tab-trigger-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tiny-label {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(109, 225, 255, 0.12);
+  border: 1px solid rgba(109, 225, 255, 0.25);
+  text-transform: uppercase;
+  font-size: 0.75em;
+  letter-spacing: 0.08em;
+  width: fit-content;
+}
+
+.micro-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-unit);
+  padding: calc(var(--spacing-unit) * 1.1);
+  border-radius: calc(var(--panel-radius) - 4px);
+  border: 1px solid #252525;
+  background: linear-gradient(140deg, #1a1a1a, #111);
+}
+
+.micro-card.muted {
+  background: linear-gradient(140deg, #151515, #0f0f0f);
+  border-color: #222;
+}
+
+.micro-grid {
+  display: grid;
+  gap: var(--spacing-unit);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.micro-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.micro-text {
+  margin: 0;
+  color: #c8c8c8;
+  line-height: 1.4;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-button {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #2d2d2d;
+  background: linear-gradient(140deg, #1f1f1f, #151515);
+  color: #f2f2f2;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.chip-button.ghost {
+  background: transparent;
+  border-color: #2a2a2a;
+}
+
+.chip-button:hover {
+  border-color: rgba(109, 225, 255, 0.5);
+}
+
 .canvas-header {
   display: flex;
   align-items: center;
@@ -443,7 +533,7 @@ input:focus-visible {
 }
 
 #family-config-panel {
-  display: none;
+  display: grid;
   margin: 0;
   background: #1a1a1a;
   padding: var(--spacing-unit);
@@ -454,12 +544,8 @@ input:focus-visible {
   gap: var(--spacing-unit);
   border-radius: var(--panel-radius);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  max-height: 520px;
+  max-height: 70vh;
   overflow: auto;
-}
-
-#family-config-panel.active {
-  display: grid;
 }
 
 #developer-controls {
@@ -913,6 +999,87 @@ input:focus-visible {
 
 .hidden {
   display: none;
+}
+
+.floating-window {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing-unit) * 2);
+  box-sizing: border-box;
+  z-index: 1200;
+}
+
+.floating-window:not(.hidden) {
+  display: flex;
+}
+
+.window-shell {
+  width: min(1220px, 96vw);
+  max-height: 88vh;
+  background: linear-gradient(160deg, #161616, #0f0f0f);
+  border: 1px solid #262626;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-unit);
+  padding: calc(var(--spacing-unit) * 1.25) calc(var(--spacing-unit) * 1.5);
+  border-bottom: 1px solid #242424;
+  background: linear-gradient(160deg, rgba(109, 225, 255, 0.08), rgba(109, 225, 255, 0));
+}
+
+.window-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75em;
+  opacity: 0.8;
+}
+
+.window-title {
+  margin: 2px 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.window-subtitle {
+  margin: 0;
+  color: #cfcfcf;
+}
+
+.window-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.window-body {
+  padding: calc(var(--spacing-unit) * 1.5);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.tap-window-intro {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #242424;
+  border-radius: 12px;
+  padding: var(--spacing-unit);
+  line-height: 1.5;
+  color: #e0e0e0;
 }
 
 .tooltip {
