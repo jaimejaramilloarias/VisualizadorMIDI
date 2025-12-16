@@ -93,7 +93,7 @@ const { setupHelpMessages: initHelpMessages } =
 // "initializeUI" e "initializeDeveloperMode" se declaran globalmente en ui.js cuando se
 // carga en el navegador. Para evitar errores de "Identifier has already been declared"
 // al importar estas funciones, renombramos las referencias locales.
-const { initializeUI: initializeUIControls } =
+const { initializeUI: initializeUIControls, setupTabs: setupTabbedPanels } =
   typeof require !== 'undefined' ? require('./ui.js') : window.ui;
 const { loadMusicFile } =
   typeof require !== 'undefined' ? require('./midiLoader.js') : window.midiLoader;
@@ -147,6 +147,8 @@ const readStoredString = (key, fallback, validator = () => true) => {
   if (typeof raw !== 'string') return fallback;
   return validator(raw) ? raw : fallback;
 };
+
+let tabManager = null;
 
 // Estado de activación de instrumentos
 const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
@@ -338,6 +340,10 @@ if (typeof document !== 'undefined') {
         .join('');
     }
 
+    if (typeof setupTabbedPanels === 'function') {
+      tabManager = setupTabbedPanels();
+    }
+
     canvas = document.getElementById('visualizer');
     if (!canvas) {
       console.warn('Canvas element with id "visualizer" not found.');
@@ -399,6 +405,7 @@ if (typeof document !== 'undefined') {
     const fileInput = document.getElementById('midi-file-input');
     const loadWavBtn = document.getElementById('load-wav');
     const wavInput = document.getElementById('wav-file-input');
+    const familyShortcutBtn = document.getElementById('open-family-panel');
     const toggleFamilyPanelBtn = document.getElementById('toggle-family-panel');
     const familyPanel = document.getElementById('family-config-panel');
     const developerControls = document.getElementById('developer-controls');
@@ -410,6 +417,9 @@ if (typeof document !== 'undefined') {
     const tapTempoButtons = Array.from(
       document.querySelectorAll('[data-action="tap-tempo"]')
     );
+    tapTempoButtons.forEach((button) => {
+      button.addEventListener('click', () => focusAdvancedTab('tap'));
+    });
     const tapTempoPanel = document.getElementById('tap-tempo-panel');
     const startTapTempoBtn = document.getElementById('start-tap-tempo');
     const stopTapTempoBtn = document.getElementById('stop-tap-tempo');
@@ -452,11 +462,33 @@ if (typeof document !== 'undefined') {
     const audioPlayer = createAudioPlayer();
     syncWaveformCanvasSize();
 
+    const focusAdvancedTab = (target) => {
+      if (tabManager && typeof tabManager.activateTab === 'function') {
+        tabManager.activateTab('advanced-tabs', target);
+      }
+    };
+
+    const ensureFamilyPanelOpen = () => {
+      if (familyPanel && !familyPanel.classList.contains('active')) {
+        familyPanel.classList.add('active');
+      }
+      if (toggleFamilyPanelBtn) {
+        toggleFamilyPanelBtn.textContent = '▲';
+      }
+    };
+
     if (familyPanel) {
       familyPanel.classList.add('active');
     }
     if (toggleFamilyPanelBtn) {
       toggleFamilyPanelBtn.textContent = '▲';
+    }
+
+    if (familyShortcutBtn) {
+      familyShortcutBtn.addEventListener('click', () => {
+        focusAdvancedTab('familias');
+        ensureFamilyPanelOpen();
+      });
     }
 
     const DOUBLE_SHAPE_PATTERN = /double$/i;
@@ -4227,6 +4259,7 @@ if (typeof document !== 'undefined') {
     });
 
     toggleFamilyPanelBtn.addEventListener('click', () => {
+      focusAdvancedTab('familias');
       const open = familyPanel.classList.toggle('active');
       toggleFamilyPanelBtn.textContent = open ? '▲' : '▼';
     });
