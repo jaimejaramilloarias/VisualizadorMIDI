@@ -159,8 +159,52 @@ function initializeDeveloperMode({ button, panel, onToggle } = {}) {
   };
 }
 
+function setupTabs() {
+  const registry = new Map();
+  const groups = document.querySelectorAll('[data-tab-group]');
+
+  groups.forEach((group) => {
+    const groupId = group.getAttribute('data-tab-group');
+    const triggers = Array.from(group.querySelectorAll('[data-tab-target]'));
+    const panels = Array.from(group.querySelectorAll('[data-tab-panel]'));
+
+    const activate = (target) => {
+      triggers.forEach((trigger) => {
+        trigger.classList.toggle('active', trigger.dataset.tabTarget === target);
+      });
+      panels.forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.tabPanel === target);
+      });
+    };
+
+    triggers.forEach((trigger) => {
+      trigger.addEventListener('click', () => activate(trigger.dataset.tabTarget));
+    });
+
+    const initialTarget =
+      triggers.find((trigger) => trigger.classList.contains('active'))?.dataset
+        .tabTarget || triggers[0]?.dataset.tabTarget;
+    if (initialTarget) {
+      activate(initialTarget);
+    }
+
+    if (groupId) {
+      registry.set(groupId, activate);
+    }
+  });
+
+  return {
+    activateTab: (groupId, target) => {
+      const activate = registry.get(groupId);
+      if (activate && target) {
+        activate(target);
+      }
+    },
+  };
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { initializeUI, initializeDeveloperMode };
+  module.exports = { initializeUI, initializeDeveloperMode, setupTabs };
 } else {
-  window.ui = { initializeUI, initializeDeveloperMode };
+  window.ui = { initializeUI, initializeDeveloperMode, setupTabs };
 }

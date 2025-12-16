@@ -22,7 +22,7 @@ body {
   color: #fff;
   font-family: inherit;
   font-size: var(--global-font-size);
-  padding: var(--spacing-unit) 0;
+  padding: calc(var(--spacing-unit) * 1.5) 0;
 }
 
 #app-container {
@@ -61,20 +61,10 @@ body {
 }
 
 #workspace {
-  display: grid;
-  gap: var(--spacing-unit);
-  grid-template-columns: minmax(320px, 420px) 1fr;
-  align-items: start;
-}
-
-@media (max-width: 1200px) {
-  #workspace {
-    grid-template-columns: 1fr;
-  }
-
-  #control-sidebar {
-    position: relative;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 1.5);
+  align-items: stretch;
 }
 
 #control-sidebar {
@@ -91,33 +81,28 @@ body {
   gap: var(--spacing-unit);
 }
 
-#top-menu,
-#bottom-menu {
-  background: var(--panel-background);
-  border-radius: var(--panel-radius);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-  padding: var(--spacing-unit);
-  display: flex;
-  flex-direction: column;
+.control-dock {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(420px, 1.4fr);
   gap: var(--spacing-unit);
-  border: 1px solid var(--panel-border);
-}
-
-#bottom-menu {
-  flex-direction: row;
   align-items: stretch;
-  gap: var(--spacing-unit);
 }
 
-#bottom-menu button {
-  flex: 1;
-  min-height: 44px;
+@media (max-width: 1200px) {
+  .control-dock {
+    grid-template-columns: 1fr;
+  }
 }
 
-.panel-stack {
-  display: flex;
-  flex-direction: column;
+#bottom-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--spacing-unit);
+  background: linear-gradient(160deg, #171717, #0f0f0f);
+  border: 1px solid var(--panel-border);
+  border-radius: calc(var(--panel-radius) - 2px);
+  padding: var(--spacing-unit);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .control-card {
@@ -129,6 +114,61 @@ body {
   border-radius: calc(var(--panel-radius) - 2px);
   border: 1px solid var(--panel-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 16px rgba(0, 0, 0, 0.25);
+}
+
+.tabbed-card {
+  background: var(--panel-background);
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--panel-border);
+  padding: calc(var(--spacing-unit) * 1.2);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.tab-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tab-header.subtle {
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tab-trigger {
+  border-radius: 10px;
+  border: 1px solid #2d2d2d;
+  padding: 8px 12px;
+  background: linear-gradient(160deg, #1d1d1d, #141414);
+  color: #f2f2f2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tab-trigger.active {
+  border-color: rgba(109, 225, 255, 0.5);
+  background: linear-gradient(160deg, #223546, #182533);
+  box-shadow: 0 0 0 1px rgba(109, 225, 255, 0.3);
+}
+
+.tab-panels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.tab-panel.active {
+  display: flex;
 }
 
 .hero-block {
@@ -159,6 +199,39 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-unit);
+}
+
+.tight-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.tab-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-unit);
+  flex-wrap: wrap;
+}
+
+.panel-body {
+  background: linear-gradient(160deg, #131313, #0f0f0f);
+  border: 1px solid #1f1f1f;
+  border-radius: calc(var(--panel-radius) - 2px);
+  padding: var(--spacing-unit);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.ghost-button {
+  border: 1px dashed #3a3a3a;
+  background: transparent;
+  color: #cfd9df;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.ghost-button:hover {
+  border-color: rgba(109, 225, 255, 0.4);
+  background: rgba(109, 225, 255, 0.06);
 }
 
 .control-accordion summary {
@@ -323,6 +396,10 @@ input:focus-visible {
   gap: var(--spacing-unit);
 }
 
+.advanced-stage {
+  margin-top: calc(var(--spacing-unit) * 0.5);
+}
+
 .canvas-header {
   display: flex;
   align-items: center;
@@ -377,6 +454,8 @@ input:focus-visible {
   gap: var(--spacing-unit);
   border-radius: var(--panel-radius);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  max-height: 520px;
+  overflow: auto;
 }
 
 #family-config-panel.active {

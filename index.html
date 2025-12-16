@@ -22,7 +22,7 @@
 
     <div id="workspace">
       <aside id="control-sidebar">
-        <nav id="top-menu" class="panel-stack">
+        <div class="control-dock">
           <div class="control-card hero-block">
             <div class="card-header">
               <div class="card-title">Acciones rápidas</div>
@@ -53,125 +53,129 @@
             </div>
           </div>
 
-          <details class="control-card control-accordion" open>
-            <summary>
-              <div class="summary-title">Transporte y navegación</div>
-              <p class="summary-subtitle">Organizado en atajos rápidos y controles detallados.</p>
-            </summary>
-            <div class="accordion-content">
-              <div class="button-matrix">
-                <button
-                  id="seek-backward-arrow"
-                  class="icon-button"
-                  title="Retroceder reproducción"
-                  aria-label="Retroceder"
-                  data-help="Retrocede rápidamente utilizando un control en forma de flecha."
-                >&#9664;</button>
-                <button
-                  id="seek-backward"
-                  title="Atrasar 3 segundos"
-                  data-help="Retrocede la reproducción tres segundos."
-                >Atrasar</button>
-                <button
-                  id="restart"
-                  title="Reiniciar"
-                  data-help="Regresa la reproducción al inicio."
-                >Inicio</button>
-                <button
-                  id="seek-forward"
-                  title="Adelantar 3 segundos"
-                  data-help="Avanza la reproducción tres segundos."
-                >Adelantar</button>
-                <button
-                  id="seek-forward-arrow"
-                  class="icon-button"
-                  title="Avanzar reproducción"
-                  aria-label="Avanzar"
-                  data-help="Avanza rápidamente utilizando un control en forma de flecha."
-                >&#9654;</button>
-              </div>
-              <div class="inline-actions">
-                <button
-                  id="tap-tempo-mode"
-                  data-action="tap-tempo"
-                  title="Modo tap tempo"
-                  data-help="Accede a las herramientas de tap tempo para definir el mapa de tempo a partir del audio."
-                >Modo tap tempo</button>
-              </div>
+          <div class="tabbed-card" data-tab-group="primary-tabs">
+            <div class="tab-header">
+              <button class="tab-trigger active" data-tab-target="playback">Transporte</button>
+              <button class="tab-trigger" data-tab-target="visual">Pantalla</button>
+              <button class="tab-trigger" data-tab-target="extras">Herramientas</button>
             </div>
-          </details>
-
-          <details class="control-card control-accordion" open>
-            <summary>
-              <div class="summary-title">Visualización y formato</div>
-              <p class="summary-subtitle">Aspecto del lienzo y sincronización con tu pantalla.</p>
-            </summary>
-            <div class="accordion-content visual-controls">
-              <div class="control-grid grid-3 compact-grid">
-                <button
-                  id="aspect-16-9"
-                  title="Cambiar a 16:9"
-                  data-help="Establece el canvas en formato horizontal 16:9."
-                >16:9</button>
-                <button
-                  id="full-screen"
-                  title="Pantalla completa"
-                  data-help="Expande el canvas a pantalla completa con supersampling."
-                >Pantalla completa</button>
-                <button
-                  id="aspect-9-16"
-                  title="Cambiar a 9:16"
-                  data-help="Establece el canvas en formato vertical 9:16."
-                >9:16</button>
+            <div class="tab-panels">
+              <div class="tab-panel active" data-tab-panel="playback">
+                <div class="summary-title">Transporte y navegación</div>
+                <p class="summary-subtitle">Atajos rápidos y reinicio inmediato.</p>
+                <div class="button-matrix tight-grid">
+                  <button
+                    id="seek-backward-arrow"
+                    class="icon-button"
+                    title="Retroceder reproducción"
+                    aria-label="Retroceder"
+                    data-help="Retrocede rápidamente utilizando un control en forma de flecha."
+                  >&#9664;</button>
+                  <button
+                    id="seek-backward"
+                    title="Atrasar 3 segundos"
+                    data-help="Retrocede la reproducción tres segundos."
+                  >Atrasar</button>
+                  <button
+                    id="restart"
+                    title="Reiniciar"
+                    data-help="Regresa la reproducción al inicio."
+                  >Inicio</button>
+                  <button
+                    id="seek-forward"
+                    title="Adelantar 3 segundos"
+                    data-help="Avanza la reproducción tres segundos."
+                  >Adelantar</button>
+                  <button
+                    id="seek-forward-arrow"
+                    class="icon-button"
+                    title="Avanzar reproducción"
+                    aria-label="Avanzar"
+                    data-help="Avanza rápidamente utilizando un control en forma de flecha."
+                  >&#9654;</button>
+                  <button
+                    id="tap-tempo-mode"
+                    data-action="tap-tempo"
+                    class="accent-button"
+                    title="Modo tap tempo"
+                    data-help="Accede a las herramientas de tap tempo para definir el mapa de tempo a partir del audio."
+                  >Modo tap tempo</button>
+                </div>
               </div>
-              <div
-                id="fps-control-group"
-                class="fps-control"
-                data-help="Selecciona si la animación sigue la frecuencia de actualización de tu pantalla o usa un valor fijo."
-              >
-                <label for="fps-mode">Modo de FPS</label>
-                <select
-                  id="fps-mode"
-                  title="Define cómo se sincroniza la animación con la pantalla"
+
+              <div class="tab-panel" data-tab-panel="visual">
+                <div class="summary-title">Visualización y formato</div>
+                <p class="summary-subtitle">Aspecto del lienzo y sincronización con tu pantalla.</p>
+                <div class="control-grid grid-3 compact-grid">
+                  <button
+                    id="aspect-16-9"
+                    title="Cambiar a 16:9"
+                    data-help="Establece el canvas en formato horizontal 16:9."
+                  >16:9</button>
+                  <button
+                    id="full-screen"
+                    title="Pantalla completa"
+                    data-help="Expande el canvas a pantalla completa con supersampling."
+                  >Pantalla completa</button>
+                  <button
+                    id="aspect-9-16"
+                    title="Cambiar a 9:16"
+                    data-help="Establece el canvas en formato vertical 9:16."
+                  >9:16</button>
+                </div>
+                <div
+                  id="fps-control-group"
+                  class="fps-control"
+                  data-help="Selecciona si la animación sigue la frecuencia de actualización de tu pantalla o usa un valor fijo."
                 >
-                  <option value="auto">Automático (según pantalla)</option>
-                  <option value="fixed">Fijo</option>
-                </select>
-                <label for="fps-value">FPS fijos</label>
-                <input
-                  type="number"
-                  id="fps-value"
-                  min="30"
-                  max="240"
-                  step="1"
-                  value="90"
-                  title="Especifica los fotogramas por segundo cuando se usa el modo fijo"
-                />
+                  <label for="fps-mode">Modo de FPS</label>
+                  <select
+                    id="fps-mode"
+                    title="Define cómo se sincroniza la animación con la pantalla"
+                  >
+                    <option value="auto">Automático (según pantalla)</option>
+                    <option value="fixed">Fijo</option>
+                  </select>
+                  <label for="fps-value">FPS fijos</label>
+                  <input
+                    type="number"
+                    id="fps-value"
+                    min="30"
+                    max="240"
+                    step="1"
+                    value="90"
+                    title="Especifica los fotogramas por segundo cuando se usa el modo fijo"
+                  />
+                </div>
+              </div>
+
+              <div class="tab-panel" data-tab-panel="extras">
+                <div class="summary-title">Herramientas adicionales</div>
+                <p class="summary-subtitle">Accesos directos a configuraciones avanzadas.</p>
+                <nav id="bottom-menu">
+                  <button
+                    id="open-family-panel"
+                    title="Ir al panel de familias"
+                    data-help="Abre la pestaña de familias y despliega sus controles detallados."
+                  >Familias</button>
+                  <button
+                    id="tap-tempo-mode-secondary"
+                    data-action="tap-tempo"
+                    title="Modo tap tempo"
+                    data-help="Accede a las herramientas de tap tempo para definir el mapa de tempo a partir del audio."
+                  >Tap tempo</button>
+                </nav>
               </div>
             </div>
-          </details>
-        </nav>
-
-        <nav id="bottom-menu">
-          <button
-            id="toggle-family-panel"
-            title="Panel de familias"
-            data-help="Despliega el panel para personalizar color y figura de cada familia."
-          >Panel de familias</button>
-          <button
-            id="tap-tempo-mode-secondary"
-            data-action="tap-tempo"
-            title="Modo tap tempo"
-            data-help="Accede a las herramientas de tap tempo para definir el mapa de tempo a partir del audio."
-          >Tap tempo</button>
-        </nav>
+          </div>
+        </div>
       </aside>
 
       <section id="visual-section">
         <div class="visual-shell">
           <div class="canvas-header">
             <div class="badge">Lienzo activo</div>
-            <p class="canvas-hint">Utiliza los controles de la izquierda para ajustar reproducción y formato.</p>
+            <p class="canvas-hint">Controla la reproducción y el formato desde el panel superior.</p>
           </div>
           <div class="canvas-wrapper">
             <canvas
@@ -184,73 +188,114 @@
           </div>
         </div>
 
-        <div id="family-config-panel" class="active">
-          <div id="developer-controls"></div>
-        </div>
-
-        <div id="tap-tempo-panel" class="hidden">
-          <div id="tap-tempo-controls">
-            <button
-              id="start-tap-tempo"
-              title="Iniciar captura de tap tempo"
-              data-help="Reproduce el audio desde el inicio y registra tus pulsos con cualquier tecla."
-            >Iniciar tap tempo</button>
-            <button
-              id="stop-tap-tempo"
-              title="Detener o reiniciar el proceso de tap tempo"
-              data-help="Detiene la captura en curso o restaura el mapa de tempo original sin necesidad de volver a cargar el audio."
-            >Reiniciar proceso tap tempo</button>
-            <p id="tap-tempo-status">
-              Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado. Usa Alt+clic para añadir marcadores,
-              muévelos desde el punto superior con las flechas y elimínalos desde el punto inferior.
-            </p>
+        <div class="advanced-stage tabbed-card" data-tab-group="advanced-tabs">
+          <div class="tab-header subtle">
+            <button class="tab-trigger active" data-tab-target="familias">Familias</button>
+            <button class="tab-trigger" data-tab-target="tap">Tap tempo</button>
           </div>
-          <div id="tap-tempo-editor" class="hidden">
-            <div class="tap-tempo-toolbar">
-              <label>
-                Zoom
-                <input
-                  type="range"
-                  id="tap-zoom"
-                  min="0"
-                  max="100"
-                  value="0"
-                  title="Ajusta la cantidad de audio visible en la forma de onda"
-                />
-              </label>
-              <label>
-                Posición
-                <input
-                  type="range"
-                  id="tap-position"
-                  min="0"
-                  max="100"
-                  value="0"
-                  title="Desplaza la ventana visible de la forma de onda"
-                />
-              </label>
-              <button
-                id="tap-marker-add"
-                type="button"
-                title="Agregar un nuevo marcador (también disponible con Alt+clic)"
-              >Agregar marcador</button>
-              <button
-                id="tap-marker-delete"
-                type="button"
-                title="Eliminar el marcador seleccionado"
-              >Eliminar marcador</button>
+          <div class="tab-panels">
+            <div class="tab-panel active" data-tab-panel="familias">
+              <div class="tab-panel-header">
+                <div>
+                  <div class="summary-title">Color y forma</div>
+                  <p class="summary-subtitle">Organiza cada familia sin perder la vista principal.</p>
+                </div>
+                <button
+                  id="toggle-family-panel"
+                  class="ghost-button"
+                  title="Panel de familias"
+                  data-help="Despliega el panel para personalizar color y figura de cada familia."
+                >Panel de familias</button>
+              </div>
+              <div class="panel-body">
+                <div id="family-config-panel" class="active">
+                  <div id="developer-controls"></div>
+                </div>
+              </div>
             </div>
-            <canvas
-              id="tap-waveform"
-              width="1200"
-              height="360"
-              title="Forma de onda del audio con marcadores de tempo"
-            ></canvas>
-            <p class="tap-tempo-hint">
-              Arrastra cada marcador desde el punto superior con las flechas dobles para reubicarlo. Usa Alt+clic en la forma de onda para añadir nuevos marcadores y haz clic en el punto inferior con el signo menos para eliminarlo.
-            </p>
+
+            <div class="tab-panel" data-tab-panel="tap">
+              <div class="tab-panel-header">
+                <div>
+                  <div class="summary-title">Mapa de tempo</div>
+                  <p class="summary-subtitle">Pulsa, edita marcadores y refina la sincronía.</p>
+                </div>
+                <button
+                  id="tap-tempo-mode-tertiary"
+                  data-action="tap-tempo"
+                  class="ghost-button"
+                  title="Modo tap tempo"
+                  data-help="Alterna rápidamente al panel de tap tempo."
+                >Abrir tap tempo</button>
+              </div>
+              <div class="panel-body">
+                <div id="tap-tempo-panel" class="hidden">
+                  <div id="tap-tempo-controls">
+                    <button
+                      id="start-tap-tempo"
+                      title="Iniciar captura de tap tempo"
+                      data-help="Reproduce el audio desde el inicio y registra tus pulsos con cualquier tecla."
+                    >Iniciar tap tempo</button>
+                    <button
+                      id="stop-tap-tempo"
+                      title="Detener o reiniciar el proceso de tap tempo"
+                      data-help="Detiene la captura en curso o restaura el mapa de tempo original sin necesidad de volver a cargar el audio."
+                    >Reiniciar proceso tap tempo</button>
+                    <p id="tap-tempo-status">
+                      Carga un archivo WAV y utiliza el tap tempo para crear un mapa de tempo personalizado. Usa Alt+clic para añadir marcadores,
+                      muévelos desde el punto superior con las flechas y elimínalos desde el punto inferior.
+                    </p>
+                  </div>
+                  <div id="tap-tempo-editor" class="hidden">
+                    <div class="tap-tempo-toolbar">
+                      <label>
+                        Zoom
+                        <input
+                          type="range"
+                          id="tap-zoom"
+                          min="0"
+                          max="100"
+                          value="0"
+                          title="Ajusta la cantidad de audio visible en la forma de onda"
+                        />
+                      </label>
+                      <label>
+                        Posición
+                        <input
+                          type="range"
+                          id="tap-position"
+                          min="0"
+                          max="100"
+                          value="0"
+                          title="Desplaza la ventana visible de la forma de onda"
+                        />
+                      </label>
+                      <button
+                        id="tap-marker-add"
+                        type="button"
+                        title="Agregar un nuevo marcador (también disponible con Alt+clic)"
+                      >Agregar marcador</button>
+                      <button
+                        id="tap-marker-delete"
+                        type="button"
+                        title="Eliminar el marcador seleccionado"
+                      >Eliminar marcador</button>
+                    </div>
+                    <canvas
+                      id="tap-waveform"
+                      width="1200"
+                      height="360"
+                      title="Forma de onda del audio con marcadores de tempo"
+                    ></canvas>
+                    <p class="tap-tempo-hint">
+                      Arrastra cada marcador desde el punto superior con las flechas dobles para reubicarlo. Usa Alt+clic en la forma de onda para añadir nuevos marcadores y haz clic en el punto inferior con el signo menos para eliminarlo.
+                    </p>
+                  </div>
+                  <div id="tap-tooltip" class="tooltip hidden"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div id="tap-tooltip" class="tooltip hidden"></div>
         </div>
       </section>
     </div>
