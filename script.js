@@ -141,6 +141,37 @@ const writeStoredNumber = (key, value) => {
 };
 
 const DEFAULT_SECONDARY_COLOR = '#FFFFFF';
+const NOTE_NAME_LABELS = [
+  'C',
+  'C#/Db',
+  'D',
+  'D#/Eb',
+  'E',
+  'F',
+  'F#/Gb',
+  'G',
+  'G#/Ab',
+  'A',
+  'A#/Bb',
+  'B',
+];
+const NOTE_LABEL_FONT_OPTIONS = [
+  'Arial',
+  'Verdana',
+  'Trebuchet MS',
+  'Georgia',
+  'Times New Roman',
+  'Courier New',
+];
+const NOTE_LABELS_ENABLED_KEY = 'noteLabelsEnabled';
+const NOTE_LABELS_COLOR_KEY = 'noteLabelsColor';
+const NOTE_LABELS_SIZE_KEY = 'noteLabelsSize';
+const NOTE_LABELS_FONT_KEY = 'noteLabelsFont';
+const NOTE_LABELS_SIZE_MIN = 8;
+const NOTE_LABELS_SIZE_MAX = 64;
+const DEFAULT_NOTE_LABELS_COLOR = '#ffffff';
+const DEFAULT_NOTE_LABELS_SIZE = 16;
+const DEFAULT_NOTE_LABELS_FONT = NOTE_LABEL_FONT_OPTIONS[0];
 
 const readStoredString = (key, fallback, validator = () => true) => {
   const raw = readStoredValue(key);
@@ -236,6 +267,78 @@ let visibleSeconds = readStoredNumber('visibleSeconds', 8, (value) => value > 0)
 let canvas = null;
 let pixelsPerSecond = 0;
 let audioOffsetMs = readStoredNumber('audioOffsetMs', 0);
+let noteLabelsEnabled = readStoredValue(NOTE_LABELS_ENABLED_KEY) === 'true';
+let noteLabelsColor = readStoredString(
+  NOTE_LABELS_COLOR_KEY,
+  DEFAULT_NOTE_LABELS_COLOR,
+  (value) => /^#[0-9a-fA-F]{6}$/.test(value),
+).toLowerCase();
+let noteLabelsSize = readStoredNumber(
+  NOTE_LABELS_SIZE_KEY,
+  DEFAULT_NOTE_LABELS_SIZE,
+  (value) => value >= NOTE_LABELS_SIZE_MIN && value <= NOTE_LABELS_SIZE_MAX,
+);
+let noteLabelsFont = readStoredString(
+  NOTE_LABELS_FONT_KEY,
+  DEFAULT_NOTE_LABELS_FONT,
+  (value) => NOTE_LABEL_FONT_OPTIONS.includes(value),
+);
+
+function getNoteLabel(noteNumber) {
+  const normalized = Number.isFinite(noteNumber) ? Math.round(noteNumber) : 0;
+  const index = ((normalized % 12) + 12) % 12;
+  return NOTE_NAME_LABELS[index];
+}
+
+function setNoteLabelsEnabled(enabled) {
+  noteLabelsEnabled = !!enabled;
+  writeStoredValue(NOTE_LABELS_ENABLED_KEY, noteLabelsEnabled ? 'true' : 'false');
+}
+
+function setNoteLabelsColor(color) {
+  if (typeof color !== 'string') return;
+  const normalized = color.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(normalized)) return;
+  noteLabelsColor = normalized.toLowerCase();
+  writeStoredValue(NOTE_LABELS_COLOR_KEY, noteLabelsColor);
+}
+
+function setNoteLabelsSize(size) {
+  if (typeof size !== 'number' || !Number.isFinite(size)) return;
+  noteLabelsSize = Math.round(
+    Math.min(NOTE_LABELS_SIZE_MAX, Math.max(NOTE_LABELS_SIZE_MIN, size)),
+  );
+  writeStoredNumber(NOTE_LABELS_SIZE_KEY, noteLabelsSize);
+}
+
+function setNoteLabelsFont(font) {
+  if (typeof font !== 'string') return;
+  if (!NOTE_LABEL_FONT_OPTIONS.includes(font)) return;
+  noteLabelsFont = font;
+  writeStoredValue(NOTE_LABELS_FONT_KEY, noteLabelsFont);
+}
+
+function renderNoteLabel(ctx, note, x, y, alpha = 1) {
+  if (!noteLabelsEnabled || !ctx || !note) return;
+  const text = getNoteLabel(note.noteNumber);
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  if (clampedAlpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = clampedAlpha;
+  ctx.fillStyle = noteLabelsColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `${noteLabelsSize}px "${noteLabelsFont}"`;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = Math.max(1, Math.round(noteLabelsSize * 0.12));
+  if (typeof ctx.strokeText === 'function') {
+    ctx.strokeText(text, x, y);
+  }
+  if (typeof ctx.fillText === 'function') {
+    ctx.fillText(text, x, y);
+  }
+  ctx.restore();
+}
 
 function setVisibleSeconds(sec) {
   if (typeof sec !== 'number' || !Number.isFinite(sec) || sec <= 0) return;
@@ -1607,6 +1710,86 @@ if (typeof document !== 'undefined') {
       ssItem.dataset.help =
         'Factor de supersampling inicial aplicado al canvas.';
       developerControls.appendChild(ssItem);
+
+      const noteLabelsToggleLabel = document.createElement('label');
+      noteLabelsToggleLabel.textContent = 'Etiquetas de nota:';
+      const noteLabelsToggle = document.createElement('input');
+      noteLabelsToggle.type = 'checkbox';
+      noteLabelsToggle.checked = noteLabelsEnabled;
+      const noteLabelsToggleItem = document.createElement('div');
+      noteLabelsToggleItem.className = 'dev-control';
+      noteLabelsToggleItem.appendChild(noteLabelsToggleLabel);
+      noteLabelsToggleItem.appendChild(noteLabelsToggle);
+      noteLabelsToggleItem.dataset.help =
+        'Muestra el nombre de cada nota (C, C#/Db, D...) sobre las figuras.';
+      developerControls.appendChild(noteLabelsToggleItem);
+
+      const noteLabelsFontLabel = document.createElement('label');
+      noteLabelsFontLabel.textContent = 'Fuente etiquetas:';
+      const noteLabelsFontSelect = document.createElement('select');
+      NOTE_LABEL_FONT_OPTIONS.forEach((fontName) => {
+        const option = document.createElement('option');
+        option.value = fontName;
+        option.textContent = fontName;
+        noteLabelsFontSelect.appendChild(option);
+      });
+      noteLabelsFontSelect.value = noteLabelsFont;
+      const noteLabelsFontItem = document.createElement('div');
+      noteLabelsFontItem.className = 'dev-control';
+      noteLabelsFontItem.appendChild(noteLabelsFontLabel);
+      noteLabelsFontItem.appendChild(noteLabelsFontSelect);
+      developerControls.appendChild(noteLabelsFontItem);
+
+      const noteLabelsColorLabel = document.createElement('label');
+      noteLabelsColorLabel.textContent = 'Color etiquetas:';
+      const noteLabelsColorInput = document.createElement('input');
+      noteLabelsColorInput.type = 'color';
+      noteLabelsColorInput.value = noteLabelsColor;
+      const noteLabelsColorItem = document.createElement('div');
+      noteLabelsColorItem.className = 'dev-control';
+      noteLabelsColorItem.appendChild(noteLabelsColorLabel);
+      noteLabelsColorItem.appendChild(noteLabelsColorInput);
+      developerControls.appendChild(noteLabelsColorItem);
+
+      const noteLabelsSizeLabel = document.createElement('label');
+      noteLabelsSizeLabel.textContent = 'Tamaño etiquetas (px):';
+      const noteLabelsSizeInput = document.createElement('input');
+      noteLabelsSizeInput.type = 'number';
+      noteLabelsSizeInput.min = String(NOTE_LABELS_SIZE_MIN);
+      noteLabelsSizeInput.max = String(NOTE_LABELS_SIZE_MAX);
+      noteLabelsSizeInput.step = '1';
+      noteLabelsSizeInput.value = String(noteLabelsSize);
+      const noteLabelsSizeItem = document.createElement('div');
+      noteLabelsSizeItem.className = 'dev-control';
+      noteLabelsSizeItem.appendChild(noteLabelsSizeLabel);
+      noteLabelsSizeItem.appendChild(noteLabelsSizeInput);
+      developerControls.appendChild(noteLabelsSizeItem);
+
+      const updateNoteLabelControlState = () => {
+        const enabled = noteLabelsToggle.checked;
+        noteLabelsFontSelect.disabled = !enabled;
+        noteLabelsColorInput.disabled = !enabled;
+        noteLabelsSizeInput.disabled = !enabled;
+      };
+
+      noteLabelsToggle.addEventListener('change', () => {
+        setNoteLabelsEnabled(noteLabelsToggle.checked);
+        updateNoteLabelControlState();
+      });
+      noteLabelsFontSelect.addEventListener('change', () => {
+        setNoteLabelsFont(noteLabelsFontSelect.value);
+      });
+      noteLabelsColorInput.addEventListener('input', () => {
+        setNoteLabelsColor(noteLabelsColorInput.value);
+      });
+      noteLabelsSizeInput.addEventListener('change', () => {
+        const value = parseInt(noteLabelsSizeInput.value, 10);
+        if (Number.isFinite(value)) {
+          setNoteLabelsSize(value);
+          noteLabelsSizeInput.value = String(noteLabelsSize);
+        }
+      });
+      updateNoteLabelControlState();
 
       globalSettingsContainer = document.createElement('div');
       globalSettingsContainer.id = 'global-visual-settings';
@@ -4854,6 +5037,14 @@ if (typeof document !== 'undefined') {
           fillAlpha,
           currentSec,
         );
+
+        renderNoteLabel(
+          offscreenCtx,
+          note,
+          metrics.centerX,
+          metrics.centerY,
+          fillAlpha,
+        );
       }
 
       activeTravels.forEach(({ note, progress, layout }) => {
@@ -4935,6 +5126,14 @@ if (typeof document !== 'undefined') {
           height,
           travelAlpha,
           currentSec,
+        );
+
+        renderNoteLabel(
+          offscreenCtx,
+          note,
+          drawX + width / 2,
+          drawY + height / 2,
+          travelAlpha,
         );
       });
 
@@ -6304,6 +6503,11 @@ if (typeof module !== 'undefined') {
     getVisibleSeconds,
     setAudioOffset,
     getAudioOffset,
+    getNoteLabel,
+    setNoteLabelsEnabled,
+    setNoteLabelsColor,
+    setNoteLabelsSize,
+    setNoteLabelsFont,
     setHeightScale,
     getHeightScale,
     getHeightScaleConfig,
