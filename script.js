@@ -187,7 +187,10 @@ const enabledInstruments = readStoredJSON('enabledInstruments', {}) || {};
 // Parámetros de fluidez de animación
 const FRAME_DT_MIN = 8;
 const FRAME_DT_MAX = 32;
-let superSampling = 1.4;
+const SUPER_SAMPLING_MIN = 1;
+const SUPER_SAMPLING_MAX = 2;
+const SUPER_SAMPLING_DEFAULT = 2;
+let superSampling = SUPER_SAMPLING_DEFAULT;
 
 const FPS_MODE_KEY = 'fpsMode';
 const FIXED_FPS_KEY = 'fixedFps';
@@ -249,7 +252,12 @@ getFPSMode();
 getFixedFPS();
 
 function setSuperSampling(val) {
-  if (typeof val === 'number' && Number.isFinite(val) && val >= 1 && val <= 2) {
+  if (
+    typeof val === 'number' &&
+    Number.isFinite(val) &&
+    val >= SUPER_SAMPLING_MIN &&
+    val <= SUPER_SAMPLING_MAX
+  ) {
     superSampling = val;
   }
 }
@@ -461,7 +469,8 @@ if (typeof document !== 'undefined') {
       } else if (typeof context.setTransform === 'function') {
         context.setTransform(1, 0, 0, 1, 0, 0);
       }
-      context.imageSmoothingEnabled = false;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
       context.lineCap = 'round';
       context.lineJoin = 'round';
     };
@@ -480,7 +489,7 @@ if (typeof document !== 'undefined') {
     }
 
     configureDrawingContext(ctx);
-    canvas.style.imageRendering = 'pixelated';
+    canvas.style.imageRendering = 'auto';
     // Sugerir al navegador que optimice transformaciones/opacidad del canvas
     canvas.style.willChange = 'transform, opacity';
     canvas.style.contain = 'paint';
@@ -691,7 +700,8 @@ if (typeof document !== 'undefined') {
       }
       waveformCtx.lineCap = 'round';
       waveformCtx.lineJoin = 'round';
-      waveformCtx.imageSmoothingEnabled = false;
+      waveformCtx.imageSmoothingEnabled = true;
+      waveformCtx.imageSmoothingQuality = 'high';
     }
 
     function updateTapTempoAvailability() {
@@ -1693,12 +1703,12 @@ if (typeof document !== 'undefined') {
       const ssInput = document.createElement('input');
       ssInput.type = 'number';
       ssInput.step = '0.1';
-      ssInput.min = '1';
-      ssInput.max = '2';
+      ssInput.min = String(SUPER_SAMPLING_MIN);
+      ssInput.max = String(SUPER_SAMPLING_MAX);
       ssInput.value = superSampling.toFixed(1);
       ssInput.addEventListener('change', () => {
         const val = parseFloat(ssInput.value);
-        if (!isNaN(val) && val >= 1 && val <= 2) {
+        if (!isNaN(val) && val >= SUPER_SAMPLING_MIN && val <= SUPER_SAMPLING_MAX) {
           setSuperSampling(val);
           applyCanvasSize(!!document.fullscreenElement);
         }
@@ -5158,11 +5168,11 @@ if (typeof document !== 'undefined') {
         const avg =
           frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
         frameTimes.length = 0;
-        if (avg > 18 && superSampling > 1) {
-          superSampling = Math.max(1, superSampling - 0.1);
+        if (avg > 18 && superSampling > SUPER_SAMPLING_MIN) {
+          superSampling = Math.max(SUPER_SAMPLING_MIN, superSampling - 0.1);
           applyCanvasSize(!!document.fullscreenElement);
-        } else if (avg < 12 && superSampling < 2) {
-          superSampling = Math.min(2, superSampling + 0.1);
+        } else if (avg < 12 && superSampling < SUPER_SAMPLING_MAX) {
+          superSampling = Math.min(SUPER_SAMPLING_MAX, superSampling + 0.1);
           applyCanvasSize(!!document.fullscreenElement);
         }
       }
