@@ -15,6 +15,12 @@ export interface MidiClockMapping {
   playbackRate: number;
 }
 
+export interface SyncTimeline {
+  anchors: readonly SyncAnchor[];
+  forward: boolean;
+  map: (audioTime: number) => MidiClockMapping;
+}
+
 export interface VisualizationSettings {
   secondsVisible: number;
   glow: number;
@@ -42,7 +48,7 @@ export const DEFAULT_SETTINGS: VisualizationSettings = {
   secondsVisible: 8,
   glow: 0.8,
   noteScale: 1,
-  gridOpacity: 0.24,
+  gridOpacity: 0.25,
   quality: 'auto',
   background: '#07090e',
 };
@@ -72,11 +78,10 @@ export const mapAudioToMidi = (
   anchors: SyncAnchor[],
 ): number => mapAudioToMidiClock(audioTime, anchors).midiTime;
 
-export const mapAudioToMidiClock = (
+const mapNormalizedAnchors = (
   audioTime: number,
-  anchors: SyncAnchor[],
+  normalized: readonly SyncAnchor[],
 ): MidiClockMapping => {
-  const normalized = normalizeAnchors(anchors);
   if (normalized.length === 0) {
     return { midiTime: Math.max(0, audioTime), playbackRate: 1 };
   }
@@ -98,16 +103,15 @@ export const mapAudioToMidiClock = (
     left = normalized.at(-2)!;
     right = normalized.at(-1)!;
   } else {
-    for (let index = 0; index < normalized.length - 1; index += 1) {
-      if (
-        audioTime >= normalized[index].audioTime &&
-        audioTime <= normalized[index + 1].audioTime
-      ) {
-        left = normalized[index];
-        right = normalized[index + 1];
-        break;
-      }
+    let low = 0;
+    let high = normalized.length - 1;
+    while (low + 1 < high) {
+      const middle = (low + high) >> 1;
+      if (normalized[middle].audioTime <= audioTime) low = middle;
+      else high = middle;
     }
+    left = normalized[low];
+    right = normalized[high];
   }
 
   const audioSpan = right.audioTime - left.audioTime;
@@ -125,13 +129,26 @@ export const mapAudioToMidiClock = (
   };
 };
 
-export const hasForwardSyncMapping = (anchors: SyncAnchor[]): boolean => {
+export const createSyncTimeline = (anchors: SyncAnchor[]): SyncTimeline => {
   const normalized = normalizeAnchors(anchors);
-  return normalized.every(
+  const forward = normalized.every(
     (anchor, index) =>
       index === 0 || anchor.midiTime > normalized[index - 1].midiTime,
   );
+  return {
+    anchors: normalized,
+    forward,
+    map: (audioTime) => mapNormalizedAnchors(audioTime, normalized),
+  };
 };
+
+export const mapAudioToMidiClock = (
+  audioTime: number,
+  anchors: SyncAnchor[],
+): MidiClockMapping => createSyncTimeline(anchors).map(audioTime);
+
+export const hasForwardSyncMapping = (anchors: SyncAnchor[]): boolean =>
+  createSyncTimeline(anchors).forward;
 
 export const createStateDocument = ({
   midiFileName,

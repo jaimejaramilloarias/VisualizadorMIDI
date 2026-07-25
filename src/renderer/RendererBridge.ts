@@ -20,6 +20,16 @@ export class RendererBridge {
   private worker: Worker;
   private observer: ResizeObserver;
   private disposed = false;
+  private lastWidth = 0;
+  private lastHeight = 0;
+  private lastDevicePixelRatio = 0;
+  private settingsFrame = 0;
+  private appearanceFrame = 0;
+  private pendingSettings: {
+    visualization: VisualizationId;
+    settings: VisualizationSettings;
+  } | null = null;
+  private pendingAppearance: RenderAppearance | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -50,13 +60,16 @@ export class RendererBridge {
 
     const bounds = canvas.getBoundingClientRect();
     const offscreen = canvas.transferControlToOffscreen();
+    this.lastWidth = Math.max(1, bounds.width);
+    this.lastHeight = Math.max(1, bounds.height);
+    this.lastDevicePixelRatio = window.devicePixelRatio || 1;
     this.post(
       {
         type: 'init',
         canvas: offscreen,
-        width: Math.max(1, bounds.width),
-        height: Math.max(1, bounds.height),
-        devicePixelRatio: window.devicePixelRatio || 1,
+        width: this.lastWidth,
+        height: this.lastHeight,
+        devicePixelRatio: this.lastDevicePixelRatio,
       },
       [offscreen],
     );
@@ -65,11 +78,24 @@ export class RendererBridge {
       const entry = entries[0];
       if (!entry || this.disposed) return;
       const { width, height } = entry.contentRect;
+      const nextWidth = Math.max(1, width);
+      const nextHeight = Math.max(1, height);
+      const nextDevicePixelRatio = window.devicePixelRatio || 1;
+      if (
+        Math.abs(nextWidth - this.lastWidth) < 0.25 &&
+        Math.abs(nextHeight - this.lastHeight) < 0.25 &&
+        nextDevicePixelRatio === this.lastDevicePixelRatio
+      ) {
+        return;
+      }
+      this.lastWidth = nextWidth;
+      this.lastHeight = nextHeight;
+      this.lastDevicePixelRatio = nextDevicePixelRatio;
       this.post({
         type: 'resize',
-        width: Math.max(1, width),
-        height: Math.max(1, height),
-        devicePixelRatio: window.devicePixelRatio || 1,
+        width: nextWidth,
+        height: nextHeight,
+        devicePixelRatio: nextDevicePixelRatio,
       });
     });
     this.observer.observe(canvas);
@@ -92,11 +118,31 @@ export class RendererBridge {
     visualization: VisualizationId,
     settings: VisualizationSettings,
   ): void {
-    this.post({ type: 'settings', visualization, settings });
+    this.pendingSettings = { visualization, settings };
+    if (this.settingsFrame) return;
+    this.settingsFrame = requestAnimationFrame(() => {
+      this.settingsFrame = 0;
+      const pending = this.pendingSettings;
+      this.pendingSettings = null;
+      if (pending) {
+        this.post({
+          type: 'settings',
+          visualization: pending.visualization,
+          settings: pending.settings,
+        });
+      }
+    });
   }
 
   setAppearance(appearance: RenderAppearance): void {
-    this.post({ type: 'appearance', appearance });
+    this.pendingAppearance = appearance;
+    if (this.appearanceFrame) return;
+    this.appearanceFrame = requestAnimationFrame(() => {
+      this.appearanceFrame = 0;
+      const pending = this.pendingAppearance;
+      this.pendingAppearance = null;
+      if (pending) this.post({ type: 'appearance', appearance: pending });
+    });
   }
 
   setBackgroundImage(bitmap: ImageBitmap | null): void {
@@ -125,6 +171,8 @@ export class RendererBridge {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    if (this.settingsFrame) cancelAnimationFrame(this.settingsFrame);
+    if (this.appearanceFrame) cancelAnimationFrame(this.appearanceFrame);
     this.observer.disconnect();
     this.worker.terminate();
   }

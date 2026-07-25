@@ -17,6 +17,7 @@ export class AudioTransport {
   private startedAtPerformance = 0;
   private playing = false;
   private generation = 0;
+  private audioLoadGeneration = 0;
   private listeners = new Set<TransportListener>();
 
   getSnapshot(now = performance.now()): TransportSnapshot {
@@ -56,19 +57,25 @@ export class AudioTransport {
   }
 
   async loadAudio(file: File): Promise<number> {
+    const loadGeneration = ++this.audioLoadGeneration;
     this.pause();
     this.buffer = null;
     this.position = 0;
+    this.emit();
 
     const context = this.getContext();
     const bytes = await file.arrayBuffer();
     const decoded = await context.decodeAudioData(bytes.slice(0));
+    if (loadGeneration !== this.audioLoadGeneration) {
+      throw new DOMException('La carga de audio fue reemplazada.', 'AbortError');
+    }
     this.buffer = decoded;
     this.emit();
     return decoded.duration;
   }
 
   unloadAudio(): void {
+    this.audioLoadGeneration += 1;
     this.pause();
     this.buffer = null;
     this.position = 0;
@@ -113,16 +120,26 @@ export class AudioTransport {
     if (this.playing || duration <= 0) return;
     if (this.position >= duration) this.position = 0;
 
+    const generation = ++this.generation;
     this.playing = true;
     this.startedAtPerformance = performance.now();
 
     if (this.buffer) {
       const context = this.getContext();
-      await context.resume();
+      this.startedAtContext = context.currentTime;
+      try {
+        await context.resume();
+      } catch (error) {
+        if (generation === this.generation) {
+          this.playing = false;
+          this.emit();
+        }
+        throw error;
+      }
+      if (!this.playing || generation !== this.generation) return;
       const source = context.createBufferSource();
       source.buffer = this.buffer;
       source.connect(context.destination);
-      const generation = ++this.generation;
       const startAt = context.currentTime + 0.025;
       this.startedAtContext = startAt;
       source.onended = () => {
@@ -132,7 +149,19 @@ export class AudioTransport {
         this.source = null;
         this.emit();
       };
-      source.start(startAt, Math.min(this.position, Math.max(0, this.buffer.duration - 0.001)));
+      try {
+        source.start(
+          startAt,
+          Math.min(this.position, Math.max(0, this.buffer.duration - 0.001)),
+        );
+      } catch (error) {
+        source.disconnect();
+        if (generation === this.generation) {
+          this.playing = false;
+          this.emit();
+        }
+        throw error;
+      }
       this.source = source;
     }
 
@@ -175,6 +204,7 @@ export class AudioTransport {
   }
 
   async destroy(): Promise<void> {
+    this.audioLoadGeneration += 1;
     this.pause();
     this.listeners.clear();
     if (this.context && this.context.state !== 'closed') {

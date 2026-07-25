@@ -15,10 +15,9 @@ import type {
 } from '../core/midi/types';
 import {
   DEFAULT_SETTINGS,
+  createSyncTimeline,
   createStateDocument,
-  hasForwardSyncMapping,
   mapAudioToMidi,
-  mapAudioToMidiClock,
   normalizeAnchors,
   parseStateDocument,
   type SyncAnchor,
@@ -175,16 +174,21 @@ function RangeControl({
   suffix: string;
   onChange: (value: number) => void;
 }) {
+  const stepText = String(step);
+  const decimalPlaces =
+    step >= 1 ? 0 : Math.min(3, stepText.split('.')[1]?.length ?? 0);
+  const formattedValue = value.toFixed(decimalPlaces);
   return (
     <label className="range-control">
       <span className="control-label">
         <span>{label}</span>
         <output>
-          {value.toFixed(step < 1 ? 1 : 0)}
-          {suffix}
+          {formattedValue}{suffix}
         </output>
       </span>
       <input
+        aria-label={label}
+        aria-valuetext={`${formattedValue}${suffix}`}
         max={max}
         min={min}
         onChange={(event) => onChange(Number(event.target.value))}
@@ -204,7 +208,7 @@ export function App() {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
-  const anchorsRef = useRef<SyncAnchor[]>([]);
+  const syncTimelineRef = useRef(createSyncTimeline([]));
   const visualConfigurationRef = useRef<VisualConfiguration>(
     cloneDefaultVisualConfiguration(),
   );
@@ -214,6 +218,10 @@ export function App() {
     null,
   );
   const lastUiUpdateRef = useRef(0);
+  const midiLoadGenerationRef = useRef(0);
+  const audioLoadGenerationRef = useRef(0);
+  const backgroundLoadGenerationRef = useRef(0);
+  const busyGenerationRef = useRef(0);
   const lastClockRef = useRef({
     sentAt: 0,
     midiTime: -1,
@@ -239,6 +247,9 @@ export function App() {
   );
   const [selectedTrackNames, setSelectedTrackNames] = useState<string[]>([]);
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
+  const [backgroundLoadedName, setBackgroundLoadedName] = useState<
+    string | null
+  >(null);
   const [tapActive, setTapActive] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [transport, setTransport] =
@@ -258,7 +269,7 @@ export function App() {
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    anchorsRef.current = syncAnchors;
+    syncTimelineRef.current = createSyncTimeline(syncAnchors);
   }, [syncAnchors]);
 
   useEffect(() => {
@@ -354,6 +365,15 @@ export function App() {
   }, [tapActive]);
 
   useEffect(() => {
+    if (!helpOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setHelpOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [helpOpen]);
+
+  useEffect(() => {
     let frame = 0;
     const update = (now: number) => {
       const instance = transportRef.current;
@@ -365,7 +385,7 @@ export function App() {
         const preview = anchorPreviewRef.current;
         const mapping =
           preview === null
-            ? mapAudioToMidiClock(offsetAudioTime, anchorsRef.current)
+            ? syncTimelineRef.current.map(offsetAudioTime)
             : { midiTime: preview, playbackRate: 0 };
         const rendererPlaying = snapshot.playing && preview === null;
         const previous = lastClockRef.current;
@@ -421,10 +441,13 @@ export function App() {
       setNotice('El MIDI supera el límite seguro de 64 MB para este dispositivo.');
       return;
     }
+    const loadGeneration = ++midiLoadGenerationRef.current;
+    const busyGeneration = ++busyGenerationRef.current;
     setBusy('midi');
     setNotice(`Analizando ${file.name}…`);
     try {
       const parsed = await parseMidiInWorker(file);
+      if (loadGeneration !== midiLoadGenerationRef.current) return;
       const summary: ProjectSummary = {
         fileName: parsed.fileName,
         duration: parsed.duration,
@@ -445,11 +468,12 @@ export function App() {
         `${parsed.noteCount.toLocaleString('es-CO')} notas listas en ${parsed.tracks.length} pistas.`,
       );
     } catch (error) {
+      if (loadGeneration !== midiLoadGenerationRef.current) return;
       setNotice(
         error instanceof Error ? error.message : 'No fue posible cargar el MIDI.',
       );
     } finally {
-      setBusy(null);
+      if (busyGeneration === busyGenerationRef.current) setBusy(null);
     }
   }, []);
 
@@ -459,23 +483,30 @@ export function App() {
       setNotice('El audio supera el límite seguro de 400 MB para este dispositivo.');
       return;
     }
+    const loadGeneration = ++audioLoadGenerationRef.current;
+    const busyGeneration = ++busyGenerationRef.current;
     setBusy('audio');
+    setWaveformPeaks(null);
+    setAudioFileName(null);
     setNotice(`Decodificando ${file.name} localmente…`);
     try {
       const duration = await transportRef.current.loadAudio(file);
+      if (loadGeneration !== audioLoadGenerationRef.current) return;
       setWaveformPeaks(transportRef.current.getWaveformPeaks());
       setAudioFileName(file.name);
       setNotice(
         `Audio listo (${formatTime(duration)}). El archivo permanece en este dispositivo.`,
       );
     } catch (error) {
+      if (loadGeneration !== audioLoadGenerationRef.current) return;
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       setNotice(
         error instanceof Error
           ? `No fue posible abrir el audio: ${error.message}`
           : 'No fue posible abrir el audio.',
       );
     } finally {
-      setBusy(null);
+      if (busyGeneration === busyGenerationRef.current) setBusy(null);
     }
   }, []);
 
@@ -488,9 +519,15 @@ export function App() {
       setNotice('La imagen supera el límite seguro de 24 MB.');
       return;
     }
+    const loadGeneration = ++backgroundLoadGenerationRef.current;
     try {
       const bitmap = await createImageBitmap(file);
+      if (loadGeneration !== backgroundLoadGenerationRef.current) {
+        bitmap.close();
+        return;
+      }
       rendererRef.current?.setBackgroundImage(bitmap);
+      setBackgroundLoadedName(file.name);
       setVisualConfiguration((current) => ({
         ...current,
         global: {
@@ -568,13 +605,24 @@ export function App() {
       setSettings(document.settings);
       setSyncAnchors(document.syncAnchors);
       setVisualConfiguration(document.visualConfiguration);
+      backgroundLoadGenerationRef.current += 1;
+      rendererRef.current?.setBackgroundImage(null);
+      setBackgroundLoadedName(null);
       const expected = [document.source.midiFileName, document.source.audioFileName]
         .filter(Boolean)
         .join(' + ');
+      const backgroundName =
+        document.visualConfiguration.global.backgroundImageName;
       setNotice(
         expected
-          ? `Estado restaurado. Carga ${expected} para reproducirlo.`
-          : 'Estado de visualización restaurado.',
+          ? `Estado restaurado. Carga ${expected} para reproducirlo.${
+              backgroundName
+                ? ` Vuelve a seleccionar ${backgroundName} como fondo.`
+                : ''
+            }`
+          : backgroundName
+            ? `Estado restaurado. Vuelve a seleccionar ${backgroundName} como fondo.`
+            : 'Estado de visualización restaurado.',
       );
     } catch (error) {
       setNotice(
@@ -615,11 +663,10 @@ export function App() {
     if (previous && audioTime - previous.audioTime < 0.12) return;
     const midiTime = previous
       ? previous.midiTime + beatDurationAt(previous.midiTime, project.tempoMap)
-      : mapAudioToMidi(
+      : syncTimelineRef.current.map(
           audioTime +
             visualConfigurationRef.current.global.audioOffsetMs / 1000,
-          anchorsRef.current,
-        );
+        ).midiTime;
     lastTapRef.current = { audioTime, midiTime };
     setSyncAnchors((current) =>
       normalizeAnchors([
@@ -645,7 +692,15 @@ export function App() {
     lastTapRef.current = null;
     setTapActive(true);
     setNotice('Tap tempo activo: pulsa el botón o la barra espaciadora.');
-    if (!transport.playing) void transportRef.current?.play();
+    if (!transport.playing) {
+      void transportRef.current?.play().catch((error) => {
+        setNotice(
+          error instanceof Error
+            ? `No fue posible iniciar el audio: ${error.message}`
+            : 'No fue posible iniciar el audio.',
+        );
+      });
+    }
   };
 
   const stopTapTempo = () => {
@@ -835,22 +890,22 @@ export function App() {
     );
   };
 
+  const syncTimeline = useMemo(
+    () => createSyncTimeline(syncAnchors),
+    [syncAnchors],
+  );
   const activeMidiTime = useMemo(
     () =>
-      mapAudioToMidi(
+      syncTimeline.map(
         transport.position + visualConfiguration.global.audioOffsetMs / 1000,
-        syncAnchors,
-      ),
+      ).midiTime,
     [
-      syncAnchors,
+      syncTimeline,
       transport.position,
       visualConfiguration.global.audioOffsetMs,
     ],
   );
-  const syncMappingIsForward = useMemo(
-    () => hasForwardSyncMapping(syncAnchors),
-    [syncAnchors],
-  );
+  const syncMappingIsForward = syncTimeline.forward;
   const selectedTrack =
     project?.tracks.find((track) => track.name === selectedTrackName) ?? null;
   const selectedResolvedStyle = selectedTrack
@@ -883,30 +938,38 @@ export function App() {
     >
       <input
         accept=".mid,.midi,audio/midi,audio/x-midi"
+        aria-hidden="true"
         className="visually-hidden"
         onChange={onFileInput((file) => void loadMidi(file))}
         ref={midiInputRef}
+        tabIndex={-1}
         type="file"
       />
       <input
         accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac"
+        aria-hidden="true"
         className="visually-hidden"
         onChange={onFileInput((file) => void loadAudio(file))}
         ref={audioInputRef}
+        tabIndex={-1}
         type="file"
       />
       <input
         accept="image/*,.png,.jpg,.jpeg,.webp,.avif"
+        aria-hidden="true"
         className="visually-hidden"
         onChange={onFileInput((file) => void loadBackgroundImage(file))}
         ref={backgroundInputRef}
+        tabIndex={-1}
         type="file"
       />
       <input
         accept=".json,application/json"
+        aria-hidden="true"
         className="visually-hidden"
         onChange={onFileInput((file) => void importState(file))}
         ref={jsonInputRef}
+        tabIndex={-1}
         type="file"
       />
 
@@ -1139,7 +1202,15 @@ export function App() {
             aria-label={transport.playing ? 'Pausar' : 'Reproducir'}
             className="play-button"
             disabled={!project}
-            onClick={() => void transportRef.current?.toggle()}
+            onClick={() => {
+              void transportRef.current?.toggle().catch((error) => {
+                setNotice(
+                  error instanceof Error
+                    ? `No fue posible iniciar la reproducción: ${error.message}`
+                    : 'No fue posible iniciar la reproducción.',
+                );
+              });
+            }}
             title={transport.playing ? 'Pausar' : 'Reproducir'}
             type="button"
           >
@@ -1295,8 +1366,10 @@ export function App() {
                   onClick={() => backgroundInputRef.current?.click()}
                   type="button"
                 >
-                  {visualConfiguration.global.backgroundImageName
-                    ? `Cambiar fondo · ${visualConfiguration.global.backgroundImageName}`
+                  {backgroundLoadedName
+                    ? `Cambiar fondo · ${backgroundLoadedName}`
+                    : visualConfiguration.global.backgroundImageName
+                      ? `Volver a cargar fondo · ${visualConfiguration.global.backgroundImageName}`
                     : 'Añadir imagen de fondo'}
                 </button>
                 {visualConfiguration.global.backgroundImageName && (
@@ -1317,7 +1390,9 @@ export function App() {
                     <button
                       className="text-action"
                       onClick={() => {
+                        backgroundLoadGenerationRef.current += 1;
                         rendererRef.current?.setBackgroundImage(null);
+                        setBackgroundLoadedName(null);
                         updateGlobalVisual('backgroundImageName', null);
                       }}
                       type="button"
@@ -1660,21 +1735,13 @@ export function App() {
                           visualConfiguration,
                         );
                         return (
-                          <button
+                          <div
                             className={
                               selectedTrackNames.includes(track.name)
                                 ? 'track-row is-selected'
                                 : 'track-row'
                             }
-                            draggable
                             key={track.id}
-                            onClick={(event) =>
-                              selectTrack(track.name, event)
-                            }
-                            onDragStart={(event) =>
-                              beginTrackDrag(track.name, event)
-                            }
-                            type="button"
                           >
                             <input
                               aria-label={`Activar ${track.name}`}
@@ -1687,18 +1754,30 @@ export function App() {
                               onClick={(event) => event.stopPropagation()}
                               type="checkbox"
                             />
-                            <span
-                              className="track-color"
-                              style={{ background: trackStyle.color }}
-                            />
-                            <span>
-                              <strong>{track.name}</strong>
-                              <small>
-                                {trackStyle.family} ·{' '}
-                                {track.noteCount.toLocaleString('es-CO')}
-                              </small>
-                            </span>
-                          </button>
+                            <button
+                              className="track-select-button"
+                              draggable
+                              onClick={(event) =>
+                                selectTrack(track.name, event)
+                              }
+                              onDragStart={(event) =>
+                                beginTrackDrag(track.name, event)
+                              }
+                              type="button"
+                            >
+                              <span
+                                className="track-color"
+                                style={{ background: trackStyle.color }}
+                              />
+                              <span>
+                                <strong>{track.name}</strong>
+                                <small>
+                                  {trackStyle.family} ·{' '}
+                                  {track.noteCount.toLocaleString('es-CO')}
+                                </small>
+                              </span>
+                            </button>
+                          </div>
                         );
                       })}
                     </div>

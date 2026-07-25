@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS,
+  createSyncTimeline,
   createStateDocument,
   hasForwardSyncMapping,
   mapAudioToMidi,
@@ -43,6 +44,21 @@ describe('mapAudioToMidi', () => {
         { id: 'b', audioTime: 10, midiTime: 1 },
       ]),
     ).toBe(false);
+  });
+
+  it('compila una línea temporal reutilizable y localiza tramos extensos', () => {
+    const anchors = Array.from({ length: 2_000 }, (_, index) => ({
+      id: String(index),
+      audioTime: index * 0.5,
+      midiTime: index * 0.49,
+    }));
+    const timeline = createSyncTimeline(anchors);
+
+    expect(timeline.forward).toBe(true);
+    const mapping = timeline.map(777.25);
+    expect(mapping.midiTime).toBeCloseTo(761.705, 8);
+    expect(mapping.playbackRate).toBeCloseTo(0.98, 8);
+    expect(timeline.anchors).toHaveLength(2_000);
   });
 });
 

@@ -51,6 +51,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm test -- --run`: 15 pruebas V2 correctas.
+- `npm run test`: 21 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

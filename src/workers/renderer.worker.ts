@@ -16,6 +16,10 @@ import type {
   RendererInboundMessage,
   RendererOutboundMessage,
 } from '../renderer/protocol';
+import {
+  computeRenderScale,
+  curveTravelOffset,
+} from '../renderer/renderMath';
 import { drawNoteShape, strokeNoteShape } from '../renderer/shapes';
 
 const scope = self as DedicatedWorkerGlobalScope;
@@ -24,6 +28,9 @@ let canvas: OffscreenCanvas | null = null;
 let context: OffscreenCanvasRenderingContext2D | null = null;
 let project: PackedMidiProject | null = null;
 let backgroundBitmap: ImageBitmap | null = null;
+let backdropCanvas: OffscreenCanvas | null = null;
+let backdropContext: OffscreenCanvasRenderingContext2D | null = null;
+let backdropDirty = true;
 let cssWidth = 1;
 let cssHeight = 1;
 let devicePixelRatio = 1;
@@ -106,27 +113,26 @@ const currentMidiTime = (now: number): number =>
         : 0),
   );
 
+const invalidateBackdrop = (): void => {
+  backdropDirty = true;
+};
+
 const applySize = (): void => {
   if (!canvas || !context) return;
-  const megapixelBudgets = {
-    auto: 8_000_000,
-    high: 12_000_000,
-    ultra: 20_000_000,
-  };
-  const ratioCaps = { auto: 2, high: 2.5, ultra: 3 };
-  const desiredRatio =
-    Math.min(devicePixelRatio, ratioCaps[settings.quality]) *
-    (settings.quality === 'auto' ? adaptiveRatio : 1) *
-    (appearance.global.supersampling / 2);
-  const maximumRatio = Math.sqrt(
-    megapixelBudgets[settings.quality] / Math.max(1, cssWidth * cssHeight),
-  );
-  renderScale = Math.max(1, Math.min(desiredRatio, maximumRatio));
+  renderScale = computeRenderScale({
+    cssWidth,
+    cssHeight,
+    devicePixelRatio,
+    quality: settings.quality,
+    adaptiveRatio,
+    supersampling: appearance.global.supersampling,
+  });
   canvas.width = Math.max(1, Math.round(cssWidth * renderScale));
   canvas.height = Math.max(1, Math.round(cssHeight * renderScale));
   context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
+  invalidateBackdrop();
 };
 
 const getTrackStyle = (noteIndex: number): ResolvedTrackVisualStyle => {
@@ -176,11 +182,19 @@ const roundedRect = (
   ctx.roundRect(x, y, width, height, safeRadius);
 };
 
-const renderBackdrop = (
-  ctx: OffscreenCanvasRenderingContext2D,
-  time: number,
-): void => {
-  ctx.save();
+const rebuildBackdrop = (): void => {
+  if (!canvas) return;
+  if (
+    !backdropCanvas ||
+    backdropCanvas.width !== canvas.width ||
+    backdropCanvas.height !== canvas.height
+  ) {
+    backdropCanvas = new OffscreenCanvas(canvas.width, canvas.height);
+    backdropContext = backdropCanvas.getContext('2d', { alpha: false });
+  }
+  if (!backdropContext) return;
+  const ctx = backdropContext;
+  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   ctx.fillStyle = settings.background;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
@@ -215,6 +229,21 @@ const renderBackdrop = (
   wash.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, cssWidth, cssHeight);
+  backdropDirty = false;
+};
+
+const renderBackdrop = (
+  ctx: OffscreenCanvasRenderingContext2D,
+  time: number,
+): void => {
+  if (backdropDirty) rebuildBackdrop();
+  ctx.save();
+  if (backdropCanvas) {
+    ctx.drawImage(backdropCanvas, 0, 0, cssWidth, cssHeight);
+  } else {
+    ctx.fillStyle = settings.background;
+    ctx.fillRect(0, 0, cssWidth, cssHeight);
+  }
 
   ctx.strokeStyle = `rgba(195, 213, 220, ${settings.gridOpacity * 0.16})`;
   ctx.lineWidth = 1;
@@ -232,7 +261,7 @@ const renderBackdrop = (
 const forEachVisibleNote = (
   visibleStart: number,
   visibleEnd: number,
-  draw: (index: number) => void,
+  draw: (index: number) => boolean | void,
 ): number => {
   if (!project) return 0;
   const { starts, ends } = project.notes;
@@ -242,19 +271,17 @@ const forEachVisibleNote = (
 
   for (let index = normalStart; index < normalEnd; index += 1) {
     if (ends[index] >= visibleStart) {
-      draw(index);
-      count += 1;
+      if (draw(index) !== false) count += 1;
     }
   }
 
   for (const index of longNotes) {
+    if (starts[index] > visibleEnd) break;
     if (
       starts[index] < visibleStart - 30 &&
-      starts[index] <= visibleEnd &&
       ends[index] >= visibleStart
     ) {
-      draw(index);
-      count += 1;
+      if (draw(index) !== false) count += 1;
     }
   }
   return count;
@@ -293,30 +320,6 @@ const drawNowLine = (
     style: ResolvedTrackVisualStyle;
   }
 
-  const curveTravelOffset = (
-    offset: number,
-    style: ResolvedTrackVisualStyle,
-    released: boolean,
-  ): number => {
-    if (!style.travel.enabled || released || offset === 0) return offset;
-    const maximum = cssWidth * 0.62 + Math.max(80, cssWidth * 0.1);
-    if (Math.abs(offset) >= maximum) return offset;
-    const normalized = Math.min(1, Math.abs(offset) / maximum);
-    const curved =
-      offset > 0
-        ? normalized ** (1 + style.travel.magnetZone * 1.7)
-        : 1 - (1 - normalized) ** (1 + style.travel.magnetZone * 0.45);
-    const intensity = Math.min(2, Math.max(0, style.travel.intensity));
-    let mixed =
-      normalized + (curved - normalized) * Math.min(1, intensity);
-    if (intensity > 1) mixed += (curved - mixed) * (intensity - 1);
-    return (
-      Math.sign(offset) *
-      Math.max(0, Math.min(1, mixed)) *
-      maximum
-    );
-  };
-
   const computeLayout = (index: number): NoteLayout | null => {
     const start = project!.notes.starts[index];
     const end = project!.notes.ends[index];
@@ -329,7 +332,14 @@ const drawNowLine = (
     const linearOffset = (start - time) * pixelsPerSecond;
     const x =
       playheadX +
-      curveTravelOffset(linearOffset, style, time > end);
+      curveTravelOffset({
+        offset: linearOffset,
+        canvasWidth: cssWidth,
+        intensity: style.travel.intensity,
+        magnetZone: style.travel.magnetZone,
+        enabled: style.travel.enabled,
+        released: time > end,
+      });
     const velocityScale = Math.max(
       0.22,
       Math.min(2.4, rawVelocity / Math.max(1, appearance.global.velocityBase)),
@@ -416,7 +426,6 @@ const drawNowLine = (
     else byTrack.set(layout.track, [layout]);
   });
   byTrack.forEach((group) => {
-    group.sort((left, right) => left.start - right.start);
     for (let index = 0; index < group.length - 1; index += 1) {
       const current = group[index];
       const next = group[index + 1];
@@ -533,11 +542,14 @@ const drawNowLine = (
       layout.height * 0.5;
     const targetX =
       playheadX +
-      curveTravelOffset(
-        (nextStart - time) * pixelsPerSecond,
-        nextStyle,
-        false,
-      );
+      curveTravelOffset({
+        offset: (nextStart - time) * pixelsPerSecond,
+        canvasWidth: cssWidth,
+        intensity: nextStyle.travel.intensity,
+        magnetZone: nextStyle.travel.magnetZone,
+        enabled: nextStyle.travel.enabled,
+        released: false,
+      });
     const scale = Math.max(0, 1 - progress);
     if (scale <= 0.02) return;
     const width = Math.max(0.5, layout.width * scale);
@@ -608,7 +620,7 @@ const drawPianoRoll = (
     const pitch = project!.notes.pitches[index];
     const velocity = project!.notes.velocities[index] / 127;
     const style = getTrackStyle(index);
-    if (!style.enabled) return;
+    if (!style.enabled) return false;
     const x = ((pitch + 0.5) / 128) * cssWidth - noteWidth / 2;
     const bottom = playheadY - (start - time) * pixelsPerSecond;
     const top = playheadY - (end - time) * pixelsPerSecond;
@@ -622,6 +634,7 @@ const drawPianoRoll = (
     roundedRect(ctx, x, top, noteWidth, height, noteWidth * 0.45);
     ctx.fill();
     ctx.shadowBlur = 0;
+    return true;
   });
 
   ctx.globalAlpha = 1;
@@ -698,7 +711,7 @@ const drawOrbit = (
     const pitch = project!.notes.pitches[index];
     const velocity = project!.notes.velocities[index] / 127;
     const style = getTrackStyle(index);
-    if (!style.enabled) return;
+    if (!style.enabled) return false;
     const active = start <= time && end >= time;
     const timeProgress = Math.max(
       0,
@@ -729,8 +742,6 @@ const drawOrbit = (
     ctx.shadowBlur =
       (active ? 12 + pulse * 8 : 5 + velocity * 5) * settings.glow;
     ctx.beginPath();
-    ctx.arc(radius, 0, 0, 0, 0);
-    ctx.beginPath();
     ctx.arc(
       0,
       0,
@@ -747,6 +758,7 @@ const drawOrbit = (
     ctx.arc(x, y, lineWidth * (active ? 1.4 : 0.8), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    return true;
   });
 
   ctx.save();
@@ -807,12 +819,13 @@ const adaptResolution = (fps: number, p95: number): void => {
 
 const renderFrame = (now: number): void => {
   animationHandle = 0;
-  if (rendererVisible) {
+  if (!rendererVisible || !context || !canvas) return;
+  if (clock.playing) {
     animationHandle = scope.requestAnimationFrame(renderFrame);
   }
-  if (!context || !canvas) return;
 
   if (
+    clock.playing &&
     appearance.global.fpsMode === 'fixed' &&
     now - lastRenderedAt < 1000 / appearance.global.fixedFps
   ) {
@@ -820,10 +833,12 @@ const renderFrame = (now: number): void => {
   }
   lastRenderedAt = now;
 
-  const frameDuration = Math.max(0.01, now - lastFrame);
-  lastFrame = now;
-  frameDurations.push(frameDuration);
-  if (frameDurations.length > 240) frameDurations.shift();
+  if (clock.playing) {
+    const frameDuration = Math.max(0.01, now - lastFrame);
+    lastFrame = now;
+    frameDurations.push(frameDuration);
+    if (frameDurations.length > 240) frameDurations.shift();
+  }
 
   const time = currentMidiTime(now);
   context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
@@ -841,7 +856,11 @@ const renderFrame = (now: number): void => {
     visibleNotes = 0;
   }
 
-  if (now - lastTelemetry >= 1000 && frameDurations.length > 0) {
+  if (
+    clock.playing &&
+    now - lastTelemetry >= 1000 &&
+    frameDurations.length > 0
+  ) {
     const sorted = [...frameDurations].sort((a, b) => a - b);
     const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
     const average =
@@ -865,6 +884,15 @@ const renderFrame = (now: number): void => {
   }
 };
 
+const requestRender = (): void => {
+  if (!rendererVisible || animationHandle) return;
+  if (!clock.playing) {
+    lastFrame = performance.now();
+    frameDurations = [];
+  }
+  animationHandle = scope.requestAnimationFrame(renderFrame);
+};
+
 scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
   try {
     const message = event.data;
@@ -879,37 +907,51 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       cssHeight = message.height;
       devicePixelRatio = message.devicePixelRatio;
       applySize();
-      if (!animationHandle) animationHandle = scope.requestAnimationFrame(renderFrame);
+      requestRender();
       send({ type: 'ready' });
     } else if (message.type === 'resize') {
       cssWidth = message.width;
       cssHeight = message.height;
       devicePixelRatio = message.devicePixelRatio;
       applySize();
+      requestRender();
     } else if (message.type === 'project') {
       project = message.project;
       rebuildLongNoteIndex();
+      requestRender();
     } else if (message.type === 'settings') {
       visualization = message.visualization;
       const qualityChanged = settings.quality !== message.settings.quality;
+      const backgroundChanged =
+        settings.background !== message.settings.background;
       settings = message.settings;
+      if (backgroundChanged) invalidateBackdrop();
       if (qualityChanged) {
         adaptiveRatio = 1;
         slowWindows = 0;
         fastWindows = 0;
         applySize();
       }
+      requestRender();
     } else if (message.type === 'appearance') {
       const supersamplingChanged =
         appearance.global.supersampling !==
         message.appearance.global.supersampling;
+      const backgroundOpacityChanged =
+        appearance.global.backgroundImageOpacity !==
+        message.appearance.global.backgroundImageOpacity;
       appearance = message.appearance;
+      if (backgroundOpacityChanged) invalidateBackdrop();
       if (supersamplingChanged) applySize();
+      requestRender();
     } else if (message.type === 'background-image') {
       backgroundBitmap?.close();
       backgroundBitmap = message.bitmap;
+      invalidateBackdrop();
+      requestRender();
     } else if (message.type === 'clock') {
       clock = message.clock;
+      requestRender();
     } else if (message.type === 'visibility') {
       rendererVisible = message.visible;
       if (!rendererVisible && animationHandle) {
@@ -918,7 +960,7 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       } else if (rendererVisible && !animationHandle) {
         lastFrame = performance.now();
         frameDurations = [];
-        animationHandle = scope.requestAnimationFrame(renderFrame);
+        requestRender();
       }
     } else if (message.type === 'refresh') {
       adaptiveRatio = 1;
@@ -928,10 +970,12 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       lastFrame = performance.now();
       lastRenderedAt = 0;
       applySize();
+      requestRender();
     } else if (message.type === 'clear') {
       project = null;
       longNotes = new Uint32Array();
       nextNoteIndices = new Uint32Array();
+      requestRender();
     }
   } catch (error) {
     send({

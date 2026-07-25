@@ -10,7 +10,7 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 
 ## MVP actual
 
-- Visualizaciones `NOW LINE` y `Piano Roll`.
+- Visualizaciones `NOW LINE`, `Piano Roll` y `Órbita`.
 - Parser MIDI formato 0/1 con mapa de tempo, running status y sustain.
 - Parsing y renderizado en Workers.
 - `OffscreenCanvas` con resolución adaptativa `Auto`, `Alta` y `Ultra`.
@@ -18,6 +18,7 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables.
 - Importación y exportación del estado JSON versionado.
+- Catálogo completo de figuras, familias, efectos y controles de V1.
 
 ## Preparación
 

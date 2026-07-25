@@ -87,13 +87,28 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - Editor de anclas.
 - Importación/exportación JSON sin medios.
 
-### 4. Endurecimiento — siguiente
+### 4. Endurecimiento — en curso
+
+Completado en el primer hito:
+
+- Mapa de anclas compilado con búsqueda binaria.
+- Render bajo demanda en pausa y caché del fondo estático.
+- Presupuestos de resolución comprobados con pruebas.
+- Protección contra carreras al reactivar Web Audio.
+- Mensajes de configuración agrupados y redimensiones redundantes eliminadas.
+- Controles de pistas sin elementos interactivos anidados y ayuda cerrable con
+  teclado.
+
+Siguiente:
 
 - Pruebas con corpus amplio de MIDI formato 0/1.
 - Métricas en iPad Safari, Chrome y equipos con GPU integrada.
 - Fallback de render en hilo principal para navegadores sin OffscreenCanvas.
 - Presets visuales adicionales con el mismo contrato.
 - Accesibilidad auditada con lector de pantalla.
+
+Los invariantes y pruebas de este hito se detallan en
+[`OPTIMIZATION_NOTES.md`](OPTIMIZATION_NOTES.md).
 
 ## Criterios de aceptación del MVP
 
