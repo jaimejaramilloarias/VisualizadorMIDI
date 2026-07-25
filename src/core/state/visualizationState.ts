@@ -1,4 +1,4 @@
-export const VISUALIZATION_IDS = ['now-line', 'piano-roll'] as const;
+export const VISUALIZATION_IDS = ['now-line', 'piano-roll', 'orbit'] as const;
 export type VisualizationId = (typeof VISUALIZATION_IDS)[number];
 
 export const QUALITY_PRESETS = ['auto', 'high', 'ultra'] as const;
@@ -8,6 +8,11 @@ export interface SyncAnchor {
   id: string;
   audioTime: number;
   midiTime: number;
+}
+
+export interface MidiClockMapping {
+  midiTime: number;
+  playbackRate: number;
 }
 
 export interface VisualizationSettings {
@@ -21,7 +26,7 @@ export interface VisualizationSettings {
 
 export interface VisualizationStateDocument {
   schema: 'midi-visualizer-state';
-  version: 1;
+  version: 2;
   savedAt: string;
   source: {
     midiFileName: string | null;
@@ -30,6 +35,7 @@ export interface VisualizationStateDocument {
   visualization: VisualizationId;
   settings: VisualizationSettings;
   syncAnchors: SyncAnchor[];
+  visualConfiguration: VisualConfiguration;
 }
 
 export const DEFAULT_SETTINGS: VisualizationSettings = {
@@ -64,12 +70,22 @@ export const normalizeAnchors = (anchors: SyncAnchor[]): SyncAnchor[] => {
 export const mapAudioToMidi = (
   audioTime: number,
   anchors: SyncAnchor[],
-): number => {
+): number => mapAudioToMidiClock(audioTime, anchors).midiTime;
+
+export const mapAudioToMidiClock = (
+  audioTime: number,
+  anchors: SyncAnchor[],
+): MidiClockMapping => {
   const normalized = normalizeAnchors(anchors);
-  if (normalized.length === 0) return Math.max(0, audioTime);
+  if (normalized.length === 0) {
+    return { midiTime: Math.max(0, audioTime), playbackRate: 1 };
+  }
   if (normalized.length === 1) {
     const anchor = normalized[0];
-    return Math.max(0, anchor.midiTime + audioTime - anchor.audioTime);
+    return {
+      midiTime: Math.max(0, anchor.midiTime + audioTime - anchor.audioTime),
+      playbackRate: 1,
+    };
   }
 
   let left = normalized[0];
@@ -95,9 +111,26 @@ export const mapAudioToMidi = (
   }
 
   const audioSpan = right.audioTime - left.audioTime;
-  if (audioSpan <= 0) return Math.max(0, left.midiTime);
+  if (audioSpan <= 0) {
+    return { midiTime: Math.max(0, left.midiTime), playbackRate: 0 };
+  }
+  const playbackRate = (right.midiTime - left.midiTime) / audioSpan;
   const progress = (audioTime - left.audioTime) / audioSpan;
-  return Math.max(0, left.midiTime + (right.midiTime - left.midiTime) * progress);
+  return {
+    midiTime: Math.max(
+      0,
+      left.midiTime + (right.midiTime - left.midiTime) * progress,
+    ),
+    playbackRate,
+  };
+};
+
+export const hasForwardSyncMapping = (anchors: SyncAnchor[]): boolean => {
+  const normalized = normalizeAnchors(anchors);
+  return normalized.every(
+    (anchor, index) =>
+      index === 0 || anchor.midiTime > normalized[index - 1].midiTime,
+  );
 };
 
 export const createStateDocument = ({
@@ -106,20 +139,23 @@ export const createStateDocument = ({
   visualization,
   settings,
   syncAnchors,
+  visualConfiguration = cloneDefaultVisualConfiguration(),
 }: {
   midiFileName: string | null;
   audioFileName: string | null;
   visualization: VisualizationId;
   settings: VisualizationSettings;
   syncAnchors: SyncAnchor[];
+  visualConfiguration?: VisualConfiguration;
 }): VisualizationStateDocument => ({
   schema: 'midi-visualizer-state',
-  version: 1,
+  version: 2,
   savedAt: new Date().toISOString(),
   source: { midiFileName, audioFileName },
   visualization,
   settings: { ...settings },
   syncAnchors: normalizeAnchors(syncAnchors),
+  visualConfiguration: sanitizeVisualConfiguration(visualConfiguration),
 });
 
 export const parseStateDocument = (raw: string): VisualizationStateDocument => {
@@ -127,8 +163,37 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
   if (!value || typeof value !== 'object') {
     throw new Error('El archivo no contiene un estado válido.');
   }
-  const candidate = value as Partial<VisualizationStateDocument>;
-  if (candidate.schema !== 'midi-visualizer-state' || candidate.version !== 1) {
+  const untyped = value as Record<string, unknown>;
+  if (
+    untyped.schema !== 'midi-visualizer-state' &&
+    ('familyCustomizations' in untyped ||
+      'assignedFamilies' in untyped ||
+      'enabledInstruments' in untyped)
+  ) {
+    return createStateDocument({
+      midiFileName: null,
+      audioFileName: null,
+      visualization: 'now-line',
+      settings: {
+        ...DEFAULT_SETTINGS,
+        secondsVisible:
+          typeof untyped.visibleSeconds === 'number'
+            ? Math.min(30, Math.max(2, untyped.visibleSeconds))
+            : DEFAULT_SETTINGS.secondsVisible,
+      },
+      syncAnchors: [],
+      visualConfiguration: migrateV1VisualConfiguration(untyped),
+    });
+  }
+  const candidate = value as Partial<
+    Omit<VisualizationStateDocument, 'version'>
+  > & {
+    version?: number;
+  };
+  if (
+    candidate.schema !== 'midi-visualizer-state' ||
+    (candidate.version !== 1 && candidate.version !== 2)
+  ) {
     throw new Error('La versión del estado no es compatible.');
   }
   if (!VISUALIZATION_IDS.includes(candidate.visualization as VisualizationId)) {
@@ -170,7 +235,7 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
 
   return {
     schema: 'midi-visualizer-state',
-    version: 1,
+    version: 2,
     savedAt:
       typeof candidate.savedAt === 'string'
         ? candidate.savedAt
@@ -188,5 +253,14 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
         ? (candidate.syncAnchors as SyncAnchor[])
         : [],
     ),
+    visualConfiguration: sanitizeVisualConfiguration(
+      candidate.visualConfiguration,
+    ),
   };
 };
+import {
+  cloneDefaultVisualConfiguration,
+  migrateV1VisualConfiguration,
+  sanitizeVisualConfiguration,
+  type VisualConfiguration,
+} from './visualConfiguration';

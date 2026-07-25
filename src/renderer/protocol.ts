@@ -3,11 +3,13 @@ import type {
   VisualizationId,
   VisualizationSettings,
 } from '../core/state/visualizationState';
+import type { RenderAppearance } from '../core/state/visualConfiguration';
 
 export interface RenderClock {
   midiTime: number;
   performanceTime: number;
   playing: boolean;
+  playbackRate: number;
 }
 
 export interface RenderTelemetry {
@@ -39,7 +41,11 @@ export type RendererInboundMessage =
       visualization: VisualizationId;
       settings: VisualizationSettings;
     }
+  | { type: 'appearance'; appearance: RenderAppearance }
+  | { type: 'background-image'; bitmap: ImageBitmap | null }
   | { type: 'clock'; clock: RenderClock }
+  | { type: 'visibility'; visible: boolean }
+  | { type: 'refresh' }
   | { type: 'clear' };
 
 export type RendererOutboundMessage =

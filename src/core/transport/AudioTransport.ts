@@ -75,6 +75,39 @@ export class AudioTransport {
     this.emit();
   }
 
+  getWaveformPeaks(sampleCount = 900): Float32Array | null {
+    if (!this.buffer || sampleCount <= 0) return null;
+    const count = Math.max(32, Math.floor(sampleCount));
+    const result = new Float32Array(count * 2);
+    const channels = Array.from(
+      { length: this.buffer.numberOfChannels },
+      (_, channel) => this.buffer!.getChannelData(channel),
+    );
+    const samplesPerPeak = Math.max(
+      1,
+      Math.floor(this.buffer.length / count),
+    );
+    for (let peak = 0; peak < count; peak += 1) {
+      const start = peak * samplesPerPeak;
+      const end = Math.min(this.buffer.length, start + samplesPerPeak);
+      let minimum = 1;
+      let maximum = -1;
+      const stride = Math.max(1, Math.floor((end - start) / 96));
+      for (let sample = start; sample < end; sample += stride) {
+        let mixed = 0;
+        channels.forEach((channel) => {
+          mixed += channel[sample] ?? 0;
+        });
+        mixed /= channels.length;
+        minimum = Math.min(minimum, mixed);
+        maximum = Math.max(maximum, mixed);
+      }
+      result[peak * 2] = minimum;
+      result[peak * 2 + 1] = maximum;
+    }
+    return result;
+  }
+
   async play(): Promise<void> {
     const duration = this.getDuration();
     if (this.playing || duration <= 0) return;

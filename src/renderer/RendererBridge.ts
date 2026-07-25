@@ -3,6 +3,7 @@ import type {
   VisualizationId,
   VisualizationSettings,
 } from '../core/state/visualizationState';
+import type { RenderAppearance } from '../core/state/visualConfiguration';
 import type {
   RenderClock,
   RendererInboundMessage,
@@ -94,8 +95,27 @@ export class RendererBridge {
     this.post({ type: 'settings', visualization, settings });
   }
 
+  setAppearance(appearance: RenderAppearance): void {
+    this.post({ type: 'appearance', appearance });
+  }
+
+  setBackgroundImage(bitmap: ImageBitmap | null): void {
+    this.post(
+      { type: 'background-image', bitmap },
+      bitmap ? [bitmap] : [],
+    );
+  }
+
   setClock(clock: RenderClock): void {
     this.post({ type: 'clock', clock });
+  }
+
+  setVisibility(visible: boolean): void {
+    this.post({ type: 'visibility', visible });
+  }
+
+  refresh(): void {
+    this.post({ type: 'refresh' });
   }
 
   clear(): void {
