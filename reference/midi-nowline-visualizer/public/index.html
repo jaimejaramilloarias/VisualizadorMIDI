@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIDI NOW LINE Visualizer</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage" aria-label="Visualizador MIDI">
+        <canvas id="visualizer" aria-label="Canvas de visualizacion MIDI"></canvas>
+      </section>
+
+      <aside class="control-panel" aria-label="Controles">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <h1>NOW LINE</h1>
+            <p id="statusText">Demo timeline</p>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button id="playButton" type="button" class="primary">Play</button>
+          <button id="restartButton" type="button">Reset</button>
+        </div>
+
+        <label class="file-control">
+          <span>MIDI</span>
+          <input id="midiInput" type="file" accept=".mid,.midi,audio/midi">
+        </label>
+
+        <label class="file-control">
+          <span>Audio</span>
+          <input id="audioInput" type="file" accept="audio/*">
+        </label>
+
+        <div class="control-grid">
+          <label>
+            <span>Ventana</span>
+            <input id="windowSlider" type="range" min="4" max="16" step="1" value="8">
+            <strong id="windowValue">8s</strong>
+          </label>
+
+          <label>
+            <span>Glow</span>
+            <input id="glowSlider" type="range" min="0" max="2" step="0.05" value="1">
+            <strong id="glowValue">1.00</strong>
+          </label>
+
+          <label>
+            <span>Bump</span>
+            <input id="bumpSlider" type="range" min="0" max="2" step="0.05" value="1">
+            <strong id="bumpValue">1.00</strong>
+          </label>
+
+          <label>
+            <span>Offset</span>
+            <input id="offsetSlider" type="range" min="-2" max="2" step="0.01" value="0">
+            <strong id="offsetValue">0.00s</strong>
+          </label>
+        </div>
+
+        <div class="readout">
+          <span id="timeReadout">0.00s</span>
+          <span id="noteReadout">0 notes</span>
+        </div>
+      </aside>
+    </main>
+
+    <audio id="audioElement"></audio>
+    <script src="/js/app.js"></script>
+  </body>
+</html>
