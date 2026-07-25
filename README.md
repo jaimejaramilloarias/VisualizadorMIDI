@@ -1,65 +1,60 @@
-# Visualizador MIDI 2
+# MIDI Stage — Visualizador MIDI V2
 
-Espacio de trabajo para la reestructuración profunda de Visualizador MIDI.
+Aplicación web local-first para visualizar archivos MIDI con animación de alta
+resolución, audio opcional y sincronización mediante anclas. No exporta video ni
+audio: prioriza una reproducción fluida y de calidad directamente en la web.
 
-La raíz contiene una línea base funcional importada desde
-[`jaimejaramilloarias/VisualizadorMIDI`](https://github.com/jaimejaramilloarias/VisualizadorMIDI)
-en el commit `824a0f52df4734b5cac817aac13e4d2d0dcf2f10` (3 de abril de 2026).
-La versión original no fue modificada.
+Los archivos MIDI y de audio se procesan en memoria en el dispositivo. El estado
+de la visualización se puede guardar como JSON, pero ese archivo solo contiene
+ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 
-## Estado actual
+## MVP actual
 
-- Código, recursos visuales y 54 archivos de prueba importados.
-- Suite oficial de 51 pruebas disponible con `npm test`.
-- Repositorio original configurado como remoto Git `upstream`.
-- Prototipo local `midi-nowline-visualizer` conservado dentro de `reference/`.
-- Arquitectura existente y estrategia inicial documentadas en
-  [`docs/BASELINE.md`](docs/BASELINE.md).
-
-Todavía no se ha reescrito la aplicación: este punto sirve como línea base
-verificable antes de cambiar su arquitectura.
+- Visualizaciones `NOW LINE` y `Piano Roll`.
+- Parser MIDI formato 0/1 con mapa de tempo, running status y sustain.
+- Parsing y renderizado en Workers.
+- `OffscreenCanvas` con resolución adaptativa `Auto`, `Alta` y `Ultra`.
+- Transporte sincronizado con Web Audio o reloj MIDI independiente.
+- Interpolación por tramos de anclas `audioTime → midiTime`.
+- UI táctil tipo iPad con columnas laterales colapsables.
+- Importación y exportación del estado JSON versionado.
 
 ## Preparación
 
 ```bash
 npm install
-npm test
+npm run dev
 ```
 
-`npm run test:all` incluye además tres pruebas que no formaban parte de la suite
-oficial del repositorio original. Actualmente sirve como auditoría de deuda
-técnica y puede fallar.
-
-La aplicación es estática. Para abrirla desde un servidor local:
+La aplicación queda disponible en `http://127.0.0.1:5173`. Para validar una
+entrega:
 
 ```bash
-python3 -m http.server 8080
+npm test
+npm run build
 ```
-
-Después visita `http://localhost:8080`.
 
 ## Estructura
 
 ```text
 .
-├── index.html                  Interfaz actual
-├── script.js                   Orquestación y lógica principal heredada
-├── utils.js                    Renderizado, formas y utilidades heredadas
-├── midiLoader.js               Carga de archivos MIDI
-├── wavLoader.js                Carga de audio WAV
-├── audioPlayer.js              Reproducción de audio
-├── ui.js                       Inicialización de UI
-├── configuracion.js            Controles de configuración
-├── renderLoop.js               Cola y bucle de renderizado
-├── new_shapes/                 Recursos visuales
-├── test_*.js                  Pruebas de regresión de la versión original
-├── docs/                       Inventario y decisiones de arquitectura
+├── src/
+│   ├── core/                   MIDI, transporte y estado persistible
+│   ├── renderer/               Protocolo y puente del motor gráfico
+│   ├── workers/                Parser y render fuera del hilo principal
+│   └── ui/                     Interfaz React iPad-first
+├── legacy/v1/                  Versión original congelada
+├── docs/                       Línea base y plan de desarrollo
 └── reference/
-    └── midi-nowline-visualizer/ Prototipo local, solo como referencia
+    └── midi-nowline-visualizer/ Prototipo local de referencia
 ```
 
-## Regla de migración
+El análisis técnico y las fases están en
+[`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md). La procedencia de V1 se
+documenta en [`docs/BASELINE.md`](docs/BASELINE.md).
 
-La reestructuración debe ser incremental: mantener las pruebas verdes, extraer
-una responsabilidad a la vez y evitar una reescritura total sin puntos de
-comparación.
+## Compatibilidad
+
+El camino de alto rendimiento requiere un navegador moderno con Web Workers,
+Web Audio y `OffscreenCanvas`. V1 conserva sus pruebas originales con
+`npm run test:legacy`.

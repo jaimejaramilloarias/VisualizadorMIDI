@@ -1,17 +1,28 @@
 {
-  "name": "visualizadormidi",
-  "version": "1.0.0",
-  "description": "",
-  "main": "script.js",
+  "name": "visualizador-midi-v2",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Motor audiovisual MIDI de alta resolución y baja latencia.",
   "scripts": {
-    "test": "node test-runner.js",
-    "test:all": "node test-runner.js --all"
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/prepare-sites-build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:legacy": "npm --prefix legacy/v1 test",
+    "test:all": "npm run test && npm run test:legacy"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "jsdom": "^23.0.0"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.2",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vitest": "^3.2.4"
   }
 }

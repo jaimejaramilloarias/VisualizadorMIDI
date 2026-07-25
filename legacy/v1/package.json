@@ -1,0 +1,17 @@
+{
+  "name": "visualizadormidi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "node test-runner.js",
+    "test:all": "node test-runner.js --all"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "jsdom": "^23.0.0"
+  }
+}
