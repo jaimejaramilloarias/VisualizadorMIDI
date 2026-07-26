@@ -5,6 +5,7 @@ import {
   cloneDefaultVisualConfiguration,
   createDistinctFamilyColors,
   createRenderAppearance,
+  migrateV1VisualConfiguration,
   resolveTrackVisualStyle,
   resolveTrackVisualStyleAtTime,
   sanitizeVisualConfiguration,
@@ -238,5 +239,96 @@ describe('visualConfiguration', () => {
       resolveTrackVisualStyle(track, configuration).noteLabelsEnabled,
     ).toBe(true);
     expect(configuration.global.noteLabels.enabled).toBe(false);
+  });
+
+  it('conserva las subfamilias instrumentales del prototipo original', () => {
+    const configuration = cloneDefaultVisualConfiguration();
+    const track = (name: string, family: 'reeds' | 'percussion') => ({
+      id: 0,
+      name,
+      instrument: name,
+      family,
+      noteCount: 1,
+    });
+
+    expect(
+      resolveTrackVisualStyle(
+        track('Saxofón tenor', 'reeds'),
+        configuration,
+      ).family,
+    ).toBe('Saxofones');
+    expect(
+      resolveTrackVisualStyle(
+        track('Timbal de concierto', 'percussion'),
+        configuration,
+      ).family,
+    ).toBe('Tambores');
+    expect(
+      resolveTrackVisualStyle(
+        track('Platillo de orquesta', 'percussion'),
+        configuration,
+      ).family,
+    ).toBe('Platillos');
+    expect(
+      resolveTrackVisualStyle(
+        track('Marimba', 'percussion'),
+        configuration,
+      ).family,
+    ).toBe('Placas');
+  });
+
+  it('migra los controles visuales útiles del prototipo original', () => {
+    const configuration = migrateV1VisualConfiguration({
+      familyCustomizations: {
+        Metales: {
+          colorBright: '#ffffff',
+          colorDark: '#000000',
+          secondaryColor: '#123456',
+          shape: 'diamondDouble',
+        },
+      },
+      instrumentCustomizations: {
+        Trompeta: {
+          heightScale: 1.4,
+          glowStrength: 2.2,
+          bumpStrength: 1.8,
+          extension: false,
+          stretch: true,
+          travel: { enabled: false, intensity: 1.25, magnetZone: 0.8 },
+        },
+      },
+      familyTravelSettings: {
+        global: { enabled: true, intensity: 0.75, magnetZone: 1.2 },
+        families: {
+          Metales: { intensity: 1.5 },
+        },
+      },
+      familyExtensions: { Metales: false },
+      familyStretch: { Metales: true },
+      shapeExtensions: { circleDouble: false },
+    });
+
+    expect(configuration.families.Metales).toMatchObject({
+      color: '#808080',
+      secondaryColor: '#123456',
+      shape: 'diamond',
+      extension: false,
+      stretch: true,
+      travel: { enabled: true, intensity: 1.5, magnetZone: 1.2 },
+    });
+    expect(configuration.families['Cuerdas frotadas'].travel).toEqual({
+      enabled: true,
+      intensity: 0.75,
+      magnetZone: 1.2,
+    });
+    expect(configuration.instruments.Trompeta).toMatchObject({
+      heightScale: 1.4,
+      glowStrength: 2.2,
+      bumpStrength: 1.8,
+      extension: false,
+      stretch: true,
+      travel: { enabled: false, intensity: 1.25, magnetZone: 0.8 },
+    });
+    expect(configuration.shapeExtensions.circle).toBe(false);
   });
 });

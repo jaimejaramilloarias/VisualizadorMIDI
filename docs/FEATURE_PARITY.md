@@ -1,8 +1,9 @@
 # Contrato de paridad V1 → V2
 
 V2 conserva las funciones musicales de V1 salvo las retiradas explícitamente por
-producto: escenas alternativas, rejilla/marcador vertical e imagen de fondo.
-Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
+producto: Piano Roll, Órbita, figuras dobles, contornos, líneas de conexión,
+rejilla/marcador vertical e imagen de fondo. Tampoco exporta video o audio; estas
+decisiones no afectan el JSON de estado.
 
 | Área | Función existente en V1 | Estado V2 |
 |---|---|---|
@@ -21,22 +22,25 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Visual | Etiquetas de nota, fuente, color y tamaño | Rediseñada; activación por voz y recuadro dinámico independiente |
 | Instrumentos | Activar/desactivar uno, todos o ninguno | Migrada |
 | Instrumentos | Asignar instrumento a familia | Migrada |
-| Instrumentos | Color y figura por instrumento | Migrada |
+| Instrumentos | Color y figura por instrumento | Migrada; ambos controles están en cada fila de Voces |
+| Instrumentos | Altura, glow, bump, extensión, alargamiento y viaje por instrumento | Migrada al menú único Animaciones |
 | Familias | Familias orquestales y cinco familias custom | Migrada |
-| Familias | Color principal/secundario y tono | Migrada |
+| Familias | Color y figura | Migrada; el color secundario heredado se conserva al importar JSON V1, pero no se muestra porque pertenecía a figuras dobles |
+| Familias | Restablecer personalización | Migrada por familia |
 | Figuras | Catálogo de figuras | Rediseñada; ocho figuras simples, sin variantes dobles |
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente |
 | Efectos | Opacidad extremos/centro | Migrada |
-| Efectos | Glow y bump global/familia | Rediseñada; pulsos breves en Note On, halo independiente y rango ampliado |
+| Efectos | Glow y bump global/familia/instrumento | Rediseñada; pulsos breves en Note On, halo independiente y rango ampliado |
 | Efectos | Contorno full/pre/post | Retirada por decisión de producto |
 | Efectos | Líneas de conexión por familia | Retirada por decisión de producto |
-| Efectos | Atracción hacia NOW, intensidad y zona de aceleración | Rediseñada; trayectoria única, entrada lenta y aceleración magnética continua |
+| Efectos | Atracción hacia NOW, intensidad y zona de aceleración | Rediseñada; controles globales, por familia y por instrumento, con llegada exacta al Note On |
 | UX | Modal multiselección y asignación por arrastre/Shift | Migrada a selección iPad, Shift/Cmd y drag & drop |
 | UX | Edición directa de figuras | Rediseñada; clic sobre nota y cambio desde el inicio o desde ese punto |
 | UX | Ayuda contextual | Migrada a guía integrada y tooltips |
+| UX | Modo desarrollador | Sustituido por Rendimiento: Hz de pantalla, FPS real/objetivo, P95, resolución y escala Retina |
 | Motor | Render offscreen y ajuste por DPR | Migrada y mejorada con Worker |
 | Motor | Refrescar animación sin perder estado | Migrada |
 
@@ -54,6 +58,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 59 pruebas V2 correctas.
+- `npm run test`: 62 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
-- Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.
+- El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
+  era un stub en el prototipo y no representa una función perdida.

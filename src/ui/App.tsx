@@ -30,6 +30,7 @@ import {
   MAX_EFFECT_STRENGTH,
   SHAPE_IDS,
   SHAPE_LABELS,
+  DEFAULT_FAMILY_STYLES,
   cloneDefaultVisualConfiguration,
   createDistinctFamilyColors,
   createRenderAppearance,
@@ -48,7 +49,6 @@ import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import { resolveTransportShortcut } from './transportShortcuts';
 import { SyncWorkspace } from './SyncWorkspace';
-import { WaveformEditor } from './WaveformEditor';
 
 interface ProjectSummary {
   fileName: string;
@@ -135,6 +135,7 @@ type InspectorMenuId =
   | 'tracks'
   | 'style'
   | 'animation'
+  | 'motion'
   | 'sync';
 
 const INSPECTOR_MENUS: ReadonlyArray<{
@@ -147,7 +148,7 @@ const INSPECTOR_MENUS: ReadonlyArray<{
   {
     id: 'style',
     label: 'Color y forma',
-    description: 'Aspecto por voz',
+    description: 'Tono, etiquetas y reglas',
     icon: 'palette',
   },
   {
@@ -155,6 +156,12 @@ const INSPECTOR_MENUS: ReadonlyArray<{
     label: 'Familias',
     description: 'Color, forma y movimiento',
     icon: 'layers',
+  },
+  {
+    id: 'motion',
+    label: 'Animaciones',
+    description: 'Global y por instrumento',
+    icon: 'motion',
   },
   { id: 'canvas', label: 'Canvas', description: 'Fondo y formato', icon: 'canvas' },
   {
@@ -292,7 +299,6 @@ export function App() {
     cloneDefaultVisualConfiguration(),
   );
   const projectRef = useRef<ProjectSummary | null>(null);
-  const anchorPreviewRef = useRef<number | null>(null);
   const selectionAnchorRef = useRef<string | null>(null);
   const lastTapRef = useRef<{ audioTime: number; midiTime: number } | null>(
     null,
@@ -317,7 +323,6 @@ export function App() {
   const [syncAnchors, setSyncAnchors] = useState<SyncAnchor[]>([]);
   const [visualConfiguration, setVisualConfiguration] =
     useState<VisualConfiguration>(() => cloneDefaultVisualConfiguration());
-  const [anchorMidiDraft, setAnchorMidiDraft] = useState<number | null>(null);
   const [inspectorTab, setInspectorTab] =
     useState<InspectorMenuId>('tracks');
   const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
@@ -363,16 +368,9 @@ export function App() {
     };
   }, []);
 
-  const clearAnchorPreview = useCallback(() => {
-    anchorPreviewRef.current = null;
-    setAnchorMidiDraft(null);
-  }, []);
-
   const togglePlayback = useCallback(async () => {
     const instance = transportRef.current;
     if (!instance) return;
-    const snapshot = instance.getSnapshot();
-    if (!snapshot.playing && !snapshot.starting) clearAnchorPreview();
     try {
       await instance.toggle();
     } catch (error) {
@@ -382,7 +380,7 @@ export function App() {
           : 'No fue posible iniciar la reproducción.',
       );
     }
-  }, [clearAnchorPreview]);
+  }, []);
 
   useEffect(() => {
     syncTimelineRef.current = createSyncTimeline(syncAnchors);
@@ -395,10 +393,6 @@ export function App() {
   useEffect(() => {
     projectRef.current = project;
   }, [project]);
-
-  useEffect(() => {
-    anchorPreviewRef.current = anchorMidiDraft;
-  }, [anchorMidiDraft]);
 
   useEffect(() => {
     const transportInstance = new AudioTransport();
@@ -424,7 +418,7 @@ export function App() {
           selectionAnchorRef.current = track.name;
           setVoiceEditPoint(selection.midiTime);
           setVoiceEditScope('point');
-          setInspectorTab('style');
+          setInspectorTab('tracks');
           setRightCollapsed(false);
           if (window.matchMedia('(max-width: 800px)').matches) {
             setLeftCollapsed(true);
@@ -543,16 +537,12 @@ export function App() {
       const instance = transportRef.current;
       if (instance) {
         const snapshot = instance.getSnapshot(now);
-        const preview = anchorPreviewRef.current;
-        const mapping =
-          preview === null
-            ? mapAudioToMidiClockWithOffset(
-                snapshot.position,
-                visualConfigurationRef.current.global.audioOffsetMs,
-                syncTimelineRef.current,
-              )
-            : { midiTime: preview, playbackRate: 0 };
-        const rendererPlaying = snapshot.playing && preview === null;
+        const mapping = mapAudioToMidiClockWithOffset(
+          snapshot.position,
+          visualConfigurationRef.current.global.audioOffsetMs,
+          syncTimelineRef.current,
+        );
+        const rendererPlaying = snapshot.playing;
         const previous = lastClockRef.current;
         const shouldCorrectPlayingClock =
           rendererPlaying && now - previous.sentAt >= 200;
@@ -819,14 +809,6 @@ export function App() {
         { id: createId(), audioTime, midiTime },
       ]),
     );
-    setAnchorMidiDraft(null);
-  };
-
-  const addAnchor = () => {
-    addAnchorAtAudio(
-      transport.position,
-      anchorMidiDraft ?? undefined,
-    );
   };
 
   const registerTap = useCallback(() => {
@@ -865,7 +847,6 @@ export function App() {
     }
     lastTapRef.current = null;
     setTapActive(true);
-    clearAnchorPreview();
     setNotice('Tap tempo activo: pulsa el botón o la barra espaciadora.');
     if (!transport.playing) {
       void transportRef.current?.play().catch((error) => {
@@ -884,13 +865,6 @@ export function App() {
     setNotice('Tap tempo finalizado. Puedes arrastrar sus anclas en la onda.');
   };
 
-  const setAnchorDraft = (value: number) => {
-    transportRef.current?.pause();
-    setAnchorMidiDraft(
-      Math.min(project?.duration ?? Number.MAX_SAFE_INTEGER, Math.max(0, value)),
-    );
-  };
-
   const updateGlobalVisual = <
     Key extends keyof VisualConfiguration['global'],
   >(
@@ -901,6 +875,24 @@ export function App() {
       ...current,
       global: { ...current.global, [key]: value },
     }));
+  };
+
+  const updateGlobalTravel = (
+    updates: Partial<VisualConfiguration['global']['travel']>,
+  ) => {
+    setVisualConfiguration((current) => {
+      const travel = { ...current.global.travel, ...updates };
+      return {
+        ...current,
+        global: { ...current.global, travel },
+        families: Object.fromEntries(
+          Object.entries(current.families).map(([name, family]) => [
+            name,
+            { ...family, travel: { ...travel } },
+          ]),
+        ),
+      };
+    });
   };
 
   const updateInstrument = (
@@ -919,15 +911,38 @@ export function App() {
     }));
   };
 
-  const updateInstrumentAppearanceFromStart = (
+  const updateInstrumentAppearance = (
     trackName: string,
     updates: Pick<
       InstrumentVisualStyle,
       'color' | 'secondaryColor' | 'shape'
     >,
   ) => {
+    const appliesFromPoint =
+      selectedTrackName === trackName &&
+      voiceEditScope === 'point' &&
+      voiceEditPoint !== null;
     setVisualConfiguration((current) => {
       const existing = current.instruments[trackName] ?? {};
+      if (appliesFromPoint && voiceEditPoint !== null) {
+        const cues = [...(existing.cues ?? [])];
+        const cueIndex = cues.findIndex(
+          (cue) => Math.abs(cue.at - voiceEditPoint) < 0.001,
+        );
+        if (cueIndex >= 0) {
+          cues[cueIndex] = { ...cues[cueIndex], ...updates };
+        } else {
+          cues.push({ at: voiceEditPoint, ...updates });
+        }
+        cues.sort((left, right) => left.at - right.at);
+        return {
+          ...current,
+          instruments: {
+            ...current.instruments,
+            [trackName]: { ...existing, cues },
+          },
+        };
+      }
       const cues = (existing.cues ?? [])
         .map((cue) => {
           const next = { ...cue };
@@ -967,74 +982,6 @@ export function App() {
       const instruments = { ...current.instruments };
       names.forEach((name) => {
         instruments[name] = { ...instruments[name], ...updates };
-      });
-      return { ...current, instruments };
-    });
-  };
-
-  const updateSelectedAppearance = (
-    updates: Pick<
-      InstrumentVisualStyle,
-      'color' | 'secondaryColor' | 'shape'
-    >,
-  ) => {
-    const names =
-      selectedTrackNames.length > 0
-        ? selectedTrackNames
-        : selectedTrackName
-          ? [selectedTrackName]
-          : [];
-    if (
-      voiceEditScope !== 'point' ||
-      voiceEditPoint === null ||
-      names.length === 0
-    ) {
-      setVisualConfiguration((current) => {
-        const instruments = { ...current.instruments };
-        names.forEach((name) => {
-          const existing = instruments[name] ?? {};
-          const cues = (existing.cues ?? [])
-            .map((cue) => {
-              const next = { ...cue };
-              if (updates.color !== undefined) delete next.color;
-              if (updates.secondaryColor !== undefined) {
-                delete next.secondaryColor;
-              }
-              if (updates.shape !== undefined) delete next.shape;
-              return next;
-            })
-            .filter(
-              (cue) =>
-                cue.color !== undefined ||
-                cue.secondaryColor !== undefined ||
-                cue.shape !== undefined,
-            );
-          instruments[name] = {
-            ...existing,
-            ...updates,
-            ...(cues.length > 0 ? { cues } : { cues: undefined }),
-          };
-        });
-        return { ...current, instruments };
-      });
-      return;
-    }
-
-    setVisualConfiguration((current) => {
-      const instruments = { ...current.instruments };
-      names.forEach((name) => {
-        const existing = instruments[name] ?? {};
-        const cues = [...(existing.cues ?? [])];
-        const cueIndex = cues.findIndex(
-          (cue) => Math.abs(cue.at - voiceEditPoint) < 0.001,
-        );
-        if (cueIndex >= 0) {
-          cues[cueIndex] = { ...cues[cueIndex], ...updates };
-        } else {
-          cues.push({ at: voiceEditPoint, ...updates });
-        }
-        cues.sort((left, right) => left.at - right.at);
-        instruments[name] = { ...existing, cues };
       });
       return { ...current, instruments };
     });
@@ -1131,6 +1078,19 @@ export function App() {
     }));
   };
 
+  const resetFamily = (familyName: string) => {
+    const defaultStyle =
+      DEFAULT_FAMILY_STYLES[familyName] ?? DEFAULT_FAMILY_STYLES['Custom 1'];
+    setVisualConfiguration((current) => ({
+      ...current,
+      families: {
+        ...current.families,
+        [familyName]: structuredClone(defaultStyle),
+      },
+    }));
+    setNotice(`${familyName} volvió a sus valores predeterminados.`);
+  };
+
   const updateShapeRule = (
     key: 'shapeExtensions' | 'shapeStretch',
     shape: (typeof SHAPE_IDS)[number],
@@ -1154,6 +1114,8 @@ export function App() {
       names.forEach((name) => delete instruments[name]);
       return { ...current, instruments };
     });
+    setVoiceEditPoint(null);
+    setVoiceEditScope('start');
   };
 
   const updateAnchor = (
@@ -1464,243 +1426,6 @@ export function App() {
             }}
             ref={canvasRef}
           />
-          {inspectorTab === 'sync' && (
-            <section
-              aria-label="Inspector horizontal de sincronía"
-              className="sync-canvas-panel"
-            >
-              <header className="sync-canvas-panel-header">
-                <span>
-                  <Icon name="sync" />
-                  <strong>Sincronía</strong>
-                  <small>Panel horizontal · ⅓ del canvas</small>
-                </span>
-                <button
-                  className="text-action"
-                  onClick={() => {
-                    setInspectorTab('style');
-                    setRightCollapsed(false);
-                  }}
-                  type="button"
-                >
-                  Cerrar
-                </button>
-              </header>
-              <div className="sync-canvas-grid">
-                <section className="sync-dock-card sync-dock-waveform">
-                  <div className="section-heading">
-                    <span>
-                      <small>TAP TEMPO</small>
-                      <strong>Forma de onda</strong>
-                    </span>
-                  </div>
-                  <WaveformEditor
-                    audioDuration={transport.duration}
-                    interactionMode="anchors"
-                    landmarks={[]}
-                    magnetEnabled={false}
-                    markers={syncAnchors}
-                    onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
-                    onDelete={(id) =>
-                      setSyncAnchors((current) =>
-                        current.filter((anchor) => anchor.id !== id),
-                      )
-                    }
-                    onMove={updateAnchor}
-                    onPan={() => undefined}
-                    onSelect={() => undefined}
-                    onZoom={() => undefined}
-                    peaks={waveformPeaks}
-                    playhead={transport.position}
-                    selectedAnchorId={null}
-                    viewDuration={Math.max(0.001, transport.duration)}
-                    viewStart={0}
-                  />
-                  <div className="tap-actions">
-                    <button
-                      className={
-                        tapActive ? 'text-action is-active' : 'text-action'
-                      }
-                      disabled={!transport.hasAudio || !project}
-                      onClick={tapActive ? stopTapTempo : startTapTempo}
-                      type="button"
-                    >
-                      {tapActive ? 'Finalizar captura' : 'Iniciar tap tempo'}
-                    </button>
-                    <button
-                      className="wide-action is-accent"
-                      disabled={!tapActive}
-                      onClick={registerTap}
-                      type="button"
-                    >
-                      Pulso · Espacio
-                    </button>
-                  </div>
-                </section>
-
-                <section className="sync-dock-card">
-                  <div className="section-heading">
-                    <span>
-                      <small>CALIBRACIÓN</small>
-                      <strong>Nueva ancla</strong>
-                    </span>
-                    {anchorMidiDraft !== null && (
-                      <button
-                        className="text-action"
-                        onClick={() => setAnchorMidiDraft(null)}
-                        type="button"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                  <div className="sync-pair">
-                    <span>
-                      <small>AUDIO</small>
-                      <strong>{formatTime(transport.position)}</strong>
-                    </span>
-                    <span className="sync-arrow">→</span>
-                    <span>
-                      <small>MIDI</small>
-                      <strong>
-                        {formatTime(anchorMidiDraft ?? activeMidiTime)}
-                      </strong>
-                    </span>
-                  </div>
-                  <input
-                    className="sync-target-range"
-                    disabled={!project}
-                    max={project?.duration || 1}
-                    min="0"
-                    onChange={(event) =>
-                      setAnchorDraft(Number(event.target.value))
-                    }
-                    step="0.01"
-                    type="range"
-                    value={anchorMidiDraft ?? activeMidiTime}
-                  />
-                  <div className="nudge-grid">
-                    {[-0.1, -0.01, 0.01, 0.1].map((amount) => (
-                      <button
-                        disabled={!project}
-                        key={amount}
-                        onClick={() =>
-                          setAnchorDraft(
-                            (anchorMidiDraft ?? activeMidiTime) + amount,
-                          )
-                        }
-                        type="button"
-                      >
-                        {amount > 0 ? '+' : ''}
-                        {amount.toFixed(2)} s
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className="wide-action is-accent"
-                    disabled={!project}
-                    onClick={addAnchor}
-                    type="button"
-                  >
-                    <Icon name="plus" />
-                    Guardar ancla
-                  </button>
-                  <RangeControl
-                    label="Audio offset"
-                    max={5000}
-                    min={-5000}
-                    onChange={(value) =>
-                      updateGlobalVisual('audioOffsetMs', value)
-                    }
-                    step={10}
-                    suffix=" ms"
-                    value={visualConfiguration.global.audioOffsetMs}
-                  />
-                </section>
-
-                <section className="sync-dock-card">
-                  <div className="section-heading">
-                    <span>
-                      <small>SINCRONIZACIÓN</small>
-                      <strong>Anclas guardadas</strong>
-                    </span>
-                    <button
-                      aria-label="Añadir ancla en la posición actual"
-                      className="add-button"
-                      disabled={!project}
-                      onClick={addAnchor}
-                      title="Añadir ancla en la posición actual"
-                      type="button"
-                    >
-                      <Icon name="plus" />
-                    </button>
-                  </div>
-                  {!syncMappingIsForward && (
-                    <p className="sync-warning">
-                      El tiempo MIDI debe avanzar entre anclas.
-                    </p>
-                  )}
-                  {syncAnchors.length === 0 ? (
-                    <button
-                      className="empty-anchors"
-                      disabled={!project}
-                      onClick={addAnchor}
-                      type="button"
-                    >
-                      <Icon name="plus" />
-                      <span>
-                        <strong>Crear primera ancla</strong>
-                        <small>Usa la posición actual</small>
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="anchor-list">
-                      {syncAnchors.map((anchor, index) => (
-                        <div className="anchor-row" key={anchor.id}>
-                          <span className="anchor-number">{index + 1}</span>
-                          <label>
-                            <span>Audio</span>
-                            <input
-                              min="0"
-                              onChange={(event) =>
-                                updateAnchor(anchor.id, Number(event.target.value))
-                              }
-                              step="0.01"
-                              type="number"
-                              value={anchor.audioTime}
-                            />
-                          </label>
-                          <label>
-                            <span>MIDI</span>
-                            <input
-                              min="0"
-                              readOnly
-                              step="0.01"
-                              type="number"
-                              value={anchor.midiTime}
-                            />
-                          </label>
-                          <button
-                            aria-label={`Eliminar ancla ${index + 1}`}
-                            className="delete-button"
-                            onClick={() =>
-                              setSyncAnchors((current) =>
-                                current.filter((item) => item.id !== anchor.id),
-                              )
-                            }
-                            title="Eliminar ancla"
-                            type="button"
-                          >
-                            <Icon name="trash" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
-            </section>
-          )}
           {!project && (
             <div className="empty-state">
               <span className="empty-icon">
@@ -1900,6 +1625,13 @@ export function App() {
                       <small>APARIENCIA Y MOVIMIENTO</small>
                       <strong>{activeAnimationFamily}</strong>
                     </span>
+                    <button
+                      className="text-action"
+                      onClick={() => resetFamily(activeAnimationFamily)}
+                      type="button"
+                    >
+                      Restablecer
+                    </button>
                   </div>
                   <div className="family-appearance-row">
                     <label>
@@ -2054,159 +1786,7 @@ export function App() {
             </>
           )}
 
-          {inspectorTab === 'style' && (
-            <section className="inspector-section">
-              <div className="section-heading">
-                <span>
-                  <small>CONTROLES PRINCIPALES</small>
-                  <strong>Voz, figura y color</strong>
-                </span>
-                {selectedTrack && (
-                  <button
-                    className="text-action"
-                    onClick={resetSelectedInstruments}
-                    type="button"
-                  >
-                    Restablecer
-                  </button>
-                )}
-              </div>
-              <label className="select-control">
-                <span>Voz o instrumento</span>
-                <select
-                  disabled={!project}
-                  onChange={(event) => {
-                    const name = event.target.value;
-                    setSelectedTrackName(name);
-                    setSelectedTrackNames(name ? [name] : []);
-                    setVoiceEditPoint(null);
-                    setVoiceEditScope('start');
-                  }}
-                  value={selectedTrackName ?? ''}
-                >
-                  {!project && <option value="">Carga un MIDI</option>}
-                  {project?.tracks.map((track) => (
-                    <option key={track.id} value={track.name}>
-                      {track.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {selectedTrack && selectedResolvedStyle && (
-                <>
-                  {voiceEditPoint !== null && (
-                    <div className="voice-edit-scope">
-                      <span>
-                        Nota elegida en <strong>{formatTime(voiceEditPoint)}</strong>
-                      </span>
-                      <div
-                        aria-label="Alcance de edición visual"
-                        className="segmented-control"
-                        role="group"
-                      >
-                        <button
-                          aria-pressed={voiceEditScope === 'start'}
-                          className={
-                            voiceEditScope === 'start' ? 'is-selected' : ''
-                          }
-                          onClick={() => setVoiceEditScope('start')}
-                          type="button"
-                        >
-                          Desde el inicio
-                        </button>
-                        <button
-                          aria-pressed={voiceEditScope === 'point'}
-                          className={
-                            voiceEditScope === 'point' ? 'is-selected' : ''
-                          }
-                          onClick={() => setVoiceEditScope('point')}
-                          type="button"
-                        >
-                          Desde este punto
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <label className="select-control">
-                    <span>Familia</span>
-                    <select
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          family: event.target.value,
-                        })
-                      }
-                      value={selectedResolvedStyle.family}
-                    >
-                      {FAMILY_NAMES.map((family) => (
-                        <option key={family} value={family}>
-                          {family}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="select-control">
-                    <span>Figura</span>
-                    <select
-                      onChange={(event) =>
-                        updateSelectedAppearance({
-                          shape: event.target.value as (typeof SHAPE_IDS)[number],
-                        })
-                      }
-                      value={selectedResolvedStyle.shape}
-                    >
-                      {SHAPE_IDS.map((shapeId) => (
-                        <option key={shapeId} value={shapeId}>
-                          {SHAPE_LABELS[shapeId]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="dual-color-control">
-                    <label>
-                      <span>Color principal</span>
-                      <input
-                        aria-label="Color principal"
-                        onChange={(event) =>
-                          updateSelectedAppearance({
-                            color: event.target.value,
-                          })
-                        }
-                        type="color"
-                        value={selectedResolvedStyle.color}
-                      />
-                    </label>
-                    <label>
-                      <span>Color secundario</span>
-                      <input
-                        aria-label="Color secundario"
-                        onChange={(event) =>
-                          updateSelectedAppearance({
-                            secondaryColor: event.target.value,
-                          })
-                        }
-                        type="color"
-                        value={selectedResolvedStyle.secondaryColor}
-                      />
-                    </label>
-                  </div>
-                  <label className="switch-row">
-                    <span>Etiquetas en la selección</span>
-                    <input
-                      checked={selectedResolvedStyle.noteLabelsEnabled}
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          noteLabelsEnabled: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                </>
-              )}
-            </section>
-          )}
-
-          {(['canvas', 'performance', 'animation', 'style'] as InspectorMenuId[]).includes(
+          {(['canvas', 'performance', 'motion', 'style'] as InspectorMenuId[]).includes(
             inspectorTab,
           ) && (
             <>
@@ -2218,7 +1798,7 @@ export function App() {
                     <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
-                {inspectorTab === 'animation' && (
+                {inspectorTab === 'motion' && (
                   <>
                 <RangeControl
                   label="Ventana visible"
@@ -2395,7 +1975,7 @@ export function App() {
                     <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
-                {inspectorTab === 'animation' && (
+                {inspectorTab === 'motion' && (
                   <>
                 <RangeControl
                   label="Velocidad base"
@@ -2423,7 +2003,7 @@ export function App() {
                   value={visualConfiguration.global.colorToneShift}
                 />
                 )}
-                {inspectorTab === 'animation' && (
+                {inspectorTab === 'motion' && (
                   <>
                 <RangeControl
                   label="Altura global"
@@ -2476,6 +2056,43 @@ export function App() {
                   suffix="×"
                   value={visualConfiguration.global.bumpStrength}
                 />
+                <span className="subcontrol-label">Viaje global hacia NOW</span>
+                <label className="switch-row">
+                  <span>Atracción magnética</span>
+                  <input
+                    checked={visualConfiguration.global.travel.enabled}
+                    onChange={(event) =>
+                      updateGlobalTravel({ enabled: event.target.checked })
+                    }
+                    type="checkbox"
+                  />
+                </label>
+                {visualConfiguration.global.travel.enabled && (
+                  <>
+                    <RangeControl
+                      label="Intensidad global"
+                      max={2}
+                      min={0}
+                      onChange={(value) =>
+                        updateGlobalTravel({ intensity: value })
+                      }
+                      step={0.05}
+                      suffix="×"
+                      value={visualConfiguration.global.travel.intensity}
+                    />
+                    <RangeControl
+                      label="Zona magnética global"
+                      max={2}
+                      min={0.5}
+                      onChange={(value) =>
+                        updateGlobalTravel({ magnetZone: value })
+                      }
+                      step={0.05}
+                      suffix="×"
+                      value={visualConfiguration.global.travel.magnetZone}
+                    />
+                  </>
+                )}
                 <p className="section-help">
                   Glow y bump comienzan en el Note On: el primero produce un
                   destello breve y el segundo un rebote rápido de tamaño. Nunca
@@ -2584,7 +2201,7 @@ export function App() {
                     </div>
                     <RangeControl
                       label="Tamaño de fuente"
-                      max={42}
+                      max={64}
                       min={8}
                       onChange={(value) =>
                         updateGlobalVisual('noteLabels', {
@@ -2681,8 +2298,49 @@ export function App() {
                     >
                       Ninguna
                     </button>
+                    <button
+                      disabled={selectedTrackNames.length === 0}
+                      onClick={resetSelectedInstruments}
+                      type="button"
+                    >
+                      Rest.
+                    </button>
                   </span>
                 </div>
+                {voiceEditPoint !== null && selectedTrack && (
+                  <div className="voice-edit-scope">
+                    <span>
+                      Editando <strong>{selectedTrack.name}</strong> desde{' '}
+                      <strong>{formatTime(voiceEditPoint)}</strong>
+                    </span>
+                    <div
+                      aria-label="Alcance de edición visual"
+                      className="segmented-control"
+                      role="group"
+                    >
+                      <button
+                        aria-pressed={voiceEditScope === 'start'}
+                        className={
+                          voiceEditScope === 'start' ? 'is-selected' : ''
+                        }
+                        onClick={() => setVoiceEditScope('start')}
+                        type="button"
+                      >
+                        Desde el inicio
+                      </button>
+                      <button
+                        aria-pressed={voiceEditScope === 'point'}
+                        className={
+                          voiceEditScope === 'point' ? 'is-selected' : ''
+                        }
+                        onClick={() => setVoiceEditScope('point')}
+                        type="button"
+                      >
+                        Desde este punto
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button
                   className="family-controls-shortcut"
                   disabled={!project}
@@ -2732,10 +2390,19 @@ export function App() {
                     </div>
                     <div className="track-list">
                       {project.tracks.map((track) => {
-                        const trackStyle = resolveTrackVisualStyle(
-                          track,
-                          visualConfiguration,
-                        );
+                        const trackStyle =
+                          track.name === selectedTrackName &&
+                          voiceEditScope === 'point' &&
+                          voiceEditPoint !== null
+                            ? resolveTrackVisualStyleAtTime(
+                                track,
+                                visualConfiguration,
+                                voiceEditPoint,
+                              )
+                            : resolveTrackVisualStyle(
+                                track,
+                                visualConfiguration,
+                              );
                         return (
                           <div
                             className={
@@ -2786,7 +2453,7 @@ export function App() {
                               <select
                                 aria-label={`Figura de ${track.name}`}
                                 onChange={(event) =>
-                                  updateInstrumentAppearanceFromStart(track.name, {
+                                  updateInstrumentAppearance(track.name, {
                                     shape: event.target
                                       .value as (typeof SHAPE_IDS)[number],
                                   })
@@ -2809,7 +2476,7 @@ export function App() {
                               <input
                                 aria-label={`Color de ${track.name}`}
                                 onChange={(event) =>
-                                  updateInstrumentAppearanceFromStart(track.name, {
+                                  updateInstrumentAppearance(track.name, {
                                     color: event.target.value,
                                   })
                                 }
@@ -2818,6 +2485,24 @@ export function App() {
                                 type="color"
                                 value={trackStyle.color}
                               />
+                            </label>
+                            <label className="track-label-control">
+                              <span className="visually-hidden">
+                                Etiquetas de {track.name}
+                              </span>
+                              <input
+                                aria-label={`Mostrar etiquetas en ${track.name}`}
+                                checked={trackStyle.noteLabelsEnabled}
+                                onChange={(event) =>
+                                  updateInstrument(track.name, {
+                                    noteLabelsEnabled: event.target.checked,
+                                  })
+                                }
+                                onClick={(event) => event.stopPropagation()}
+                                title={`Etiquetas de ${track.name}`}
+                                type="checkbox"
+                              />
+                              <span aria-hidden="true">Aa</span>
                             </label>
                           </div>
                         );
@@ -2829,47 +2514,145 @@ export function App() {
             </>
           )}
 
+          {inspectorTab === 'motion' && selectedTrack && selectedResolvedStyle && (
+            <section className="inspector-section">
+              <div className="section-heading">
+                <span>
+                  <small>ANIMACIÓN POR INSTRUMENTO</small>
+                  <strong>
+                    {selectedTrackNames.length > 1
+                      ? `${selectedTrackNames.length} pistas`
+                      : selectedTrack.name}
+                  </strong>
+                </span>
+              </div>
+              <p className="section-help">
+                Estos valores reemplazan el ajuste de familia únicamente en la
+                voz seleccionada.
+              </p>
+              <RangeControl
+                label="Altura de voz"
+                max={5}
+                min={0.2}
+                onChange={(value) =>
+                  updateSelectedInstruments({ heightScale: value })
+                }
+                step={0.1}
+                suffix="×"
+                value={selectedResolvedStyle.heightScale}
+              />
+              <RangeControl
+                label="Glow de voz"
+                max={MAX_EFFECT_STRENGTH}
+                min={0}
+                onChange={(value) =>
+                  updateSelectedInstruments({ glowStrength: value })
+                }
+                step={0.1}
+                suffix="×"
+                value={selectedResolvedStyle.glowStrength}
+              />
+              <RangeControl
+                label="Bump de voz"
+                max={MAX_EFFECT_STRENGTH}
+                min={0}
+                onChange={(value) =>
+                  updateSelectedInstruments({ bumpStrength: value })
+                }
+                step={0.1}
+                suffix="×"
+                value={selectedResolvedStyle.bumpStrength}
+              />
+              <label className="switch-row">
+                <span>Extensión dinámica</span>
+                <input
+                  checked={selectedResolvedStyle.extension}
+                  onChange={(event) =>
+                    updateSelectedInstruments({
+                      extension: event.target.checked,
+                    })
+                  }
+                  type="checkbox"
+                />
+              </label>
+              <label className="switch-row">
+                <span>Alargamiento</span>
+                <input
+                  checked={selectedResolvedStyle.stretch}
+                  onChange={(event) =>
+                    updateSelectedInstruments({
+                      stretch: event.target.checked,
+                    })
+                  }
+                  type="checkbox"
+                />
+              </label>
+              <label className="switch-row">
+                <span>Atracción hacia NOW</span>
+                <input
+                  checked={selectedResolvedStyle.travel.enabled}
+                  onChange={(event) =>
+                    updateSelectedInstruments({
+                      travel: {
+                        ...selectedResolvedStyle.travel,
+                        enabled: event.target.checked,
+                      },
+                    })
+                  }
+                  type="checkbox"
+                />
+              </label>
+              {selectedResolvedStyle.travel.enabled && (
+                <>
+                  <RangeControl
+                    label="Intensidad de voz"
+                    max={2}
+                    min={0}
+                    onChange={(value) =>
+                      updateSelectedInstruments({
+                        travel: {
+                          ...selectedResolvedStyle.travel,
+                          intensity: value,
+                        },
+                      })
+                    }
+                    step={0.05}
+                    suffix="×"
+                    value={selectedResolvedStyle.travel.intensity}
+                  />
+                  <RangeControl
+                    label="Zona magnética de voz"
+                    max={2}
+                    min={0.5}
+                    onChange={(value) =>
+                      updateSelectedInstruments({
+                        travel: {
+                          ...selectedResolvedStyle.travel,
+                          magnetZone: value,
+                        },
+                      })
+                    }
+                    step={0.05}
+                    suffix="×"
+                    value={selectedResolvedStyle.travel.magnetZone}
+                  />
+                </>
+              )}
+            </section>
+          )}
+
           {inspectorTab === 'style' && (
             <>
               {selectedTrack && selectedResolvedStyle && (
                 <section className="inspector-section">
                   <div className="section-heading">
                     <span>
-                      <small>OPCIONES AVANZADAS</small>
+                      <small>REGLAS DE FIGURA</small>
                       <strong>
-                        {selectedTrackNames.length > 1
-                          ? `${selectedTrackNames.length} pistas`
-                          : selectedTrack.name}
+                        {SHAPE_LABELS[selectedResolvedStyle.shape]}
                       </strong>
                     </span>
                   </div>
-                  <label className="switch-row">
-                    <span>Extensión dinámica</span>
-                    <input
-                      checked={selectedResolvedStyle.extension}
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          extension: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <label className="switch-row">
-                    <span>Alargamiento</span>
-                    <input
-                      checked={selectedResolvedStyle.stretch}
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          stretch: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <span className="subcontrol-label">
-                    Regla global de {SHAPE_LABELS[selectedResolvedStyle.shape]}
-                  </span>
                   <label className="switch-row">
                     <span>Figura admite extensión</span>
                     <input
@@ -2911,237 +2694,6 @@ export function App() {
             </>
           )}
 
-          {inspectorTab === 'sync' && !rightCollapsed && (
-            <>
-              <section className="inspector-section sync-section">
-                <div className="section-heading">
-                  <span>
-                    <small>TAP TEMPO</small>
-                    <strong>Forma de onda</strong>
-                  </span>
-                </div>
-                <p className="section-help">
-                  Toca la onda para crear anclas, arrástralas para corregirlas o
-                  captura pulsos en tiempo real.
-                </p>
-                <WaveformEditor
-                  audioDuration={transport.duration}
-                  interactionMode="anchors"
-                  landmarks={[]}
-                  magnetEnabled={false}
-                  markers={syncAnchors}
-                  onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
-                  onDelete={(id) =>
-                    setSyncAnchors((current) =>
-                      current.filter((anchor) => anchor.id !== id),
-                    )
-                  }
-                  onMove={updateAnchor}
-                  onPan={() => undefined}
-                  onSelect={() => undefined}
-                  onZoom={() => undefined}
-                  peaks={waveformPeaks}
-                  playhead={transport.position}
-                  selectedAnchorId={null}
-                  viewDuration={Math.max(0.001, transport.duration)}
-                  viewStart={0}
-                />
-                <div className="tap-actions">
-                  <button
-                    className={tapActive ? 'text-action is-active' : 'text-action'}
-                    disabled={!transport.hasAudio || !project}
-                    onClick={tapActive ? stopTapTempo : startTapTempo}
-                    type="button"
-                  >
-                    {tapActive ? 'Finalizar captura' : 'Iniciar tap tempo'}
-                  </button>
-                  <button
-                    className="wide-action is-accent"
-                    disabled={!tapActive}
-                    onClick={registerTap}
-                    type="button"
-                  >
-                    Pulso · Espacio
-                  </button>
-                </div>
-              </section>
-
-              <section className="inspector-section sync-section">
-                <div className="section-heading">
-                  <span>
-                    <small>CALIBRACIÓN</small>
-                    <strong>Nueva ancla</strong>
-                  </span>
-                  {anchorMidiDraft !== null && (
-                    <button
-                      className="text-action"
-                      onClick={() => setAnchorMidiDraft(null)}
-                      type="button"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-                <p className="section-help">
-                  Pausa en un punto reconocible del audio y ajusta el instante
-                  MIDI que debería verse allí.
-                </p>
-                <div className="sync-pair">
-                  <span>
-                    <small>AUDIO</small>
-                    <strong>{formatTime(transport.position)}</strong>
-                  </span>
-                  <span className="sync-arrow">→</span>
-                  <span>
-                    <small>MIDI</small>
-                    <strong>
-                      {formatTime(anchorMidiDraft ?? activeMidiTime)}
-                    </strong>
-                  </span>
-                </div>
-                <input
-                  className="sync-target-range"
-                  disabled={!project}
-                  max={project?.duration || 1}
-                  min="0"
-                  onChange={(event) =>
-                    setAnchorDraft(Number(event.target.value))
-                  }
-                  step="0.01"
-                  type="range"
-                  value={anchorMidiDraft ?? activeMidiTime}
-                />
-                <div className="nudge-grid">
-                  {[-0.1, -0.01, 0.01, 0.1].map((amount) => (
-                    <button
-                      disabled={!project}
-                      key={amount}
-                      onClick={() =>
-                        setAnchorDraft(
-                          (anchorMidiDraft ?? activeMidiTime) + amount,
-                        )
-                      }
-                      type="button"
-                    >
-                      {amount > 0 ? '+' : ''}
-                      {amount.toFixed(2)} s
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="wide-action is-accent"
-                  disabled={!project}
-                  onClick={addAnchor}
-                  type="button"
-                >
-                  <Icon name="plus" />
-                  Guardar ancla
-                </button>
-              </section>
-
-              <section className="inspector-section">
-                <div className="section-heading">
-                  <span>
-                    <small>COMPATIBILIDAD V1</small>
-                    <strong>Offset directo</strong>
-                  </span>
-                </div>
-                <RangeControl
-                  label="Audio offset"
-                  max={5000}
-                  min={-5000}
-                  onChange={(value) =>
-                    updateGlobalVisual('audioOffsetMs', value)
-                  }
-                  step={10}
-                  suffix=" ms"
-                  value={visualConfiguration.global.audioOffsetMs}
-                />
-              </section>
-
-              <section className="inspector-section sync-section">
-                <div className="section-heading">
-                  <span>
-                    <small>SINCRONIZACIÓN</small>
-                    <strong>Anclas guardadas</strong>
-                  </span>
-                  <button
-                    aria-label="Añadir ancla en la posición actual"
-                    className="add-button"
-                    disabled={!project}
-                    onClick={addAnchor}
-                    title="Añadir ancla en la posición actual"
-                    type="button"
-                  >
-                    <Icon name="plus" />
-                  </button>
-                </div>
-                {!syncMappingIsForward && (
-                  <p className="sync-warning">
-                    El tiempo MIDI debe avanzar entre anclas. Corrige los
-                    valores para evitar que la imagen retroceda.
-                  </p>
-                )}
-                {syncAnchors.length === 0 ? (
-                  <button
-                    className="empty-anchors"
-                    disabled={!project}
-                    onClick={addAnchor}
-                    type="button"
-                  >
-                    <Icon name="plus" />
-                    <span>
-                      <strong>Crear primera ancla</strong>
-                      <small>Usa la posición actual</small>
-                    </span>
-                  </button>
-                ) : (
-                  <div className="anchor-list">
-                    {syncAnchors.map((anchor, index) => (
-                      <div className="anchor-row" key={anchor.id}>
-                        <span className="anchor-number">{index + 1}</span>
-                        <label>
-                          <span>Audio</span>
-                          <input
-                            min="0"
-                            onChange={(event) =>
-                              updateAnchor(anchor.id, Number(event.target.value))
-                            }
-                            step="0.01"
-                            type="number"
-                            value={anchor.audioTime}
-                          />
-                        </label>
-                        <label>
-                          <span>MIDI</span>
-                          <input
-                            min="0"
-                            readOnly
-                            step="0.01"
-                            type="number"
-                            value={anchor.midiTime}
-                          />
-                        </label>
-                        <button
-                          aria-label={`Eliminar ancla ${index + 1}`}
-                          className="delete-button"
-                          onClick={() =>
-                            setSyncAnchors((current) =>
-                              current.filter((item) => item.id !== anchor.id),
-                            )
-                          }
-                          title="Eliminar ancla"
-                          type="button"
-                        >
-                          <Icon name="trash" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </>
-          )}
         </div>
       </aside>
       {syncWorkspaceOpen && (
@@ -3158,7 +2710,6 @@ export function App() {
             setSyncAnchors([]);
             lastTapRef.current = null;
             setTapActive(false);
-            clearAnchorPreview();
             setNotice('Todas las anclas fueron eliminadas.');
           }}
           onClose={() => setSyncWorkspaceOpen(false)}
@@ -3174,7 +2725,6 @@ export function App() {
           onRegisterTap={registerTap}
           onRefreshWaveform={refreshWaveformPeaks}
           onSeek={(time) => {
-            clearAnchorPreview();
             transportRef.current?.seek(time);
           }}
           onTapToggle={tapActive ? stopTapTempo : startTapTempo}

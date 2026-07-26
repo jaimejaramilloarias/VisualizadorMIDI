@@ -240,8 +240,8 @@ export function WaveformEditor({
       context.strokeStyle = selected ? '#ffe55a' : 'rgba(255,213,0,.62)';
       context.lineWidth = selected ? 2.5 : 1.5;
       context.beginPath();
-      context.moveTo(anchorX, audioMiddle);
-      context.lineTo(anchorX, midiY);
+      context.moveTo(anchorX, audioTop);
+      context.lineTo(anchorX, audioBottom);
       context.stroke();
 
       context.fillStyle = selected ? '#fff3a5' : '#ffd500';

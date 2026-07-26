@@ -314,6 +314,20 @@ const validColor = (value: unknown, fallback: string): string =>
     ? value.toLowerCase()
     : fallback;
 
+const midpointColor = (first: string, second: string): string => {
+  const left = Number.parseInt(first.slice(1), 16);
+  const right = Number.parseInt(second.slice(1), 16);
+  return `#${[16, 8, 0]
+    .map((shift) =>
+      Math.round(
+        (((left >> shift) & 0xff) + ((right >> shift) & 0xff)) / 2,
+      )
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+};
+
 const clamp = (
   value: unknown,
   minimum: number,
@@ -622,14 +636,22 @@ export const migrateV1VisualConfiguration = (
     typeof value.familyCustomizations === 'object'
       ? (value.familyCustomizations as Record<
           string,
-          Partial<FamilyVisualStyle>
+          Partial<FamilyVisualStyle> & {
+            colorBright?: unknown;
+            colorDark?: unknown;
+          }
         >)
       : {};
   Object.entries(familyCustomizations).forEach(([family, customization]) => {
     const fallback =
       migrated.families[family] ?? structuredClone(migrated.families['Custom 1']);
+    const bright = validColor(customization.colorBright, '');
+    const dark = validColor(customization.colorDark, '');
+    const legacyColor =
+      customization.color ??
+      (bright && dark ? midpointColor(bright, dark) : bright || dark || undefined);
     migrated.families[family] = sanitizeFamilyStyle(
-      customization,
+      { ...customization, color: legacyColor },
       fallback,
     );
   });
@@ -751,6 +773,12 @@ export const migrateV1VisualConfiguration = (
         })
       : {};
   global.travel = sanitizeTravel(travelSettings.global, global.travel);
+  Object.keys(migrated.families).forEach((family) => {
+    migrated.families[family] = {
+      ...migrated.families[family],
+      travel: { ...global.travel },
+    };
+  });
   Object.entries(travelSettings.families ?? {}).forEach(([family, travel]) => {
     const fallback =
       migrated.families[family] ??
@@ -791,7 +819,13 @@ const detectedFamilyName = (track: MidiTrackInfo): string => {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
   if (normalized.includes('sax')) return 'Saxofones';
-  if (normalized.includes('timbal') || normalized.includes('timpani')) {
+  if (
+    normalized.includes('timbal') ||
+    normalized.includes('timpani') ||
+    normalized.includes('conga') ||
+    normalized.includes('tambor') ||
+    normalized.includes('drum')
+  ) {
     return 'Tambores';
   }
   if (
@@ -805,7 +839,9 @@ const detectedFamilyName = (track: MidiTrackInfo): string => {
     normalized.includes('xilof') ||
     normalized.includes('marimba') ||
     normalized.includes('vibraf') ||
-    normalized.includes('glock')
+    normalized.includes('glock') ||
+    normalized.includes('campana') ||
+    normalized.includes('tubular bell')
   ) {
     return 'Placas';
   }

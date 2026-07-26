@@ -151,11 +151,20 @@ const FAMILY_RULES: Array<{ family: FamilyId; tokens: string[] }> = [
   },
   {
     family: 'woodwinds',
-    tokens: ['flute', 'flauta', 'piccolo', 'flautin', 'clarinet', 'clarinete', 'pipe'],
+    tokens: ['flute', 'flauta', 'piccolo', 'flautin', 'pipe'],
   },
   {
     family: 'reeds',
-    tokens: ['oboe', 'bassoon', 'fagot', 'sax', 'reed', 'corno ingles'],
+    tokens: [
+      'oboe',
+      'bassoon',
+      'fagot',
+      'clarinet',
+      'clarinete',
+      'sax',
+      'reed',
+      'corno ingles',
+    ],
   },
   {
     family: 'keyboards',
@@ -178,6 +187,49 @@ const FAMILY_RULES: Array<{ family: FamilyId; tokens: string[] }> = [
     tokens: ['synth', 'sintetizador', 'pad', 'lead'],
   },
 ];
+
+const FUZZY_INSTRUMENT_RULES: Array<{
+  family: FamilyId;
+  instruments: string[];
+}> = [
+  {
+    family: 'woodwinds',
+    instruments: ['flauta', 'flautin', 'piccolo'],
+  },
+  {
+    family: 'reeds',
+    instruments: ['oboe', 'fagot', 'bassoon', 'clarinete', 'saxofon'],
+  },
+  {
+    family: 'horns',
+    instruments: ['corno', 'trompa'],
+  },
+  {
+    family: 'brass',
+    instruments: ['trompeta', 'trombon', 'tuba', 'bombardino'],
+  },
+  {
+    family: 'strings',
+    instruments: ['violin', 'viola', 'violonchelo', 'cello', 'contrabajo'],
+  },
+];
+
+const fuzzyInstrumentFamily = (normalizedName: string): FamilyId | null => {
+  const compact = normalizedName.replace(/\s+/g, '');
+  if (compact.length < 4) return null;
+  for (const rule of FUZZY_INSTRUMENT_RULES) {
+    for (const instrument of rule.instruments) {
+      if (
+        compact.includes(instrument) ||
+        (compact.startsWith(instrument.slice(0, 2)) &&
+          compact.endsWith(instrument.slice(-2)))
+      ) {
+        return rule.family;
+      }
+    }
+  }
+  return null;
+};
 
 const familyFromProgram = (program: number): FamilyId => {
   if (program <= 7) return 'keyboards';
@@ -208,6 +260,8 @@ export const detectFamily = (
       return rule.family;
     }
   }
+  const fuzzyFamily = fuzzyInstrumentFamily(normalized);
+  if (fuzzyFamily) return fuzzyFamily;
   return familyFromProgram(program);
 };
 

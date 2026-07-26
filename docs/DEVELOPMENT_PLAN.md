@@ -65,12 +65,12 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - Iconos coherentes con etiqueta visible en anchos amplios y `aria-label`/tooltip.
 - Columnas laterales colapsables; en pantallas estrechas funcionan como paneles.
 - Transporte persistente bajo el lienzo.
-- Menús independientes para canvas, rendimiento, pistas, estilo, animación y
-  sincronía.
+- Menús independientes para voces, color/forma, familias, animaciones, canvas,
+  rendimiento y sincronía.
 - El menú Voces ofrece un selector de figura en cada pista para cambios rápidos;
   el catálogo se limita a ocho figuras simples.
-- El inspector abre en Estilo y presenta primero voz o instrumento, figura y
-  colores; los ajustes globales y avanzados permanecen debajo.
+- El inspector abre en Voces y presenta primero cada instrumento con su figura,
+  color y etiqueta; los ajustes globales y avanzados viven en su menú único.
 - Respeto de `prefers-reduced-motion`, áreas seguras y navegación por teclado.
 
 ## Etapas

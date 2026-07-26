@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMidiFile } from './parseMidi';
+import { detectFamily, parseMidiFile } from './parseMidi';
 
 const variableLength = (value: number): number[] => {
   const bytes = [value & 0x7f];
@@ -126,5 +126,19 @@ describe('parseMidiFile', () => {
     expect(() =>
       parseMidiFile(Uint8Array.from([1, 2, 3, 4]).buffer),
     ).toThrow(/cabecera MIDI válida/);
+  });
+});
+
+describe('compatibilidad de instrumentos V1', () => {
+  it('reconoce nombres numerados, acentuados y con caracteres extraños', () => {
+    expect(detectFamily('Flauta 1', '', 0, 0)).toBe('woodwinds');
+    expect(detectFamily('Clarinete (Si Bemol) II', '', 0, 0)).toBe(
+      'reeds',
+    );
+    expect(detectFamily('Corno francés (Sol) 4', '', 0, 0)).toBe('horns');
+    expect(detectFamily('Saxofón tenor', '', 0, 0)).toBe('reeds');
+    expect(detectFamily('Fl@uta', '', 0, 0)).toBe('woodwinds');
+    expect(detectFamily('Tr$mpeta', '', 0, 0)).toBe('brass');
+    expect(detectFamily('Vio?lín', '', 0, 0)).toBe('strings');
   });
 });
