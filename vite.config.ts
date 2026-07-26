@@ -6,6 +6,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    outDir: 'dist/client',
   },
   worker: {
     format: 'es',
