@@ -1,4 +1,4 @@
-# Plan de desarrollo — Visualizador MIDI V2
+# Plan de desarrollo — MIDI Stage V2
 
 ## Producto
 

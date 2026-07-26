@@ -1146,8 +1146,7 @@ export function App() {
             <Icon name="sparkles" />
           </span>
           <span className="brand-copy">
-            <strong>MIDI STAGE</strong>
-            <small>Visualizador V2</small>
+            <strong>MIDI STAGE V2</strong>
           </span>
         </div>
         <nav aria-label="Archivos" className="file-actions">

@@ -1,6 +1,6 @@
 {
-  "name": "MIDI Stage — Visualizador MIDI V2",
-  "short_name": "MIDI Stage",
+  "name": "MIDI Stage V2",
+  "short_name": "MIDI Stage V2",
   "description": "Visualización MIDI de alta resolución con audio opcional y sincronización mediante anclas.",
   "start_url": "/",
   "display": "standalone",

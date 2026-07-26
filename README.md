@@ -1,4 +1,4 @@
-# MIDI Stage — Visualizador MIDI V2
+# MIDI Stage V2
 
 Aplicación web local-first para visualizar archivos MIDI con animación de alta
 resolución, audio opcional y sincronización mediante anclas. No exporta video ni
