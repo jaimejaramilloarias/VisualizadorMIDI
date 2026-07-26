@@ -1125,6 +1125,153 @@ input:focus-visible {
   background: var(--accent-soft);
 }
 
+.family-controls-shortcut {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  align-items: center;
+  margin-bottom: 11px;
+  padding: 7px 9px;
+  gap: 8px;
+  color: #e8edef;
+  border: 1px solid rgba(255, 213, 0, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 213, 0, 0.075);
+  cursor: pointer;
+  text-align: left;
+}
+
+.family-controls-shortcut:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.family-controls-shortcut > svg:first-child {
+  width: 19px;
+  color: var(--accent);
+}
+
+.family-controls-shortcut > svg:last-child {
+  width: 14px;
+  color: #758086;
+}
+
+.family-controls-shortcut span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.family-controls-shortcut strong {
+  font-size: 10px;
+}
+
+.family-controls-shortcut small {
+  margin-top: 3px;
+  color: #899399;
+  font-size: 8px;
+}
+
+.family-control-list {
+  display: grid;
+  gap: 6px;
+}
+
+.family-control-card {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  align-items: center;
+  padding: 6px 8px;
+  gap: 8px;
+  color: #aab3b7;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+  text-align: left;
+}
+
+.family-control-card:hover,
+.family-control-card.is-selected {
+  color: #fff;
+  border-color: rgba(255, 213, 0, 0.38);
+  background: var(--accent-soft);
+}
+
+.family-control-card > svg {
+  width: 13px;
+  color: #748087;
+}
+
+.family-control-swatch {
+  width: 18px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+}
+
+.family-control-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.family-control-copy strong,
+.family-control-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.family-control-copy strong {
+  font-size: 10px;
+}
+
+.family-control-copy small {
+  margin-top: 3px;
+  color: #7f8a90;
+  font-size: 8px;
+}
+
+.family-appearance-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  margin-bottom: 7px;
+  gap: 8px;
+}
+
+.family-appearance-row label {
+  display: grid;
+  gap: 5px;
+  color: #788288;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.family-appearance-row input,
+.family-appearance-row select {
+  width: 100%;
+  height: 36px;
+  color: #d8dddf;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: #23272b;
+}
+
+.family-appearance-row input {
+  padding: 3px;
+}
+
+.family-appearance-row select {
+  padding: 0 8px;
+  font-size: 10px;
+  text-transform: none;
+}
+
 .track-row {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) 76px 32px;
@@ -1376,7 +1523,12 @@ input:focus-visible {
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: 68px auto auto minmax(260px, 1fr) auto;
+  grid-template:
+    "header" 68px
+    "toolbar" auto
+    "warning" auto
+    "editor" minmax(260px, 1fr) /
+    minmax(0, 1fr);
   color: #e9eef0;
   background:
     radial-gradient(circle at 50% -20%, rgba(67, 77, 85, 0.2), transparent 42%),
@@ -1394,6 +1546,7 @@ input:focus-visible {
 }
 
 .sync-workspace-header {
+  grid-area: header;
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(300px, auto) minmax(90px, 1fr);
   align-items: center;
@@ -1488,6 +1641,7 @@ input:focus-visible {
 }
 
 .sync-toolbar {
+  grid-area: toolbar;
   display: flex;
   min-width: 0;
   align-items: center;
@@ -1616,6 +1770,7 @@ input:focus-visible {
 }
 
 .sync-workspace-warning {
+  grid-area: warning;
   margin: 0;
   padding: 7px 18px;
   color: #ffd500;
@@ -1626,6 +1781,7 @@ input:focus-visible {
 }
 
 .sync-editor-stage {
+  grid-area: editor;
   display: grid;
   min-width: 0;
   min-height: 0;
@@ -1684,36 +1840,19 @@ input:focus-visible {
   transform: rotate(45deg);
 }
 
-.sync-control-dock {
-  display: grid;
-  min-width: 0;
-  grid-template-columns:
-    minmax(300px, 1.25fr)
-    minmax(260px, 0.95fr)
-    minmax(260px, auto)
-    minmax(300px, 1fr);
-  align-items: stretch;
-  padding: 7px 12px 9px;
-  gap: 6px;
-  overflow-x: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: #0d1013;
-  scrollbar-width: thin;
-}
-
-.sync-dock-group {
+.sync-toolbar-group {
   display: flex;
   min-width: max-content;
-  min-height: 48px;
+  min-height: 38px;
   align-items: center;
-  padding: 5px 7px;
+  padding: 3px 5px;
   gap: 5px;
   border: 1px solid rgba(255, 255, 255, 0.065);
-  border-radius: 12px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.028);
 }
 
-.sync-control-dock button {
+.sync-toolbar-group button {
   display: grid;
   width: auto;
   min-width: 30px;
@@ -1727,27 +1866,27 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-.sync-control-dock button svg {
+.sync-toolbar-group button svg {
   width: 14px;
 }
 
-.sync-control-dock input {
+.sync-toolbar-group input {
   width: 100%;
   accent-color: var(--accent);
 }
 
 .sync-navigation-group {
-  min-width: 300px;
+  min-width: 245px;
 }
 
 .sync-navigation-group label {
-  min-width: 100px;
+  min-width: 84px;
   flex: 1;
 }
 
 .sync-view-range {
   display: flex;
-  min-width: 92px;
+  min-width: 76px;
   align-items: flex-start;
   color: #929ca1;
   flex-direction: column;
@@ -1762,35 +1901,21 @@ input:focus-visible {
   font-size: 7px;
 }
 
-.sync-dock-copy {
-  display: flex;
-  min-width: 92px;
-  align-items: flex-start;
-  flex: 1;
-  flex-direction: column;
+.sync-toolbar-label {
+  color: #aeb7bb;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.sync-dock-copy strong {
-  color: #e2e7e9;
-  font-size: 9px;
-}
-
-.sync-dock-copy small {
-  margin-top: 3px;
-  color: #78848a;
-  font-size: 7px;
-  font-variant-numeric: tabular-nums;
-}
-
 .sync-anchor-group {
-  min-width: 260px;
+  min-width: 106px;
 }
 
 .sync-anchor-badge {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   place-items: center;
   color: #181500;
   border-radius: 99px;
@@ -1800,33 +1925,33 @@ input:focus-visible {
 }
 
 .sync-tap-group {
-  min-width: 260px;
+  min-width: 214px;
 }
 
-.sync-control-dock button.is-active,
-.sync-control-dock .sync-primary-button {
+.sync-toolbar-group button.is-active,
+.sync-toolbar-group .sync-primary-button {
   color: #181500;
   background: var(--accent);
   font-weight: 800;
 }
 
-.sync-control-dock .sync-danger-button {
+.sync-toolbar-group .sync-danger-button {
   color: #d18a8a;
   background: rgba(239, 92, 92, 0.07);
 }
 
-.sync-control-dock .sync-danger-button.is-armed {
+.sync-toolbar-group .sync-danger-button.is-armed {
   color: #fff;
   background: #b84242;
 }
 
 .sync-offset-group {
-  min-width: 300px;
+  min-width: 290px;
 }
 
 .sync-offset-group label {
-  width: min(130px, 11vw);
-  min-width: 96px;
+  width: min(100px, 8vw);
+  min-width: 76px;
 }
 
 .help-overlay {
@@ -2192,7 +2317,12 @@ input:focus-visible {
   }
 
   .sync-workspace {
-    grid-template-rows: 60px auto auto minmax(250px, 1fr) auto;
+    grid-template:
+      "header" 60px
+      "toolbar" auto
+      "warning" auto
+      "editor" minmax(250px, 1fr) /
+      minmax(0, 1fr);
   }
 
   .sync-workspace-header {
@@ -2217,11 +2347,6 @@ input:focus-visible {
     padding-left: 10px;
   }
 
-  .sync-control-dock {
-    grid-template-columns: repeat(4, max-content);
-    padding-right: 8px;
-    padding-left: 8px;
-  }
 }
 
 @media (max-width: 600px) {
@@ -2290,25 +2415,21 @@ input:focus-visible {
   .sync-editor-legend span:nth-child(n + 3) {
     display: none;
   }
-
-  .sync-editor-legend span:nth-child(n + 3) {
-    display: none;
-  }
 }
 
 @media (max-height: 720px) and (min-width: 801px) {
   .sync-workspace {
-    grid-template-rows: 60px auto auto minmax(230px, 1fr) auto;
+    grid-template:
+      "header" 60px
+      "toolbar" auto
+      "warning" auto
+      "editor" minmax(230px, 1fr) /
+      minmax(0, 1fr);
   }
 
   .sync-workspace-header {
     padding-top: 7px;
     padding-bottom: 7px;
-  }
-
-  .sync-control-dock {
-    padding-top: 5px;
-    padding-bottom: 6px;
   }
 }
 

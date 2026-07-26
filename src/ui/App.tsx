@@ -105,6 +105,29 @@ const createId = (): string =>
 
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
+const AUDIO_FILE_EXTENSIONS = [
+  '.wav',
+  '.mp3',
+  '.m4a',
+  '.aac',
+  '.ogg',
+  '.flac',
+  '.aif',
+  '.aiff',
+] as const;
+
+const isMidiFile = (file: File): boolean => {
+  const lowerName = file.name.toLowerCase();
+  return lowerName.endsWith('.mid') || lowerName.endsWith('.midi');
+};
+
+const isAudioFile = (file: File): boolean => {
+  const lowerName = file.name.toLowerCase();
+  return (
+    file.type.startsWith('audio/') ||
+    AUDIO_FILE_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
+  );
+};
 
 type InspectorMenuId =
   | 'canvas'
@@ -120,13 +143,6 @@ const INSPECTOR_MENUS: ReadonlyArray<{
   description: string;
   icon: IconName;
 }> = [
-  { id: 'canvas', label: 'Canvas', description: 'Fondo y formato', icon: 'canvas' },
-  {
-    id: 'performance',
-    label: 'Rendimiento',
-    description: 'Resolución y pantalla',
-    icon: 'gauge',
-  },
   { id: 'tracks', label: 'Voces', description: 'Pistas e instrumentos', icon: 'music' },
   {
     id: 'style',
@@ -136,9 +152,16 @@ const INSPECTOR_MENUS: ReadonlyArray<{
   },
   {
     id: 'animation',
-    label: 'Animación',
-    description: 'Movimiento por voz',
-    icon: 'motion',
+    label: 'Familias',
+    description: 'Color, forma y movimiento',
+    icon: 'layers',
+  },
+  { id: 'canvas', label: 'Canvas', description: 'Fondo y formato', icon: 'canvas' },
+  {
+    id: 'performance',
+    label: 'Rendimiento',
+    description: 'Resolución y pantalla',
+    icon: 'gauge',
   },
   {
     id: 'sync',
@@ -295,7 +318,7 @@ export function App() {
     useState<VisualConfiguration>(() => cloneDefaultVisualConfiguration());
   const [anchorMidiDraft, setAnchorMidiDraft] = useState<number | null>(null);
   const [inspectorTab, setInspectorTab] =
-    useState<InspectorMenuId>('style');
+    useState<InspectorMenuId>('tracks');
   const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
     null,
   );
@@ -661,15 +684,29 @@ export function App() {
     }
   }, []);
 
-  const loadDroppedFile = useCallback(
-    (file: File) => {
-      const lowerName = file.name.toLowerCase();
-      if (lowerName.endsWith('.mid') || lowerName.endsWith('.midi')) {
-        void loadMidi(file);
-      } else if (file.type.startsWith('audio/')) {
-        void loadAudio(file);
-      } else {
-        setNotice('Usa un archivo MIDI o audio compatible.');
+  const loadDroppedFiles = useCallback(
+    (files: File[]) => {
+      const midiFile = files.find(isMidiFile);
+      const audioFile = files.find(isAudioFile);
+
+      if (!midiFile && !audioFile) {
+        setNotice('Usa archivos MIDI o audio compatibles.');
+        return;
+      }
+
+      if (midiFile && audioFile) {
+        setNotice(
+          `Cargando juntos ${midiFile.name} y ${audioFile.name}…`,
+        );
+        void loadMidi(midiFile);
+        void loadAudio(audioFile);
+        return;
+      }
+
+      if (midiFile) {
+        void loadMidi(midiFile);
+      } else if (audioFile) {
+        void loadAudio(audioFile);
       }
     },
     [loadAudio, loadMidi],
@@ -678,8 +715,8 @@ export function App() {
   const onDrop = (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
     setDragging(false);
-    const file = event.dataTransfer.files[0];
-    if (file) loadDroppedFile(file);
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length > 0) loadDroppedFiles(files);
   };
 
   const onFileInput =
@@ -1144,6 +1181,18 @@ export function App() {
             ),
           ]
         : [],
+    [project, visualConfiguration],
+  );
+  const projectAnimationFamilyCounts = useMemo(
+    () =>
+      project?.tracks.reduce<Record<string, number>>((counts, track) => {
+        const family = resolveTrackVisualStyle(
+          track,
+          visualConfiguration,
+        ).family;
+        counts[family] = (counts[family] ?? 0) + 1;
+        return counts;
+      }, {}) ?? {},
     [project, visualConfiguration],
   );
   const activeAnimationFamily =
@@ -1637,7 +1686,9 @@ export function App() {
             >
               <Icon name="download" />
               <strong>Suelta el archivo aquí</strong>
-              <span>MIDI o audio compatible</span>
+              <span>
+                Arrastra MIDI y audio juntos, o cualquiera por separado
+              </span>
             </div>
           )}
         </div>
@@ -1753,6 +1804,217 @@ export function App() {
         </div>
 
         <div className="panel-scroll">
+          {inspectorTab === 'animation' && (
+            <>
+              <section className="inspector-section family-selector-section">
+                <div className="section-heading">
+                  <span>
+                    <small>FAMILIAS DEL MIDI</small>
+                    <strong>Elige qué grupo configurar</strong>
+                  </span>
+                </div>
+                {!project ? (
+                  <p className="section-help">
+                    Carga un MIDI para ver y controlar sus familias.
+                  </p>
+                ) : (
+                  <div className="family-control-list">
+                    {projectAnimationFamilies.map((familyName) => {
+                      const familyStyle =
+                        visualConfiguration.families[familyName];
+                      return (
+                        <button
+                          aria-pressed={activeAnimationFamily === familyName}
+                          className={`family-control-card${
+                            activeAnimationFamily === familyName
+                              ? ' is-selected'
+                              : ''
+                          }`}
+                          key={familyName}
+                          onClick={() =>
+                            setSelectedAnimationFamily(familyName)
+                          }
+                          type="button"
+                        >
+                          <span
+                            className="family-control-swatch"
+                            style={{ background: familyStyle.color }}
+                          />
+                          <span className="family-control-copy">
+                            <strong>{familyName}</strong>
+                            <small>
+                              {projectAnimationFamilyCounts[familyName] ?? 0}{' '}
+                              pista(s) · {SHAPE_LABELS[familyStyle.shape]}
+                            </small>
+                          </span>
+                          <Icon name="chevron-right" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+              {activeAnimationFamily && selectedFamilyStyle && (
+                <section className="inspector-section">
+                  <div className="section-heading">
+                    <span>
+                      <small>APARIENCIA Y MOVIMIENTO</small>
+                      <strong>{activeAnimationFamily}</strong>
+                    </span>
+                  </div>
+                  <div className="family-appearance-row">
+                    <label>
+                      <span>Color</span>
+                      <input
+                        aria-label={`Color de ${activeAnimationFamily}`}
+                        onChange={(event) =>
+                          updateFamily(activeAnimationFamily, {
+                            color: event.target.value,
+                          })
+                        }
+                        type="color"
+                        value={selectedFamilyStyle.color}
+                      />
+                    </label>
+                    <label>
+                      <span>Figura</span>
+                      <select
+                        aria-label={`Figura de ${activeAnimationFamily}`}
+                        onChange={(event) =>
+                          updateFamily(activeAnimationFamily, {
+                            shape: event.target
+                              .value as (typeof SHAPE_IDS)[number],
+                          })
+                        }
+                        value={selectedFamilyStyle.shape}
+                      >
+                        {SHAPE_IDS.map((shapeId) => (
+                          <option key={shapeId} value={shapeId}>
+                            {SHAPE_LABELS[shapeId]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <RangeControl
+                    label="Altura de familia"
+                    max={4}
+                    min={0.2}
+                    onChange={(value) =>
+                      updateFamily(activeAnimationFamily, {
+                        heightScale: value,
+                      })
+                    }
+                    step={0.1}
+                    suffix="×"
+                    value={selectedFamilyStyle.heightScale}
+                  />
+                  <RangeControl
+                    label="Glow de familia"
+                    max={MAX_EFFECT_STRENGTH}
+                    min={0}
+                    onChange={(value) =>
+                      updateFamily(activeAnimationFamily, {
+                        glowStrength: value,
+                      })
+                    }
+                    step={0.1}
+                    suffix="×"
+                    value={selectedFamilyStyle.glowStrength}
+                  />
+                  <RangeControl
+                    label="Bump de familia"
+                    max={MAX_EFFECT_STRENGTH}
+                    min={0}
+                    onChange={(value) =>
+                      updateFamily(activeAnimationFamily, {
+                        bumpStrength: value,
+                      })
+                    }
+                    step={0.1}
+                    suffix="×"
+                    value={selectedFamilyStyle.bumpStrength}
+                  />
+                  <label className="switch-row">
+                    <span>Extensión de familia</span>
+                    <input
+                      checked={selectedFamilyStyle.extension}
+                      onChange={(event) =>
+                        updateFamily(activeAnimationFamily, {
+                          extension: event.target.checked,
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </label>
+                  <label className="switch-row">
+                    <span>Alargamiento de familia</span>
+                    <input
+                      checked={selectedFamilyStyle.stretch}
+                      onChange={(event) =>
+                        updateFamily(activeAnimationFamily, {
+                          stretch: event.target.checked,
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </label>
+                  <label className="switch-row">
+                    <span>Atracción hacia NOW</span>
+                    <input
+                      checked={selectedFamilyStyle.travel.enabled}
+                      onChange={(event) =>
+                        updateFamily(activeAnimationFamily, {
+                          travel: {
+                            ...selectedFamilyStyle.travel,
+                            enabled: event.target.checked,
+                          },
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </label>
+                  {selectedFamilyStyle.travel.enabled && (
+                    <>
+                      <RangeControl
+                        label="Intensidad magnética"
+                        max={2}
+                        min={0}
+                        onChange={(value) =>
+                          updateFamily(activeAnimationFamily, {
+                            travel: {
+                              ...selectedFamilyStyle.travel,
+                              intensity: value,
+                            },
+                          })
+                        }
+                        step={0.05}
+                        suffix="×"
+                        value={selectedFamilyStyle.travel.intensity}
+                      />
+                      <RangeControl
+                        label="Zona de aceleración"
+                        max={2}
+                        min={0.5}
+                        onChange={(value) =>
+                          updateFamily(activeAnimationFamily, {
+                            travel: {
+                              ...selectedFamilyStyle.travel,
+                              magnetZone: value,
+                            },
+                          })
+                        }
+                        step={0.05}
+                        suffix="×"
+                        value={selectedFamilyStyle.travel.magnetZone}
+                      />
+                    </>
+                  )}
+                </section>
+              )}
+            </>
+          )}
+
           {inspectorTab === 'style' && (
             <section className="inspector-section">
               <div className="section-heading">
@@ -2382,6 +2644,25 @@ export function App() {
                     </button>
                   </span>
                 </div>
+                <button
+                  className="family-controls-shortcut"
+                  disabled={!project}
+                  onClick={() => {
+                    setInspectorTab('animation');
+                    setRightCollapsed(false);
+                  }}
+                  type="button"
+                >
+                  <Icon name="layers" />
+                  <span>
+                    <strong>Controles por familia</strong>
+                    <small>
+                      {projectAnimationFamilies.length || '—'} familia(s)
+                      detectada(s)
+                    </small>
+                  </span>
+                  <Icon name="chevron-right" />
+                </button>
                 {!project ? (
                   <p className="section-help">
                     Carga un MIDI para configurar sus instrumentos.
@@ -2586,164 +2867,6 @@ export function App() {
                       type="checkbox"
                     />
                   </label>
-                </section>
-              )}
-            </>
-          )}
-
-          {inspectorTab === 'animation' && (
-            <>
-              <section className="inspector-section">
-                <label className="select-control">
-                  <span>Familia de instrumentos</span>
-                  <select
-                    disabled={!project}
-                    onChange={(event) =>
-                      setSelectedAnimationFamily(event.target.value || null)
-                    }
-                    value={activeAnimationFamily ?? ''}
-                  >
-                    {!project && <option value="">Carga un MIDI</option>}
-                    {projectAnimationFamilies.map((familyName) => (
-                      <option key={familyName} value={familyName}>
-                        {familyName} ·{' '}
-                        {
-                          project?.tracks.filter(
-                            (track) =>
-                              resolveTrackVisualStyle(
-                                track,
-                                visualConfiguration,
-                              ).family === familyName,
-                          ).length
-                        }{' '}
-                        pista(s)
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </section>
-              {activeAnimationFamily && selectedFamilyStyle && (
-                <section className="inspector-section">
-                  <div className="section-heading">
-                    <span>
-                      <small>AJUSTE POR FAMILIA</small>
-                      <strong>{activeAnimationFamily}</strong>
-                    </span>
-                  </div>
-                  <RangeControl
-                    label="Altura de familia"
-                    max={4}
-                    min={0.2}
-                    onChange={(value) =>
-                      updateFamily(activeAnimationFamily, {
-                        heightScale: value,
-                      })
-                    }
-                    step={0.1}
-                    suffix="×"
-                    value={selectedFamilyStyle.heightScale}
-                  />
-                  <RangeControl
-                    label="Glow de familia"
-                    max={MAX_EFFECT_STRENGTH}
-                    min={0}
-                    onChange={(value) =>
-                      updateFamily(activeAnimationFamily, {
-                        glowStrength: value,
-                      })
-                    }
-                    step={0.1}
-                    suffix="×"
-                    value={selectedFamilyStyle.glowStrength}
-                  />
-                  <RangeControl
-                    label="Bump de familia"
-                    max={MAX_EFFECT_STRENGTH}
-                    min={0}
-                    onChange={(value) =>
-                      updateFamily(activeAnimationFamily, {
-                        bumpStrength: value,
-                      })
-                    }
-                    step={0.1}
-                    suffix="×"
-                    value={selectedFamilyStyle.bumpStrength}
-                  />
-                  <label className="switch-row">
-                    <span>Extensión de familia</span>
-                    <input
-                      checked={selectedFamilyStyle.extension}
-                      onChange={(event) =>
-                        updateFamily(activeAnimationFamily, {
-                          extension: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <label className="switch-row">
-                    <span>Alargamiento de familia</span>
-                    <input
-                      checked={selectedFamilyStyle.stretch}
-                      onChange={(event) =>
-                        updateFamily(activeAnimationFamily, {
-                          stretch: event.target.checked,
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <label className="switch-row">
-                    <span>Atracción hacia NOW</span>
-                    <input
-                      checked={selectedFamilyStyle.travel.enabled}
-                      onChange={(event) =>
-                        updateFamily(activeAnimationFamily, {
-                          travel: {
-                            ...selectedFamilyStyle.travel,
-                            enabled: event.target.checked,
-                          },
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  {selectedFamilyStyle.travel.enabled && (
-                    <>
-                      <RangeControl
-                        label="Intensidad magnética"
-                        max={2}
-                        min={0}
-                        onChange={(value) =>
-                          updateFamily(activeAnimationFamily, {
-                            travel: {
-                              ...selectedFamilyStyle.travel,
-                              intensity: value,
-                            },
-                          })
-                        }
-                        step={0.05}
-                        suffix="×"
-                        value={selectedFamilyStyle.travel.intensity}
-                      />
-                      <RangeControl
-                        label="Zona de aceleración"
-                        max={2}
-                        min={0.5}
-                        onChange={(value) =>
-                          updateFamily(activeAnimationFamily, {
-                            travel: {
-                              ...selectedFamilyStyle.travel,
-                              magnetZone: value,
-                            },
-                          })
-                        }
-                        step={0.05}
-                        suffix="×"
-                        value={selectedFamilyStyle.travel.magnetZone}
-                      />
-                    </>
-                  )}
                 </section>
               )}
             </>
