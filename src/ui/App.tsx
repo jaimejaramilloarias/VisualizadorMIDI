@@ -48,6 +48,7 @@ import { RendererBridge } from '../renderer/RendererBridge';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import { selectDroppedMedia } from './fileDrop';
+import { KnobControl } from './KnobControl';
 import {
   detectRmsLandmarks,
   resolveTapAnchorTime,
@@ -226,49 +227,6 @@ function ToolButton({
   );
 }
 
-function RangeControl({
-  label,
-  value,
-  min,
-  max,
-  step,
-  suffix,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  suffix: string;
-  onChange: (value: number) => void;
-}) {
-  const stepText = String(step);
-  const decimalPlaces =
-    step >= 1 ? 0 : Math.min(3, stepText.split('.')[1]?.length ?? 0);
-  const formattedValue = value.toFixed(decimalPlaces);
-  return (
-    <label className="range-control">
-      <span className="control-label">
-        <span>{label}</span>
-        <output>
-          {formattedValue}{suffix}
-        </output>
-      </span>
-      <input
-        aria-label={label}
-        aria-valuetext={`${formattedValue}${suffix}`}
-        max={max}
-        min={min}
-        onChange={(event) => onChange(Number(event.target.value))}
-        step={step}
-        type="range"
-        value={value}
-      />
-    </label>
-  );
-}
-
 type AnimationControlValues = Pick<
   FamilyVisualStyle,
   | 'heightScale'
@@ -288,7 +246,7 @@ function AnimationControls({
 }) {
   return (
     <>
-      <RangeControl
+      <KnobControl
         label="Altura"
         max={5}
         min={0.2}
@@ -297,7 +255,7 @@ function AnimationControls({
         suffix="×"
         value={values.heightScale}
       />
-      <RangeControl
+      <KnobControl
         label="Glow"
         max={MAX_EFFECT_STRENGTH}
         min={0}
@@ -306,7 +264,7 @@ function AnimationControls({
         suffix="×"
         value={values.glowStrength}
       />
-      <RangeControl
+      <KnobControl
         label="Bump"
         max={MAX_EFFECT_STRENGTH}
         min={0}
@@ -345,7 +303,7 @@ function AnimationControls({
       </label>
       {values.travel.enabled && (
         <>
-          <RangeControl
+          <KnobControl
             label="Intensidad magnética"
             max={2}
             min={0}
@@ -356,7 +314,7 @@ function AnimationControls({
             suffix="×"
             value={values.travel.intensity}
           />
-          <RangeControl
+          <KnobControl
             label="Zona de aceleración"
             max={2}
             min={0.5}
@@ -1645,21 +1603,19 @@ export function App() {
                 }
               />
             </button>
-            <label title={`Volumen ${Math.round(transport.volume * 100)} %`}>
-              <span className="visually-hidden">Volumen del audio</span>
-              <input
-                aria-label="Volumen del audio"
-                disabled={!transport.hasAudio}
-                max="1"
-                min="0"
-                onChange={(event) =>
-                  transportRef.current?.setVolume(Number(event.target.value))
-                }
-                step="0.01"
-                type="range"
-                value={transport.muted ? 0 : transport.volume}
-              />
-            </label>
+            <KnobControl
+              compact
+              disabled={!transport.hasAudio}
+              label="Volumen del audio"
+              max={1}
+              min={0}
+              onChange={(value) =>
+                transportRef.current?.setVolume(value)
+              }
+              step={0.01}
+              suffix=""
+              value={transport.muted ? 0 : transport.volume}
+            />
             <span aria-hidden="true" className="audio-signal-meter">
               <i
                 style={{
@@ -1827,7 +1783,7 @@ export function App() {
                 >
                   Negro absoluto
                 </button>
-                <RangeControl
+                <KnobControl
                   label="Ventana visible"
                   max={24}
                   min={3}
@@ -1836,7 +1792,7 @@ export function App() {
                   suffix=" s"
                   value={settings.secondsVisible}
                 />
-                <RangeControl
+                <KnobControl
                   label="Tamaño de nota"
                   max={1.8}
                   min={0.5}
@@ -1845,7 +1801,7 @@ export function App() {
                   suffix="×"
                   value={settings.noteScale}
                 />
-                <RangeControl
+                <KnobControl
                   label="Velocidad base"
                   max={127}
                   min={1}
@@ -1983,7 +1939,7 @@ export function App() {
                 </div>
                 {inspectorTab === 'style' && (
                   <>
-                    <RangeControl
+                    <KnobControl
                       label="Tono global"
                       max={180}
                       min={-180}
@@ -1994,7 +1950,7 @@ export function App() {
                       suffix="°"
                       value={visualConfiguration.global.colorToneShift}
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Resplandor de escena"
                       max={MAX_SCENE_GLOW}
                       min={0}
@@ -2003,7 +1959,7 @@ export function App() {
                       suffix="×"
                       value={settings.glow}
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Opacidad extremos"
                       max={1}
                       min={0}
@@ -2014,7 +1970,7 @@ export function App() {
                       suffix=""
                       value={visualConfiguration.global.opacityEdge}
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Opacidad centro"
                       max={1}
                       min={0}
@@ -2048,7 +2004,7 @@ export function App() {
                 )}
                 {inspectorTab === 'performance' && (
                   <>
-                <RangeControl
+                <KnobControl
                   label="Supersampling"
                   max={3}
                   min={1}
@@ -2145,7 +2101,7 @@ export function App() {
                         }
                       />
                     </div>
-                    <RangeControl
+                    <KnobControl
                       label="Tamaño de fuente"
                       max={64}
                       min={8}
@@ -2159,7 +2115,7 @@ export function App() {
                       suffix=" px"
                       value={visualConfiguration.global.noteLabels.size}
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Margen dinámico del recuadro"
                       max={24}
                       min={0}
@@ -2173,7 +2129,7 @@ export function App() {
                       suffix=" px"
                       value={visualConfiguration.global.noteLabels.padding}
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Opacidad del recuadro"
                       max={1}
                       min={0}
@@ -2189,7 +2145,7 @@ export function App() {
                         visualConfiguration.global.noteLabels.backgroundOpacity
                       }
                     />
-                    <RangeControl
+                    <KnobControl
                       label="Redondeo del recuadro"
                       max={24}
                       min={0}

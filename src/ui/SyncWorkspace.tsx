@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { SyncAnchor } from '../core/state/visualizationState';
 import type { TransportSnapshot } from '../core/transport/AudioTransport';
 import { Icon } from './icons';
+import { KnobControl } from './KnobControl';
 import {
   MAX_SYNC_ZOOM,
   resolveSyncViewport,
@@ -382,17 +383,16 @@ export function SyncWorkspace({
           >
             −
           </button>
-          <label>
-            <span className="visually-hidden">Offset de animación</span>
-            <input
-              max="10000"
-              min="-10000"
-              onChange={(event) => onOffsetChange(Number(event.target.value))}
-              step="10"
-              type="range"
-              value={offsetMs}
-            />
-          </label>
+          <KnobControl
+            compact
+            label="Offset de animación"
+            max={10_000}
+            min={-10_000}
+            onChange={onOffsetChange}
+            step={10}
+            suffix=" ms"
+            value={offsetMs}
+          />
           <button
             aria-label="Aumentar offset 10 milisegundos"
             onClick={() =>

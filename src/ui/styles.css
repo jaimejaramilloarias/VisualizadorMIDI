@@ -106,7 +106,6 @@ input:focus-visible {
 .panel-heading,
 .project-title,
 .telemetry,
-.control-label,
 .section-heading,
 .notice,
 .audio-chip,
@@ -678,10 +677,6 @@ input:focus-visible {
   margin-top: 4px;
 }
 
-.sync-dock-card .range-control {
-  padding-bottom: 0;
-}
-
 [data-inspector-tab="sync"] .right-panel .collapse-button {
   display: none;
 }
@@ -894,9 +889,9 @@ input:focus-visible {
   display: grid;
   min-width: 0;
   height: 36px;
-  grid-template-columns: 32px minmax(44px, 1fr);
+  grid-template-columns: 32px 34px;
   align-items: center;
-  padding: 0 8px 0 3px;
+  padding: 0 4px 0 3px;
   gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 11px;
@@ -915,8 +910,7 @@ input:focus-visible {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.audio-output-control button:disabled,
-.audio-output-control input:disabled {
+.audio-output-control button:disabled {
   opacity: 0.32;
   cursor: default;
 }
@@ -925,25 +919,13 @@ input:focus-visible {
   width: 16px;
 }
 
-.audio-output-control label {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-}
-
-.audio-output-control input {
-  width: 100%;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
 .audio-output-control[data-muted="true"] {
   opacity: 0.68;
 }
 
 .audio-signal-meter {
   position: absolute;
-  right: 8px;
+  right: 5px;
   bottom: 3px;
   left: 38px;
   height: 2px;
@@ -1045,47 +1027,162 @@ input:focus-visible {
   font-size: 14px;
 }
 
-.range-control {
-  display: block;
-  padding: 8px 0;
+.knob-control {
+  display: grid;
+  min-height: 70px;
+  grid-template-columns: minmax(0, 1fr) 54px 68px;
+  align-items: center;
+  padding: 7px 0;
+  gap: 9px;
 }
 
-.control-label {
-  justify-content: space-between;
-  margin-bottom: 8px;
+.knob-label {
   color: #b7bfc2;
   font-size: 11px;
+  line-height: 1.25;
 }
 
-.control-label output {
-  color: #858f94;
+.knob-control .knob-dial {
+  --knob-angle: -135deg;
+  --knob-progress: 0deg;
+  position: relative;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  outline: none;
+  background:
+    conic-gradient(
+      from 225deg,
+      var(--accent) 0deg var(--knob-progress),
+      rgba(255, 255, 255, 0.1) var(--knob-progress) 270deg,
+      transparent 270deg 360deg
+    );
+  box-shadow:
+    0 9px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.knob-control .knob-dial::after {
+  position: absolute;
+  inset: 5px;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #3b4146 0, #252a2e 43%, #171a1d 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+  content: "";
+}
+
+.knob-control .knob-dial:hover {
+  border-color: rgba(255, 213, 0, 0.42);
+  filter: brightness(1.08);
+}
+
+.knob-control .knob-dial:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(255, 213, 0, 0.18),
+    0 9px 18px rgba(0, 0, 0, 0.28);
+}
+
+.knob-control .knob-dial:active {
+  transform: scale(0.97);
+}
+
+.knob-control .knob-dial:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.knob-indicator {
+  position: absolute;
+  inset: 6px;
+  z-index: 2;
+  transform: rotate(var(--knob-angle));
+  pointer-events: none;
+}
+
+.knob-indicator::before {
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  width: 3px;
+  height: 11px;
+  border-radius: 99px;
+  background: var(--accent);
+  box-shadow: 0 0 7px rgba(255, 213, 0, 0.58);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.knob-value {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  color: #7f898e;
+  font-size: 9px;
+}
+
+.knob-value input {
+  width: 52px;
+  height: 30px;
+  padding: 0 5px;
+  color: #d7dddf;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.035);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.range-control input {
-  width: 100%;
-  height: 20px;
+.knob-value input:focus {
+  border-color: rgba(255, 213, 0, 0.48);
+  background: rgba(255, 213, 0, 0.055);
+}
+
+.knob-value input::-webkit-inner-spin-button,
+.knob-value input::-webkit-outer-spin-button {
   margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.range-control input::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.range-control input::-webkit-slider-thumb {
-  width: 20px;
-  height: 20px;
-  margin-top: -8px;
-  border: 4px solid var(--accent);
-  border-radius: 99px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   -webkit-appearance: none;
+}
+
+.knob-control.is-compact {
+  display: inline-grid;
+  min-height: 0;
+  grid-template-columns: 34px;
+  padding: 0;
+  gap: 0;
+}
+
+.knob-control.is-compact .knob-dial {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+}
+
+.knob-control.is-compact .knob-dial::after {
+  inset: 4px;
+}
+
+.knob-control.is-compact .knob-indicator {
+  inset: 5px;
+}
+
+.knob-control.is-compact .knob-indicator::before {
+  height: 7px;
 }
 
 .inline-control {
@@ -1996,12 +2093,7 @@ input:focus-visible {
 }
 
 .sync-offset-group {
-  min-width: 290px;
-}
-
-.sync-offset-group label {
-  width: min(100px, 8vw);
-  min-width: 76px;
+  min-width: 218px;
 }
 
 .help-overlay {
