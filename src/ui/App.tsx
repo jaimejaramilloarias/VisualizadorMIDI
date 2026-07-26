@@ -48,6 +48,10 @@ import { RendererBridge } from '../renderer/RendererBridge';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import { selectDroppedMedia } from './fileDrop';
+import {
+  detectRmsLandmarks,
+  resolveTapAnchorTime,
+} from './syncEditorMath';
 import { resolveTransportShortcut } from './transportShortcuts';
 import { SyncWorkspace } from './SyncWorkspace';
 
@@ -382,9 +386,11 @@ export function App() {
   );
   const projectRef = useRef<ProjectSummary | null>(null);
   const selectionAnchorRef = useRef<string | null>(null);
-  const lastTapRef = useRef<{ audioTime: number; midiTime: number } | null>(
-    null,
-  );
+  const lastTapRef = useRef<{
+    audioTime: number;
+    midiTime: number;
+    triggerTime: number;
+  } | null>(null);
   const lastUiUpdateRef = useRef(0);
   const midiLoadGenerationRef = useRef(0);
   const audioLoadGenerationRef = useRef(0);
@@ -420,6 +426,8 @@ export function App() {
     'start',
   );
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
+  const [waveformRms, setWaveformRms] = useState<Float32Array | null>(null);
+  const [syncMagnetEnabled, setSyncMagnetEnabled] = useState(true);
   const [tapActive, setTapActive] = useState(false);
   const [syncWorkspaceOpen, setSyncWorkspaceOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -739,9 +747,11 @@ export function App() {
   const refreshWaveformPeaks = useCallback(() => {
     const instance = transportRef.current;
     if (!instance) return false;
-    const peaks = instance.getWaveformPeaks(12_000);
+    const peaks = instance.getWaveformPeaks(48_000);
+    const rms = instance.getWaveformRms(48_000);
     if (!peaks?.length) return false;
     setWaveformPeaks(peaks);
+    setWaveformRms(rms);
     setTransport(instance.getSnapshot());
     return true;
   }, []);
@@ -756,6 +766,7 @@ export function App() {
     const busyGeneration = ++busyGenerationRef.current;
     setBusy('audio');
     setWaveformPeaks(null);
+    setWaveformRms(null);
     setAudioFileName(null);
     setNotice(`Decodificando ${file.name} localmente…`);
     try {
@@ -894,11 +905,22 @@ export function App() {
     );
   };
 
+  const audioLandmarks = useMemo(
+    () => detectRmsLandmarks(waveformRms, transport.duration),
+    [transport.duration, waveformRms],
+  );
+
   const registerTap = useCallback(() => {
-    if (!project || !transportRef.current?.getSnapshot().hasAudio) return;
-    const audioTime = transportRef.current.getSnapshot().position;
+    const snapshot = transportRef.current?.getSnapshot();
+    if (!project || !snapshot?.hasAudio) return;
+    const rawAudioTime = snapshot.position;
+    const audioTime = resolveTapAnchorTime(
+      rawAudioTime,
+      audioLandmarks,
+      syncMagnetEnabled,
+    );
     const previous = lastTapRef.current;
-    if (previous && audioTime - previous.audioTime < 0.12) return;
+    if (previous && rawAudioTime - previous.triggerTime < 0.12) return;
     const midiTime = previous
       ? previous.midiTime + beatDurationAt(previous.midiTime, project.tempoMap)
       : mapAudioToMidiClockWithOffset(
@@ -906,7 +928,7 @@ export function App() {
           visualConfigurationRef.current.global.audioOffsetMs,
           syncTimelineRef.current,
         ).midiTime;
-    lastTapRef.current = { audioTime, midiTime };
+    lastTapRef.current = { audioTime, midiTime, triggerTime: rawAudioTime };
     setSyncAnchors((current) =>
       normalizeAnchors([
         ...current.filter(
@@ -915,7 +937,7 @@ export function App() {
         { id: createId(), audioTime, midiTime },
       ]),
     );
-  }, [project]);
+  }, [audioLandmarks, project, syncMagnetEnabled]);
 
   useEffect(() => {
     const onTap = () => registerTap();
@@ -2629,6 +2651,8 @@ export function App() {
           forward={syncMappingIsForward}
           midiDuration={project?.duration ?? 0}
           midiFileName={project?.fileName ?? null}
+          landmarks={audioLandmarks}
+          magnetEnabled={syncMagnetEnabled}
           offsetMs={visualConfiguration.global.audioOffsetMs}
           onAddAnchor={(audioTime) => addAnchorAtAudio(audioTime)}
           onClearAnchors={() => {
@@ -2644,6 +2668,7 @@ export function App() {
             )
           }
           onMoveAnchor={updateAnchor}
+          onMagnetChange={setSyncMagnetEnabled}
           onOffsetChange={(value) =>
             updateGlobalVisual('audioOffsetMs', value)
           }

@@ -1,22 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  detectAudioLandmarks,
+  MAX_SYNC_ZOOM,
+  detectRmsLandmarks,
   resolveSyncViewport,
+  resolveTapAnchorTime,
   snapToAudioLandmark,
 } from './syncEditorMath';
 
 describe('syncEditorMath', () => {
-  it('detecta picos locales útiles para el magnetismo', () => {
-    const peaks = new Float32Array([
-      -0.02, 0.02,
-      -0.08, 0.08,
-      -0.92, 0.9,
-      -0.12, 0.1,
-      -0.05, 0.05,
-      -0.74, 0.76,
-      -0.08, 0.08,
-    ]);
-    const landmarks = detectAudioLandmarks(peaks, 6);
+  it('detecta máximos locales de energía RMS para el magnetismo', () => {
+    const rms = new Float32Array([0.02, 0.08, 0.92, 0.12, 0.05, 0.76, 0.08]);
+    const landmarks = detectRmsLandmarks(rms, 6);
 
     expect(landmarks.map((landmark) => landmark.time)).toEqual([2, 5]);
   });
@@ -30,6 +24,8 @@ describe('syncEditorMath', () => {
     expect(snapToAudioLandmark(2.08, landmarks, 0.1, true)).toBe(2);
     expect(snapToAudioLandmark(2.12, landmarks, 0.1, true)).toBe(2.12);
     expect(snapToAudioLandmark(2.02, landmarks, 0.1, false)).toBe(2.02);
+    expect(resolveTapAnchorTime(4.82, landmarks, true)).toBe(5);
+    expect(resolveTapAnchorTime(4.82, landmarks, false)).toBe(4.82);
   });
 
   it('mantiene el viewport dentro del audio al hacer zoom y desplazar', () => {
@@ -44,6 +40,12 @@ describe('syncEditorMath', () => {
       duration: 120,
       zoom: 1,
       maximumStart: 0,
+    });
+    expect(resolveSyncViewport(120, MAX_SYNC_ZOOM * 2, 20)).toEqual({
+      start: 20,
+      duration: 120 / MAX_SYNC_ZOOM,
+      zoom: MAX_SYNC_ZOOM,
+      maximumStart: 120 - 120 / MAX_SYNC_ZOOM,
     });
   });
 });

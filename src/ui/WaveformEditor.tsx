@@ -182,8 +182,11 @@ export function WaveformEditor({
             peakCount,
         ),
       );
-      const visiblePeakCount = Math.max(1, visibleEndIndex - visibleStartIndex);
-      const samplesPerPixel = Math.max(1, visiblePeakCount / plotWidth);
+      const visiblePeakCount = Math.max(
+        1,
+        visibleEndIndex - visibleStartIndex + 1,
+      );
+      const samplesPerPixel = visiblePeakCount / plotWidth;
       context.strokeStyle = '#78b9c9';
       context.globalAlpha = 0.9;
       context.lineWidth = 1;
@@ -195,7 +198,12 @@ export function WaveformEditor({
         );
         const last = Math.min(
           visibleEndIndex,
-          Math.ceil(first + samplesPerPixel),
+          Math.max(
+            first,
+            Math.ceil(
+              visibleStartIndex + (pixel + 1) * samplesPerPixel,
+            ) - 1,
+          ),
         );
         let minimum = 0;
         let maximum = 0;

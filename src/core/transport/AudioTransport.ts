@@ -164,6 +164,50 @@ export class AudioTransport {
     return result;
   }
 
+  getWaveformRms(sampleCount = 900): Float32Array | null {
+    if (!this.buffer || sampleCount <= 0) return null;
+    const count = Math.max(32, Math.floor(sampleCount));
+    const result = new Float32Array(count);
+    const channels = Array.from(
+      { length: this.buffer.numberOfChannels },
+      (_, channel) => this.buffer!.getChannelData(channel),
+    );
+    const firstFrame = Math.min(
+      this.buffer.length,
+      Math.max(0, Math.floor(this.trimOffset * this.buffer.sampleRate)),
+    );
+    const availableFrames = Math.max(0, this.buffer.length - firstFrame);
+
+    for (let windowIndex = 0; windowIndex < count; windowIndex += 1) {
+      const start =
+        firstFrame +
+        Math.floor((windowIndex * availableFrames) / Math.max(1, count));
+      const end = Math.min(
+        this.buffer.length,
+        firstFrame +
+          Math.ceil(
+            ((windowIndex + 1) * availableFrames) / Math.max(1, count),
+          ),
+      );
+      const stride = Math.max(1, Math.floor((end - start) / 192));
+      let squaredEnergy = 0;
+      let measuredSamples = 0;
+      for (let frame = start; frame < end; frame += stride) {
+        channels.forEach((channel) => {
+          const value = channel[frame] ?? 0;
+          squaredEnergy += value * value;
+          measuredSamples += 1;
+        });
+      }
+      result[windowIndex] =
+        measuredSamples > 0
+          ? Math.sqrt(squaredEnergy / measuredSamples)
+          : 0;
+    }
+
+    return result;
+  }
+
   async play(): Promise<void> {
     const duration = this.getDuration();
     if (this.playing || this.starting || duration <= 0) return;

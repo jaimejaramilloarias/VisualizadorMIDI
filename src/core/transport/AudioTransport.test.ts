@@ -210,6 +210,21 @@ describe('AudioTransport', () => {
     await transport.destroy();
   });
 
+  it('calcula una envolvente RMS independiente de los picos de forma de onda', async () => {
+    FakeAudioContext.decodedChannel.fill(0.5);
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+
+    await transport.loadAudio(file);
+    const rms = transport.getWaveformRms(32);
+
+    expect(rms).toHaveLength(32);
+    expect(rms?.every((value) => Math.abs(value - 0.5) < 0.0001)).toBe(true);
+    await transport.destroy();
+  });
+
   it('conecta una sola cadena de salida al destino y la libera al cerrar', async () => {
     const transport = new AudioTransport();
     const file = {

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SyncAnchor } from '../core/state/visualizationState';
 import type { TransportSnapshot } from '../core/transport/AudioTransport';
 import { Icon } from './icons';
 import {
-  detectAudioLandmarks,
+  MAX_SYNC_ZOOM,
   resolveSyncViewport,
+  type AudioLandmark,
 } from './syncEditorMath';
 import { WaveformEditor } from './WaveformEditor';
 
@@ -15,6 +16,8 @@ interface SyncWorkspaceProps {
   anchors: SyncAnchor[];
   audioFileName: string | null;
   forward: boolean;
+  landmarks: readonly AudioLandmark[];
+  magnetEnabled: boolean;
   midiDuration: number;
   midiFileName: string | null;
   offsetMs: number;
@@ -23,6 +26,7 @@ interface SyncWorkspaceProps {
   onClose: () => void;
   onDeleteAnchor: (id: string) => void;
   onMoveAnchor: (id: string, audioTime: number) => void;
+  onMagnetChange: (enabled: boolean) => void;
   onOffsetChange: (value: number) => void;
   onRefreshWaveform: () => void;
   onRegisterTap: () => void;
@@ -49,6 +53,8 @@ export function SyncWorkspace({
   anchors,
   audioFileName,
   forward,
+  landmarks,
+  magnetEnabled,
   midiDuration,
   midiFileName,
   offsetMs,
@@ -57,6 +63,7 @@ export function SyncWorkspace({
   onClose,
   onDeleteAnchor,
   onMoveAnchor,
+  onMagnetChange,
   onOffsetChange,
   onRefreshWaveform,
   onRegisterTap,
@@ -71,13 +78,8 @@ export function SyncWorkspace({
   const [viewStart, setViewStart] = useState(0);
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>('anchors');
-  const [magnetEnabled, setMagnetEnabled] = useState(true);
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null);
   const [clearArmed, setClearArmed] = useState(false);
-  const landmarks = useMemo(
-    () => detectAudioLandmarks(peaks, transport.duration),
-    [peaks, transport.duration],
-  );
   const timelineDuration = Math.max(transport.duration, midiDuration, 1);
   const viewport = resolveSyncViewport(timelineDuration, zoom, viewStart);
   const selectedAnchor =
@@ -136,7 +138,7 @@ export function SyncWorkspace({
   }, [onClose, onDeleteAnchor, selectedAnchorId]);
 
   const changeZoom = (factor: number, focusTime = transport.position) => {
-    const nextZoom = clamp(zoom * factor, 1, 64);
+    const nextZoom = clamp(zoom * factor, 1, MAX_SYNC_ZOOM);
     const currentRatio =
       (focusTime - viewport.start) / Math.max(0.001, viewport.duration);
     const nextDuration = timelineDuration / nextZoom;
@@ -256,9 +258,9 @@ export function SyncWorkspace({
         </div>
 
         <div className="sync-zoom-control">
-          <button onClick={() => changeZoom(0.8)} type="button">−</button>
+          <button onClick={() => changeZoom(0.5)} type="button">−</button>
           <span>{zoom.toFixed(1)}×</span>
-          <button onClick={() => changeZoom(1.25)} type="button">+</button>
+          <button onClick={() => changeZoom(2)} type="button">+</button>
           <button onClick={centerPlayhead} type="button">Centrar</button>
         </div>
 
@@ -412,12 +414,12 @@ export function SyncWorkspace({
         <label className="sync-magnet">
           <input
             checked={magnetEnabled}
-            onChange={(event) => setMagnetEnabled(event.target.checked)}
+            onChange={(event) => onMagnetChange(event.target.checked)}
             type="checkbox"
           />
           <span>
             <strong>Magnetismo</strong>
-            <small>{landmarks.length} ataques detectados</small>
+            <small>{landmarks.length} picos RMS detectados</small>
           </span>
         </label>
       </div>
