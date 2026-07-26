@@ -41,14 +41,14 @@
 - La telemetría cuenta únicamente instrumentos habilitados.
 - El modo adaptativo responde rápidamente a cuadros perdidos, reduce densidad
   antes de sacrificar fluidez y la recupera lentamente para evitar oscilaciones.
-- El desenfoque de glow tiene un límite seguro para impedir que un ajuste
-  extremo monopolice el presupuesto de cuadro.
+- El halo de glow usa un gradiente radial acotado y un desenfoque con límite
+  seguro para que incluso el rango máximo conserve el presupuesto de cuadro.
 - Reproducir y pausar mientras `AudioContext` se reactiva no puede iniciar una
   fuente obsoleta.
 
 ## Cobertura
 
-- 33 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 42 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.

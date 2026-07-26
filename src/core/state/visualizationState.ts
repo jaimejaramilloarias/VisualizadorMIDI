@@ -3,6 +3,7 @@ export type VisualizationId = (typeof VISUALIZATION_IDS)[number];
 
 export const QUALITY_PRESETS = ['auto', 'high', 'ultra'] as const;
 export type QualityPreset = (typeof QUALITY_PRESETS)[number];
+export const MAX_SCENE_GLOW = 6;
 
 export interface SyncAnchor {
   id: string;
@@ -227,7 +228,7 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
         ? Math.min(30, Math.max(2, incoming!.secondsVisible!))
         : DEFAULT_SETTINGS.secondsVisible,
     glow: finiteNonNegative(incoming?.glow)
-      ? Math.min(2, incoming!.glow!)
+      ? Math.min(MAX_SCENE_GLOW, incoming!.glow!)
       : DEFAULT_SETTINGS.glow,
     noteScale: finiteNonNegative(incoming?.noteScale)
       ? Math.min(2, Math.max(0.4, incoming!.noteScale!))

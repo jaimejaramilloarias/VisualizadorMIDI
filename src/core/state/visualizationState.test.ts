@@ -142,7 +142,7 @@ describe('estado JSON', () => {
     expect(parsed.visualization).toBe('now-line');
     expect(parsed.settings).toEqual({
       secondsVisible: 30,
-      glow: 2,
+      glow: 6,
       noteScale: 0.4,
       quality: 'auto',
       background: '#000000',

@@ -18,6 +18,7 @@ import type {
 import {
   advanceFrameCadence,
   computeNoteOnBumpScale,
+  computeNoteOnGlowPresentation,
   computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
@@ -386,17 +387,40 @@ const drawHorizontalScene = (
     });
 
     if (glow > 0.001) {
+      const halo = computeNoteOnGlowPresentation({
+        strength: glow,
+        velocity,
+        noteHeight: height,
+      });
+      const haloCenterX =
+        style.extension && start <= time
+          ? x + width - height * 0.5
+          : centerX;
+      const haloCenterY = y + height * 0.5;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(
-        0.95,
-        layout.alpha * (0.22 + glow * 0.3),
+      ctx.globalAlpha = halo.alpha;
+      const gradient = ctx.createRadialGradient(
+        haloCenterX,
+        haloCenterY,
+        0,
+        haloCenterX,
+        haloCenterY,
+        halo.radius,
       );
+      gradient.addColorStop(0, style.color);
+      gradient.addColorStop(0.18, style.color);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(
+        haloCenterX - halo.radius,
+        haloCenterY - halo.radius,
+        halo.radius * 2,
+        halo.radius * 2,
+      );
+      ctx.globalAlpha = Math.min(0.9, halo.alpha * 0.82);
       ctx.shadowColor = style.color;
-      ctx.shadowBlur = Math.min(
-        96,
-        8 + glow * 52 * (0.7 + velocity * 0.3),
-      );
+      ctx.shadowBlur = Math.min(128, halo.radius * 0.7);
       drawNoteShape(
         ctx,
         style.shape,

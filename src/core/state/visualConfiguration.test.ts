@@ -31,6 +31,8 @@ describe('visualConfiguration', () => {
         ...cloneDefaultVisualConfiguration().global,
         fpsMode: 'incorrecto' as 'auto',
         supersampling: 900,
+        glowStrength: 900,
+        bumpStrength: 900,
       },
       families: {
         'Mi familia': {
@@ -43,6 +45,8 @@ describe('visualConfiguration', () => {
     });
 
     expect(result.global.supersampling).toBe(3);
+    expect(result.global.glowStrength).toBe(6);
+    expect(result.global.bumpStrength).toBe(6);
     expect(result.global.fpsMode).toBe('auto');
     expect(result.families['Mi familia'].color).toBe('#abcdef');
     expect(result.families['Mi familia'].shape).toBe('hexagon');

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceFrameCadence,
   computeNoteOnBumpScale,
+  computeNoteOnGlowPresentation,
   computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
@@ -142,11 +143,26 @@ describe('reloj y cadencia', () => {
       computeNoteOnGlowStrength({
         pulse: 1,
         sceneGlow: 0,
-        globalGlow: 3,
-        familyGlow: 3,
+        globalGlow: 0,
+        familyGlow: 0,
       }),
     ).toBe(0);
-    expect(boostedGlow).toBeGreaterThan(baseGlow * 4);
+    expect(boostedGlow).toBeGreaterThan(baseGlow * 1.8);
+    expect(
+      computeNoteOnGlowStrength({
+        pulse: 1,
+        sceneGlow: 6,
+        globalGlow: 0,
+        familyGlow: 0,
+      }),
+    ).toBe(
+      computeNoteOnGlowStrength({
+        pulse: 1,
+        sceneGlow: 0.5,
+        globalGlow: 0,
+        familyGlow: 0,
+      }) * 12,
+    );
     expect(
       computeNoteOnBumpScale({
         pulse: 0,
@@ -157,10 +173,27 @@ describe('reloj y cadencia', () => {
     expect(
       computeNoteOnBumpScale({
         pulse: 1,
-        globalBump: 3,
-        familyBump: 0,
+        globalBump: 6,
+        familyBump: 6,
       }),
-    ).toBeGreaterThan(1.5);
+    ).toBeGreaterThan(3);
+  });
+
+  it('calcula un halo propio sin depender de la opacidad de la figura', () => {
+    const subtle = computeNoteOnGlowPresentation({
+      strength: 0.5,
+      velocity: 0.8,
+      noteHeight: 20,
+    });
+    const intense = computeNoteOnGlowPresentation({
+      strength: 6,
+      velocity: 0.8,
+      noteHeight: 20,
+    });
+
+    expect(subtle.alpha).toBeGreaterThan(0);
+    expect(intense.alpha).toBeGreaterThan(subtle.alpha);
+    expect(intense.radius).toBeGreaterThan(subtle.radius * 1.5);
   });
 });
 

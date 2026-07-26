@@ -542,6 +542,141 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.sync-canvas-panel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 6;
+  display: grid;
+  height: 33.333%;
+  min-height: 0;
+  grid-template-rows: 36px minmax(0, 1fr);
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 213, 0, 0.24);
+  background: rgba(14, 17, 20, 0.9);
+  box-shadow: 0 -16px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(24px) saturate(125%);
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
+}
+
+.sync-canvas-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.sync-canvas-panel-header > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.sync-canvas-panel-header svg {
+  width: 15px;
+  color: #ffd500;
+}
+
+.sync-canvas-panel-header strong {
+  font-size: 11px;
+}
+
+.sync-canvas-panel-header small {
+  color: #7f8a90;
+  font-size: 9px;
+}
+
+.sync-canvas-panel-header .text-action {
+  min-height: 26px;
+  padding: 0 9px;
+}
+
+.sync-canvas-grid {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns:
+    minmax(340px, 1.5fr)
+    minmax(260px, 1fr)
+    minmax(320px, 1.2fr);
+  padding: 7px;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.sync-dock-card {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 8px 9px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+.sync-dock-card .section-heading {
+  margin-bottom: 6px;
+}
+
+.sync-dock-card .section-heading strong {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.sync-dock-card .section-heading small {
+  font-size: 8px;
+}
+
+.sync-dock-waveform {
+  display: grid;
+  grid-template-rows: auto minmax(42px, 1fr) auto;
+}
+
+.sync-dock-waveform .waveform-editor {
+  height: 100%;
+  min-height: 42px;
+}
+
+.sync-dock-card .tap-actions {
+  margin-top: 5px;
+}
+
+.sync-dock-card .tap-actions button,
+.sync-dock-card > .wide-action {
+  min-height: 28px;
+}
+
+.sync-dock-card .sync-pair {
+  margin: 0;
+}
+
+.sync-dock-card .sync-target-range {
+  margin: 5px 0;
+}
+
+.sync-dock-card .nudge-grid {
+  margin-top: 4px;
+}
+
+.sync-dock-card .range-control {
+  padding-bottom: 0;
+}
+
+[data-inspector-tab="sync"] .right-panel .collapse-button {
+  display: none;
+}
+
 .empty-state,
 .drop-overlay {
   position: absolute;

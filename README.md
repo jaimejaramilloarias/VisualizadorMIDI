@@ -25,12 +25,15 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   en pantalla: no se generan copias ni estelas que puedan acumularse allí.
 - La extensión dinámica nace en NOW y crece únicamente hacia PAST.
 - Glow y bump reaccionan exclusivamente después de cada Note On con pulsos
-  rápidos: destello luminoso y rebote de tamaño, respectivamente.
+  rápidos: un halo independiente de la opacidad espacial y un rebote de tamaño
+  con rango amplio, respectivamente.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
   reproduce/pausa y las flechas saltan ±3 segundos.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
+- Sincronía se trabaja en un panel horizontal del ancho del canvas y un tercio
+  de su altura, manteniendo visible la animación.
 - Selección directa de notas en el canvas para cambiar la figura o el color
   desde el inicio o a partir de ese punto MIDI.
 - Etiquetas activables por voz, con recuadros que se ajustan automáticamente al

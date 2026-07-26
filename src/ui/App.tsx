@@ -15,6 +15,7 @@ import type {
 } from '../core/midi/types';
 import {
   DEFAULT_SETTINGS,
+  MAX_SCENE_GLOW,
   createSyncTimeline,
   createStateDocument,
   mapAudioToMidi,
@@ -25,6 +26,7 @@ import {
 } from '../core/state/visualizationState';
 import {
   FAMILY_NAMES,
+  MAX_EFFECT_STRENGTH,
   SHAPE_IDS,
   SHAPE_LABELS,
   cloneDefaultVisualConfiguration,
@@ -1093,6 +1095,7 @@ export function App() {
   return (
     <main
       className="app-shell"
+      data-inspector-tab={inspectorTab}
       data-left-collapsed={leftCollapsed}
       data-right-collapsed={rightCollapsed}
       onDragEnter={(event) => {
@@ -1212,9 +1215,9 @@ export function App() {
               key={menu.id}
               onClick={() => {
                 setInspectorTab(menu.id);
+                setRightCollapsed(menu.id === 'sync');
                 if (window.matchMedia('(max-width: 800px)').matches) {
                   setLeftCollapsed(true);
-                  setRightCollapsed(false);
                 }
               }}
               title={`${menu.label} · ${menu.description}`}
@@ -1276,6 +1279,241 @@ export function App() {
             }}
             ref={canvasRef}
           />
+          {inspectorTab === 'sync' && (
+            <section
+              aria-label="Inspector horizontal de sincronía"
+              className="sync-canvas-panel"
+            >
+              <header className="sync-canvas-panel-header">
+                <span>
+                  <Icon name="sync" />
+                  <strong>Sincronía</strong>
+                  <small>Panel horizontal · ⅓ del canvas</small>
+                </span>
+                <button
+                  className="text-action"
+                  onClick={() => {
+                    setInspectorTab('style');
+                    setRightCollapsed(false);
+                  }}
+                  type="button"
+                >
+                  Cerrar
+                </button>
+              </header>
+              <div className="sync-canvas-grid">
+                <section className="sync-dock-card sync-dock-waveform">
+                  <div className="section-heading">
+                    <span>
+                      <small>TAP TEMPO</small>
+                      <strong>Forma de onda</strong>
+                    </span>
+                  </div>
+                  <WaveformEditor
+                    duration={transport.duration}
+                    markers={syncAnchors}
+                    onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
+                    onMove={(id, audioTime) =>
+                      updateAnchor(id, 'audioTime', audioTime)
+                    }
+                    peaks={waveformPeaks}
+                    playhead={transport.position}
+                  />
+                  <div className="tap-actions">
+                    <button
+                      className={
+                        tapActive ? 'text-action is-active' : 'text-action'
+                      }
+                      disabled={!transport.hasAudio || !project}
+                      onClick={tapActive ? stopTapTempo : startTapTempo}
+                      type="button"
+                    >
+                      {tapActive ? 'Finalizar captura' : 'Iniciar tap tempo'}
+                    </button>
+                    <button
+                      className="wide-action is-accent"
+                      disabled={!tapActive}
+                      onClick={registerTap}
+                      type="button"
+                    >
+                      Pulso · Espacio
+                    </button>
+                  </div>
+                </section>
+
+                <section className="sync-dock-card">
+                  <div className="section-heading">
+                    <span>
+                      <small>CALIBRACIÓN</small>
+                      <strong>Nueva ancla</strong>
+                    </span>
+                    {anchorMidiDraft !== null && (
+                      <button
+                        className="text-action"
+                        onClick={() => setAnchorMidiDraft(null)}
+                        type="button"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                  <div className="sync-pair">
+                    <span>
+                      <small>AUDIO</small>
+                      <strong>{formatTime(transport.position)}</strong>
+                    </span>
+                    <span className="sync-arrow">→</span>
+                    <span>
+                      <small>MIDI</small>
+                      <strong>
+                        {formatTime(anchorMidiDraft ?? activeMidiTime)}
+                      </strong>
+                    </span>
+                  </div>
+                  <input
+                    className="sync-target-range"
+                    disabled={!project}
+                    max={project?.duration || 1}
+                    min="0"
+                    onChange={(event) =>
+                      setAnchorDraft(Number(event.target.value))
+                    }
+                    step="0.01"
+                    type="range"
+                    value={anchorMidiDraft ?? activeMidiTime}
+                  />
+                  <div className="nudge-grid">
+                    {[-0.1, -0.01, 0.01, 0.1].map((amount) => (
+                      <button
+                        disabled={!project}
+                        key={amount}
+                        onClick={() =>
+                          setAnchorDraft(
+                            (anchorMidiDraft ?? activeMidiTime) + amount,
+                          )
+                        }
+                        type="button"
+                      >
+                        {amount > 0 ? '+' : ''}
+                        {amount.toFixed(2)} s
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="wide-action is-accent"
+                    disabled={!project}
+                    onClick={addAnchor}
+                    type="button"
+                  >
+                    <Icon name="plus" />
+                    Guardar ancla
+                  </button>
+                  <RangeControl
+                    label="Audio offset"
+                    max={5000}
+                    min={-5000}
+                    onChange={(value) =>
+                      updateGlobalVisual('audioOffsetMs', value)
+                    }
+                    step={10}
+                    suffix=" ms"
+                    value={visualConfiguration.global.audioOffsetMs}
+                  />
+                </section>
+
+                <section className="sync-dock-card">
+                  <div className="section-heading">
+                    <span>
+                      <small>SINCRONIZACIÓN</small>
+                      <strong>Anclas guardadas</strong>
+                    </span>
+                    <button
+                      aria-label="Añadir ancla en la posición actual"
+                      className="add-button"
+                      disabled={!project}
+                      onClick={addAnchor}
+                      title="Añadir ancla en la posición actual"
+                      type="button"
+                    >
+                      <Icon name="plus" />
+                    </button>
+                  </div>
+                  {!syncMappingIsForward && (
+                    <p className="sync-warning">
+                      El tiempo MIDI debe avanzar entre anclas.
+                    </p>
+                  )}
+                  {syncAnchors.length === 0 ? (
+                    <button
+                      className="empty-anchors"
+                      disabled={!project}
+                      onClick={addAnchor}
+                      type="button"
+                    >
+                      <Icon name="plus" />
+                      <span>
+                        <strong>Crear primera ancla</strong>
+                        <small>Usa la posición actual</small>
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="anchor-list">
+                      {syncAnchors.map((anchor, index) => (
+                        <div className="anchor-row" key={anchor.id}>
+                          <span className="anchor-number">{index + 1}</span>
+                          <label>
+                            <span>Audio</span>
+                            <input
+                              min="0"
+                              onChange={(event) =>
+                                updateAnchor(
+                                  anchor.id,
+                                  'audioTime',
+                                  Number(event.target.value),
+                                )
+                              }
+                              step="0.01"
+                              type="number"
+                              value={anchor.audioTime}
+                            />
+                          </label>
+                          <label>
+                            <span>MIDI</span>
+                            <input
+                              min="0"
+                              onChange={(event) =>
+                                updateAnchor(
+                                  anchor.id,
+                                  'midiTime',
+                                  Number(event.target.value),
+                                )
+                              }
+                              step="0.01"
+                              type="number"
+                              value={anchor.midiTime}
+                            />
+                          </label>
+                          <button
+                            aria-label={`Eliminar ancla ${index + 1}`}
+                            className="delete-button"
+                            onClick={() =>
+                              setSyncAnchors((current) =>
+                                current.filter((item) => item.id !== anchor.id),
+                              )
+                            }
+                            title="Eliminar ancla"
+                            type="button"
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            </section>
+          )}
           {!project && (
             <div className="empty-state">
               <span className="empty-icon">
@@ -1606,7 +1844,7 @@ export function App() {
                 />
                 <RangeControl
                   label="Resplandor de escena"
-                  max={2}
+                  max={MAX_SCENE_GLOW}
                   min={0}
                   onChange={(value) => updateSetting('glow', value)}
                   step={0.1}
@@ -1831,7 +2069,7 @@ export function App() {
                 />
                 <RangeControl
                   label="Glow global"
-                  max={3}
+                  max={MAX_EFFECT_STRENGTH}
                   min={0}
                   onChange={(value) =>
                     updateGlobalVisual('glowStrength', value)
@@ -1842,7 +2080,7 @@ export function App() {
                 />
                 <RangeControl
                   label="Bump global"
-                  max={3}
+                  max={MAX_EFFECT_STRENGTH}
                   min={0}
                   onChange={(value) =>
                     updateGlobalVisual('bumpStrength', value)
@@ -2313,7 +2551,7 @@ export function App() {
                   />
                   <RangeControl
                     label="Glow de familia"
-                    max={3}
+                    max={MAX_EFFECT_STRENGTH}
                     min={0}
                     onChange={(value) =>
                       updateFamily(selectedResolvedStyle.family, {
@@ -2326,7 +2564,7 @@ export function App() {
                   />
                   <RangeControl
                     label="Bump de familia"
-                    max={3}
+                    max={MAX_EFFECT_STRENGTH}
                     min={0}
                     onChange={(value) =>
                       updateFamily(selectedResolvedStyle.family, {
@@ -2417,7 +2655,7 @@ export function App() {
             </>
           )}
 
-          {inspectorTab === 'sync' && (
+          {inspectorTab === 'sync' && !rightCollapsed && (
             <>
               <section className="inspector-section sync-section">
                 <div className="section-heading">

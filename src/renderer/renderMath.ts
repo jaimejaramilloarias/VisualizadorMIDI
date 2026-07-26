@@ -176,8 +176,31 @@ export const computeNoteOnGlowStrength = ({
   familyGlow: number;
 }): number =>
   Math.max(0, pulse) *
-  Math.max(0, sceneGlow) *
-  (0.35 + Math.max(0, globalGlow) * 0.75 + Math.max(0, familyGlow) * 0.75);
+  (Math.max(0, sceneGlow) * 1.1 +
+    Math.max(0, globalGlow) * 0.45 +
+    Math.max(0, familyGlow) * 0.45);
+
+export const computeNoteOnGlowPresentation = ({
+  strength,
+  velocity,
+  noteHeight,
+}: {
+  strength: number;
+  velocity: number;
+  noteHeight: number;
+}): { alpha: number; radius: number } => {
+  const safeStrength = Math.max(0, strength);
+  const rootStrength = Math.sqrt(safeStrength);
+  const energy = 1 - Math.exp(-safeStrength * 0.38);
+  return {
+    alpha:
+      Math.min(0.92, 0.24 + energy * 0.68) *
+      (0.55 + Math.max(0, Math.min(1, velocity)) * 0.45),
+    radius:
+      Math.max(1, noteHeight) * (1.2 + rootStrength * 0.55) +
+      rootStrength * 20,
+  };
+};
 
 export const computeNoteOnBumpScale = ({
   pulse,
@@ -191,8 +214,8 @@ export const computeNoteOnBumpScale = ({
   1 +
   Math.max(0, pulse) *
     Math.min(
-      0.85,
-      (Math.max(0, globalBump) + Math.max(0, familyBump)) * 0.18,
+      3,
+      (Math.max(0, globalBump) + Math.max(0, familyBump)) * 0.22,
     );
 
 export interface CurveTravelInput {

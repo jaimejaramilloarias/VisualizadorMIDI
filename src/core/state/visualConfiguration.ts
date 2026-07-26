@@ -15,6 +15,7 @@ export type ShapeId = (typeof SHAPE_IDS)[number];
 export type AspectRatioMode = 'responsive' | '16:9' | '9:16';
 export const FPS_MODES = ['auto', '60', '30'] as const;
 export type FpsMode = (typeof FPS_MODES)[number];
+export const MAX_EFFECT_STRENGTH = 6;
 
 export interface TravelStyle {
   enabled: boolean;
@@ -292,8 +293,18 @@ const sanitizeFamilyStyle = (
   ),
   shape: coerceShapeId(incoming?.shape) ?? fallback.shape,
   heightScale: clamp(incoming?.heightScale, 0.2, 5, fallback.heightScale),
-  glowStrength: clamp(incoming?.glowStrength, 0, 3, fallback.glowStrength),
-  bumpStrength: clamp(incoming?.bumpStrength, 0, 3, fallback.bumpStrength),
+  glowStrength: clamp(
+    incoming?.glowStrength,
+    0,
+    MAX_EFFECT_STRENGTH,
+    fallback.glowStrength,
+  ),
+  bumpStrength: clamp(
+    incoming?.bumpStrength,
+    0,
+    MAX_EFFECT_STRENGTH,
+    fallback.bumpStrength,
+  ),
   extension:
     typeof incoming?.extension === 'boolean'
       ? incoming.extension
@@ -321,8 +332,18 @@ export const sanitizeVisualConfiguration = (
     opacityEdge: clamp(global?.opacityEdge, 0, 1, 0),
     opacityCenter: clamp(global?.opacityCenter, 0, 1, 1),
     heightScale: clamp(global?.heightScale, 0.2, 5, 1.8),
-    glowStrength: clamp(global?.glowStrength, 0, 3, 0.1),
-    bumpStrength: clamp(global?.bumpStrength, 0, 3, 1.1),
+    glowStrength: clamp(
+      global?.glowStrength,
+      0,
+      MAX_EFFECT_STRENGTH,
+      0.1,
+    ),
+    bumpStrength: clamp(
+      global?.bumpStrength,
+      0,
+      MAX_EFFECT_STRENGTH,
+      1.1,
+    ),
     audioOffsetMs: clamp(global?.audioOffsetMs, -60_000, 60_000, 0),
     fpsMode: FPS_MODES.includes(global?.fpsMode as FpsMode)
       ? (global?.fpsMode as FpsMode)
@@ -389,10 +410,24 @@ export const sanitizeVisualConfiguration = (
           ? { heightScale: clamp(item.heightScale, 0.2, 5, 1) }
           : {}),
         ...(typeof item.glowStrength === 'number'
-          ? { glowStrength: clamp(item.glowStrength, 0, 3, 0.1) }
+          ? {
+              glowStrength: clamp(
+                item.glowStrength,
+                0,
+                MAX_EFFECT_STRENGTH,
+                0.1,
+              ),
+            }
           : {}),
         ...(typeof item.bumpStrength === 'number'
-          ? { bumpStrength: clamp(item.bumpStrength, 0, 3, 1.1) }
+          ? {
+              bumpStrength: clamp(
+                item.bumpStrength,
+                0,
+                MAX_EFFECT_STRENGTH,
+                1.1,
+              ),
+            }
           : {}),
         ...(typeof item.extension === 'boolean'
           ? { extension: item.extension }
