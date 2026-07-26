@@ -24,6 +24,7 @@ interface SyncWorkspaceProps {
   onDeleteAnchor: (id: string) => void;
   onMoveAnchor: (id: string, audioTime: number) => void;
   onOffsetChange: (value: number) => void;
+  onRefreshWaveform: () => void;
   onRegisterTap: () => void;
   onSeek: (time: number) => void;
   onTapToggle: () => void;
@@ -57,6 +58,7 @@ export function SyncWorkspace({
   onDeleteAnchor,
   onMoveAnchor,
   onOffsetChange,
+  onRefreshWaveform,
   onRegisterTap,
   onSeek,
   onTapToggle,
@@ -108,6 +110,12 @@ export function SyncWorkspace({
     const timer = window.setTimeout(() => setClearArmed(false), 3500);
     return () => window.clearTimeout(timer);
   }, [clearArmed]);
+
+  useEffect(() => {
+    if (!transport.hasAudio || peaks?.length) return;
+    const frame = window.requestAnimationFrame(onRefreshWaveform);
+    return () => window.cancelAnimationFrame(frame);
+  }, [onRefreshWaveform, peaks, transport.hasAudio]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

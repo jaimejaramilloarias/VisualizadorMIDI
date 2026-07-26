@@ -662,6 +662,16 @@ export function App() {
     }
   }, []);
 
+  const refreshWaveformPeaks = useCallback(() => {
+    const instance = transportRef.current;
+    if (!instance) return false;
+    const peaks = instance.getWaveformPeaks(12_000);
+    if (!peaks?.length) return false;
+    setWaveformPeaks(peaks);
+    setTransport(instance.getSnapshot());
+    return true;
+  }, []);
+
   const loadAudio = useCallback(async (file: File) => {
     if (!transportRef.current) return;
     if (file.size > MAX_AUDIO_SIZE) {
@@ -677,7 +687,7 @@ export function App() {
     try {
       const duration = await transportRef.current.loadAudio(file);
       if (loadGeneration !== audioLoadGenerationRef.current) return;
-      setWaveformPeaks(transportRef.current.getWaveformPeaks(12_000));
+      refreshWaveformPeaks();
       setAudioFileName(file.name);
       const trimOffset = transportRef.current.getSnapshot().trimOffset;
       setNotice(
@@ -696,7 +706,12 @@ export function App() {
     } finally {
       if (busyGeneration === busyGenerationRef.current) setBusy(null);
     }
-  }, []);
+  }, [refreshWaveformPeaks]);
+
+  const openSyncWorkspace = useCallback(() => {
+    refreshWaveformPeaks();
+    setSyncWorkspaceOpen(true);
+  }, [refreshWaveformPeaks]);
 
   const loadDroppedFiles = useCallback(
     (files: File[]) => {
@@ -1377,7 +1392,7 @@ export function App() {
               key={menu.id}
               onClick={() => {
                 if (menu.id === 'sync') {
-                  setSyncWorkspaceOpen(true);
+                  openSyncWorkspace();
                   if (window.matchMedia('(max-width: 800px)').matches) {
                     setLeftCollapsed(true);
                     setRightCollapsed(true);
@@ -3157,6 +3172,7 @@ export function App() {
             updateGlobalVisual('audioOffsetMs', value)
           }
           onRegisterTap={registerTap}
+          onRefreshWaveform={refreshWaveformPeaks}
           onSeek={(time) => {
             clearAnchorPreview();
             transportRef.current?.seek(time);

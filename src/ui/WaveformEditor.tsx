@@ -90,7 +90,13 @@ export function WaveformEditor({
       setResizeRevision((revision) => revision + 1);
     });
     observer.observe(canvas);
-    return () => observer.disconnect();
+    const frame = window.requestAnimationFrame(() => {
+      setResizeRevision((revision) => revision + 1);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
