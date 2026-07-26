@@ -12,7 +12,9 @@ await writeFile(
     if (response.status !== 404 || new URL(request.url).pathname.includes(".")) {
       return response;
     }
-    return env.ASSETS.fetch(new Request(new URL("/", request.url), request));
+    return env.ASSETS.fetch(
+      new Request(new URL("/index.html", request.url), request),
+    );
   },
 };
 `,
