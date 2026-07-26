@@ -110,9 +110,9 @@ export function WaveformEditor({
     const plotRight = 18;
     const plotWidth = Math.max(1, width - plotLeft - plotRight);
     const audioTop = 48;
-    const audioBottom = Math.max(audioTop + 80, height * 0.68);
+    const midiY = Math.max(audioTop + 80, height - 34);
+    const audioBottom = midiY;
     const audioMiddle = (audioTop + audioBottom) / 2;
-    const midiY = Math.max(audioBottom + 48, height - 58);
     const timeToX = (time: number): number =>
       plotLeft + ((time - viewStart) / Math.max(0.001, viewDuration)) * plotWidth;
     const xToTime = (x: number): number =>
@@ -198,7 +198,7 @@ export function WaveformEditor({
           maximum = Math.max(maximum, peaks[index * 2 + 1] ?? 0);
         }
         const x = plotLeft + pixel;
-        const amplitude = (audioBottom - audioTop) * 0.43;
+        const amplitude = (audioBottom - audioTop) * 0.46;
         context.moveTo(x, audioMiddle + minimum * amplitude);
         context.lineTo(x, audioMiddle + maximum * amplitude);
       }
