@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   advanceFrameCadence,
+  computeNoteOnBumpScale,
+  computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
   curveTravelOffset,
   computeRenderScale,
   extrapolateMidiTime,
   lockNoteOnArrivalOffset,
+  noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from './renderMath';
@@ -95,10 +98,69 @@ describe('reloj y cadencia', () => {
     ]);
   });
 
-  it('no calcula glow para notas que todavía no han comenzado', () => {
+  it('inicia glow y bump únicamente después del note on', () => {
     expect(noteOnGlowEnvelope(9.5, 10)).toBe(0);
-    expect(noteOnGlowEnvelope(10, 10)).toBe(1);
+    expect(noteOnGlowEnvelope(9.999, 10)).toBe(0);
+    expect(noteOnGlowEnvelope(10, 10)).toBe(0);
+    expect(noteOnBumpEnvelope(9.999, 10)).toBe(0);
+    expect(noteOnBumpEnvelope(10, 10)).toBe(0);
+    expect(noteOnGlowEnvelope(10.02, 10)).toBeGreaterThan(0);
+    expect(noteOnBumpEnvelope(10.02, 10)).toBeGreaterThan(0);
+  });
+
+  it('produce pulsos rápidos con entrada y salida progresivas', () => {
+    const glowAttack = noteOnGlowEnvelope(10.0175, 10);
+    const glowPeak = noteOnGlowEnvelope(10.035, 10);
+    const glowRelease = noteOnGlowEnvelope(10.135, 10);
+    const bumpPeak = noteOnBumpEnvelope(10.028, 10);
+
+    expect(glowAttack).toBeGreaterThan(0);
+    expect(glowAttack).toBeLessThan(glowPeak);
+    expect(glowPeak).toBeCloseTo(1);
+    expect(glowRelease).toBeGreaterThan(0);
+    expect(glowRelease).toBeLessThan(glowPeak);
+    expect(bumpPeak).toBeCloseTo(1);
     expect(noteOnGlowEnvelope(10.28, 10)).toBeCloseTo(0);
+    expect(noteOnBumpEnvelope(10.2, 10)).toBe(0);
+  });
+
+  it('hace que los controles globales modifiquen claramente cada pulso', () => {
+    const baseGlow = computeNoteOnGlowStrength({
+      pulse: 1,
+      sceneGlow: 0.8,
+      globalGlow: 0,
+      familyGlow: 0.1,
+    });
+    const boostedGlow = computeNoteOnGlowStrength({
+      pulse: 1,
+      sceneGlow: 0.8,
+      globalGlow: 2,
+      familyGlow: 0.1,
+    });
+
+    expect(
+      computeNoteOnGlowStrength({
+        pulse: 1,
+        sceneGlow: 0,
+        globalGlow: 3,
+        familyGlow: 3,
+      }),
+    ).toBe(0);
+    expect(boostedGlow).toBeGreaterThan(baseGlow * 4);
+    expect(
+      computeNoteOnBumpScale({
+        pulse: 0,
+        globalBump: 3,
+        familyBump: 3,
+      }),
+    ).toBe(1);
+    expect(
+      computeNoteOnBumpScale({
+        pulse: 1,
+        globalBump: 3,
+        familyBump: 0,
+      }),
+    ).toBeGreaterThan(1.5);
   });
 });
 

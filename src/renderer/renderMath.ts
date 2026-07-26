@@ -127,15 +127,73 @@ export const extrapolateMidiTime = ({
         : 0),
   );
 
+const smoothstep = (value: number): number => {
+  const clamped = Math.max(0, Math.min(1, value));
+  return clamped * clamped * (3 - 2 * clamped);
+};
+
+const noteOnPulseEnvelope = (
+  time: number,
+  noteStart: number,
+  attackSeconds: number,
+  decaySeconds: number,
+): number => {
+  const elapsed = time - noteStart;
+  const safeAttack = Math.max(0.001, attackSeconds);
+  const safeDecay = Math.max(0.001, decaySeconds);
+  if (elapsed <= 0 || elapsed >= safeAttack + safeDecay) return 0;
+  if (elapsed < safeAttack) {
+    return smoothstep(elapsed / safeAttack);
+  }
+  return 1 - smoothstep((elapsed - safeAttack) / safeDecay);
+};
+
 export const noteOnGlowEnvelope = (
   time: number,
   noteStart: number,
-  decaySeconds = 0.28,
-): number => {
-  const elapsed = time - noteStart;
-  if (elapsed < 0) return 0;
-  return Math.max(0, 1 - elapsed / Math.max(0.001, decaySeconds));
-};
+  attackSeconds = 0.035,
+  decaySeconds = 0.2,
+): number =>
+  noteOnPulseEnvelope(time, noteStart, attackSeconds, decaySeconds);
+
+export const noteOnBumpEnvelope = (
+  time: number,
+  noteStart: number,
+  attackSeconds = 0.028,
+  decaySeconds = 0.14,
+): number =>
+  noteOnPulseEnvelope(time, noteStart, attackSeconds, decaySeconds);
+
+export const computeNoteOnGlowStrength = ({
+  pulse,
+  sceneGlow,
+  globalGlow,
+  familyGlow,
+}: {
+  pulse: number;
+  sceneGlow: number;
+  globalGlow: number;
+  familyGlow: number;
+}): number =>
+  Math.max(0, pulse) *
+  Math.max(0, sceneGlow) *
+  (0.35 + Math.max(0, globalGlow) * 0.75 + Math.max(0, familyGlow) * 0.75);
+
+export const computeNoteOnBumpScale = ({
+  pulse,
+  globalBump,
+  familyBump,
+}: {
+  pulse: number;
+  globalBump: number;
+  familyBump: number;
+}): number =>
+  1 +
+  Math.max(0, pulse) *
+    Math.min(
+      0.85,
+      (Math.max(0, globalBump) + Math.max(0, familyBump)) * 0.18,
+    );
 
 export interface CurveTravelInput {
   offset: number;

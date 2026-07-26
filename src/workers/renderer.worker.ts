@@ -17,12 +17,15 @@ import type {
 } from '../renderer/protocol';
 import {
   advanceFrameCadence,
+  computeNoteOnBumpScale,
+  computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
   computeRenderScale,
   curveTravelOffset,
   extrapolateMidiTime,
   lockNoteOnArrivalOffset,
+  noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from '../renderer/renderMath';
@@ -273,7 +276,6 @@ const drawHorizontalScene = (
     height: number;
     centerX: number;
     alpha: number;
-    active: boolean;
     style: ResolvedTrackVisualStyle;
   }
 
@@ -303,19 +305,12 @@ const drawHorizontalScene = (
       Math.min(2.4, rawVelocity / Math.max(1, appearance.global.velocityBase)),
     );
     const duration = Math.max(0.001, end - start);
-    const attack = Math.max(0, Math.min(1, (time - start) / 0.18));
-    const release = Math.max(
-      0,
-      Math.min(1, (end - time) / Math.max(0.18, duration * 0.3)),
-    );
-    const bumpEnvelope =
-      time >= start && time <= end ? Math.sin(attack * Math.PI) * release : 0;
-    const bump =
-      1 +
-      bumpEnvelope *
-        appearance.global.bumpStrength *
-        style.bumpStrength *
-        0.26;
+    const bumpEnvelope = noteOnBumpEnvelope(time, start);
+    const bump = computeNoteOnBumpScale({
+      pulse: bumpEnvelope,
+      globalBump: appearance.global.bumpStrength,
+      familyBump: style.bumpStrength,
+    });
     const height =
       noteHeight *
       appearance.global.heightScale *
@@ -358,7 +353,6 @@ const drawHorizontalScene = (
       centerX,
       alpha:
         (0.48 + velocity * 0.5) * Math.max(0, spatialOpacity(centerX)),
-      active: start <= time && end >= time,
       style,
     };
   };
@@ -381,19 +375,41 @@ const drawHorizontalScene = (
   }));
 
   const drawLayout = (layout: NoteLayout): void => {
-    const { start, velocity, style, active, x, y, width, height } = layout;
+    const { start, velocity, style, x, y, width, height } = layout;
     const centerX = x + width / 2;
     const noteOnGlow = noteOnGlowEnvelope(time, start);
-    const glow =
-      settings.glow *
-      (appearance.global.glowStrength + style.glowStrength) *
-      (noteOnGlow * 1.8 + (active ? 0.35 : 0));
+    const glow = computeNoteOnGlowStrength({
+      pulse: noteOnGlow,
+      sceneGlow: settings.glow,
+      globalGlow: appearance.global.glowStrength,
+      familyGlow: style.glowStrength,
+    });
 
-    ctx.globalAlpha = layout.alpha;
-    if (glow > 0.02) {
+    if (glow > 0.001) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(
+        0.95,
+        layout.alpha * (0.22 + glow * 0.3),
+      );
       ctx.shadowColor = style.color;
-      ctx.shadowBlur = Math.min(48, 12 * glow * velocity);
+      ctx.shadowBlur = Math.min(
+        96,
+        8 + glow * 52 * (0.7 + velocity * 0.3),
+      );
+      drawNoteShape(
+        ctx,
+        style.shape,
+        x,
+        y,
+        width,
+        height,
+        style.color,
+        style.secondaryColor,
+      );
+      ctx.restore();
     }
+    ctx.globalAlpha = layout.alpha;
     drawNoteShape(
       ctx,
       style.shape,
@@ -404,7 +420,6 @@ const drawHorizontalScene = (
       style.color,
       style.secondaryColor,
     );
-    ctx.shadowBlur = 0;
 
     const labels = appearance.global.noteLabels;
     if (style.noteLabelsEnabled) {

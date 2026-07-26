@@ -29,7 +29,7 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Efectos | Opacidad extremos/centro | Migrada |
-| Efectos | Glow y bump global/familia | Migrada |
+| Efectos | Glow y bump global/familia | Rediseñada; pulsos breves que comienzan estrictamente en Note On |
 | Efectos | Contorno full/pre/post | Retirada por decisión de producto |
 | Efectos | Líneas de conexión por familia | Retirada por decisión de producto |
 | Efectos | Atracción hacia NOW, intensidad y zona de aceleración | Rediseñada; trayectoria única, entrada lenta y aceleración magnética continua |
@@ -53,6 +53,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 39 pruebas V2 correctas.
+- `npm run test`: 41 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

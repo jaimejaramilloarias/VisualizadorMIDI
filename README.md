@@ -24,6 +24,8 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   aceleran de forma continua al acercarse a NOW. Cada nota tiene una sola figura
   en pantalla: no se generan copias ni estelas que puedan acumularse allí.
 - La extensión dinámica nace en NOW y crece únicamente hacia PAST.
+- Glow y bump reaccionan exclusivamente después de cada Note On con pulsos
+  rápidos: destello luminoso y rebote de tamaño, respectivamente.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
   reproduce/pausa y las flechas saltan ±3 segundos.
 - Interpolación por tramos de anclas `audioTime → midiTime`.

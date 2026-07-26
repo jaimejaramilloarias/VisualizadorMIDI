@@ -1851,6 +1851,11 @@ export function App() {
                   suffix="×"
                   value={visualConfiguration.global.bumpStrength}
                 />
+                <p className="section-help">
+                  Glow y bump comienzan en el Note On: el primero produce un
+                  destello breve y el segundo un rebote rápido de tamaño. Nunca
+                  se anticipan al ataque.
+                </p>
                   </>
                 )}
                 {inspectorTab === 'performance' && (
