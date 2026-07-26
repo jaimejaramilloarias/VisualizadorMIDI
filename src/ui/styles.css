@@ -294,7 +294,15 @@ input:focus-visible {
 .menu-list {
   display: grid;
   min-width: 206px;
+  max-height: calc(100dvh - 96px);
+  padding-bottom: 112px;
   gap: 8px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.menu-list::-webkit-scrollbar {
+  display: none;
 }
 
 .menu-card {
@@ -412,6 +420,7 @@ input:focus-visible {
 [data-left-collapsed="true"] .menu-list {
   min-width: 44px;
   margin-top: 54px;
+  padding-bottom: 0;
 }
 
 [data-left-collapsed="true"] .menu-card {
@@ -811,7 +820,7 @@ input:focus-visible {
   display: grid;
   grid-template-columns:
     42px 42px 50px 42px 64px minmax(90px, 1fr)
-    64px auto;
+    64px 104px auto;
   align-items: center;
   min-width: 0;
   margin-top: 8px;
@@ -878,6 +887,67 @@ input:focus-visible {
 
 .timecode.is-duration {
   color: #788288;
+}
+
+.audio-output-control {
+  display: grid;
+  min-width: 0;
+  height: 36px;
+  grid-template-columns: 32px minmax(44px, 1fr);
+  align-items: center;
+  padding: 0 8px 0 3px;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.audio-output-control button {
+  width: 30px;
+  height: 30px;
+  color: var(--accent);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.audio-output-control button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.audio-output-control button:disabled,
+.audio-output-control input:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.audio-output-control svg {
+  width: 16px;
+}
+
+.audio-output-control label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.audio-output-control input {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.audio-output-control[data-muted="true"] {
+  opacity: 0.68;
+}
+
+.transport-audio-engine {
+  position: fixed;
+  bottom: -2px;
+  left: -2px;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
 }
 
 .timeline {
@@ -2428,6 +2498,7 @@ input:focus-visible {
 
   .transport-bar > .transport-icon,
   .transport-bar .timecode:first-of-type,
+  .audio-output-control,
   .sync-readout {
     display: none;
   }

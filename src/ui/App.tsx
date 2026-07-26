@@ -72,6 +72,8 @@ const EMPTY_TRANSPORT: TransportSnapshot = {
   starting: false,
   hasAudio: false,
   trimOffset: 0,
+  volume: 1,
+  muted: false,
 };
 
 const EMPTY_TELEMETRY: RenderTelemetry = {
@@ -134,8 +136,9 @@ type InspectorMenuId =
   | 'performance'
   | 'tracks'
   | 'style'
-  | 'animation'
-  | 'motion'
+  | 'animation-global'
+  | 'animation-family'
+  | 'animation-instrument'
   | 'sync';
 
 const INSPECTOR_MENUS: ReadonlyArray<{
@@ -152,15 +155,21 @@ const INSPECTOR_MENUS: ReadonlyArray<{
     icon: 'palette',
   },
   {
-    id: 'animation',
-    label: 'Familias',
-    description: 'Color, forma y movimiento',
+    id: 'animation-global',
+    label: 'Animación · Global',
+    description: 'Escena completa',
+    icon: 'motion',
+  },
+  {
+    id: 'animation-family',
+    label: 'Animación · Familia',
+    description: 'Una familia a la vez',
     icon: 'layers',
   },
   {
-    id: 'motion',
-    label: 'Animaciones',
-    description: 'Global y por instrumento',
+    id: 'animation-instrument',
+    label: 'Animación · Instrumento',
+    description: 'Voz o selección activa',
     icon: 'motion',
   },
   { id: 'canvas', label: 'Canvas', description: 'Fondo y formato', icon: 'canvas' },
@@ -1535,6 +1544,41 @@ export function App() {
           <span className="timecode is-duration">
             {formatTime(transport.duration)}
           </span>
+          <div
+            className="audio-output-control"
+            data-muted={transport.muted || transport.volume === 0}
+          >
+            <button
+              aria-label={transport.muted ? 'Activar audio' : 'Silenciar audio'}
+              disabled={!transport.hasAudio}
+              onClick={() => transportRef.current?.toggleMuted()}
+              title={transport.muted ? 'Activar audio' : 'Silenciar audio'}
+              type="button"
+            >
+              <Icon
+                name={
+                  transport.muted || transport.volume === 0
+                    ? 'volume-off'
+                    : 'volume'
+                }
+              />
+            </button>
+            <label title={`Volumen ${Math.round(transport.volume * 100)} %`}>
+              <span className="visually-hidden">Volumen del audio</span>
+              <input
+                aria-label="Volumen del audio"
+                disabled={!transport.hasAudio}
+                max="1"
+                min="0"
+                onChange={(event) =>
+                  transportRef.current?.setVolume(Number(event.target.value))
+                }
+                step="0.01"
+                type="range"
+                value={transport.muted ? 0 : transport.volume}
+              />
+            </label>
+          </div>
           <div className="sync-readout" title="Tiempo MIDI después de aplicar las anclas">
             <Icon name="music" />
             <span>{formatTime(activeMidiTime)}</span>
@@ -1568,7 +1612,7 @@ export function App() {
         </div>
 
         <div className="panel-scroll">
-          {inspectorTab === 'animation' && (
+          {inspectorTab === 'animation-family' && (
             <>
               <section className="inspector-section family-selector-section">
                 <div className="section-heading">
@@ -1622,7 +1666,7 @@ export function App() {
                 <section className="inspector-section">
                   <div className="section-heading">
                     <span>
-                      <small>APARIENCIA Y MOVIMIENTO</small>
+                      <small>NIVEL · FAMILIA</small>
                       <strong>{activeAnimationFamily}</strong>
                     </span>
                     <button
@@ -1633,6 +1677,9 @@ export function App() {
                       Restablecer
                     </button>
                   </div>
+                  <span className="subcontrol-label">
+                    Apariencia de la familia
+                  </span>
                   <div className="family-appearance-row">
                     <label>
                       <span>Color</span>
@@ -1667,6 +1714,9 @@ export function App() {
                       </select>
                     </label>
                   </div>
+                  <span className="subcontrol-label">
+                    Animación de la familia
+                  </span>
                   <RangeControl
                     label="Altura de familia"
                     max={4}
@@ -1786,7 +1836,7 @@ export function App() {
             </>
           )}
 
-          {(['canvas', 'performance', 'motion', 'style'] as InspectorMenuId[]).includes(
+          {(['canvas', 'performance', 'animation-global', 'style'] as InspectorMenuId[]).includes(
             inspectorTab,
           ) && (
             <>
@@ -1798,7 +1848,7 @@ export function App() {
                     <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
-                {inspectorTab === 'motion' && (
+                {inspectorTab === 'animation-global' && (
                   <>
                 <RangeControl
                   label="Ventana visible"
@@ -1975,7 +2025,7 @@ export function App() {
                     <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
-                {inspectorTab === 'motion' && (
+                {inspectorTab === 'animation-global' && (
                   <>
                 <RangeControl
                   label="Velocidad base"
@@ -2003,7 +2053,7 @@ export function App() {
                   value={visualConfiguration.global.colorToneShift}
                 />
                 )}
-                {inspectorTab === 'motion' && (
+                {inspectorTab === 'animation-global' && (
                   <>
                 <RangeControl
                   label="Altura global"
@@ -2345,7 +2395,7 @@ export function App() {
                   className="family-controls-shortcut"
                   disabled={!project}
                   onClick={() => {
-                    setInspectorTab('animation');
+                    setInspectorTab('animation-family');
                     setRightCollapsed(false);
                   }}
                   type="button"
@@ -2514,11 +2564,11 @@ export function App() {
             </>
           )}
 
-          {inspectorTab === 'motion' && selectedTrack && selectedResolvedStyle && (
+          {inspectorTab === 'animation-instrument' && selectedTrack && selectedResolvedStyle && (
             <section className="inspector-section">
               <div className="section-heading">
                 <span>
-                  <small>ANIMACIÓN POR INSTRUMENTO</small>
+                  <small>NIVEL · INSTRUMENTO</small>
                   <strong>
                     {selectedTrackNames.length > 1
                       ? `${selectedTrackNames.length} pistas`
@@ -2526,6 +2576,24 @@ export function App() {
                   </strong>
                 </span>
               </div>
+              <label className="select-control">
+                <span>Instrumento</span>
+                <select
+                  aria-label="Instrumento para animación"
+                  onChange={(event) => {
+                    setSelectedTrackName(event.target.value);
+                    setSelectedTrackNames([event.target.value]);
+                    selectionAnchorRef.current = event.target.value;
+                  }}
+                  value={selectedTrack.name}
+                >
+                  {project?.tracks.map((track) => (
+                    <option key={track.id} value={track.name}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <p className="section-help">
                 Estos valores reemplazan el ajuste de familia únicamente en la
                 voz seleccionada.
@@ -2640,6 +2708,22 @@ export function App() {
               )}
             </section>
           )}
+
+          {inspectorTab === 'animation-instrument' &&
+            (!selectedTrack || !selectedResolvedStyle) && (
+              <section className="inspector-section">
+                <div className="section-heading">
+                  <span>
+                    <small>NIVEL · INSTRUMENTO</small>
+                    <strong>Sin instrumento seleccionado</strong>
+                  </span>
+                </div>
+                <p className="section-help">
+                  Carga un MIDI y elige una voz para editar únicamente su
+                  animación.
+                </p>
+              </section>
+            )}
 
           {inspectorTab === 'style' && (
             <>

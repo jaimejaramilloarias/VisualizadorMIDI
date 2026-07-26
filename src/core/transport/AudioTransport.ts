@@ -7,6 +7,8 @@ export interface TransportSnapshot {
   starting: boolean;
   hasAudio: boolean;
   trimOffset: number;
+  volume: number;
+  muted: boolean;
 }
 
 export type TransportListener = (snapshot: TransportSnapshot) => void;
@@ -22,6 +24,8 @@ export class AudioTransport {
   private startedAtPerformance = 0;
   private playing = false;
   private starting = false;
+  private volume = 1;
+  private muted = false;
   private generation = 0;
   private audioLoadGeneration = 0;
   private listeners = new Set<TransportListener>();
@@ -49,6 +53,8 @@ export class AudioTransport {
       starting: this.starting,
       hasAudio: this.buffer !== null,
       trimOffset: this.buffer ? this.trimOffset : 0,
+      volume: this.volume,
+      muted: this.muted,
     };
   }
 
@@ -76,7 +82,15 @@ export class AudioTransport {
     const context = this.getContext();
     const media = new Audio();
     media.preload = 'auto';
-    media.volume = 1;
+    media.defaultMuted = false;
+    media.muted = this.muted;
+    media.volume = this.volume;
+    media.setAttribute('aria-hidden', 'true');
+    media.setAttribute('playsinline', '');
+    media.className = 'transport-audio-engine';
+    if (typeof document !== 'undefined') {
+      document.body.append(media);
+    }
     const mediaUrl = URL.createObjectURL(file);
     this.media = media;
     this.mediaUrl = mediaUrl;
@@ -176,6 +190,9 @@ export class AudioTransport {
 
     if (this.buffer && this.media) {
       const media = this.media;
+      media.defaultMuted = false;
+      media.muted = this.muted;
+      media.volume = this.volume;
       media.currentTime = Math.min(
         this.trimOffset + this.position,
         Math.max(0, this.buffer.duration - 0.001),
@@ -239,6 +256,25 @@ export class AudioTransport {
 
   restart(): void {
     this.seek(0);
+  }
+
+  setVolume(nextVolume: number): void {
+    this.volume = Math.min(
+      1,
+      Math.max(0, Number.isFinite(nextVolume) ? nextVolume : 1),
+    );
+    if (this.volume > 0) this.muted = false;
+    if (this.media) {
+      this.media.volume = this.volume;
+      this.media.muted = this.muted;
+    }
+    this.emit();
+  }
+
+  toggleMuted(): void {
+    this.muted = !this.muted;
+    if (this.media) this.media.muted = this.muted;
+    this.emit();
   }
 
   async destroy(): Promise<void> {
@@ -308,6 +344,7 @@ export class AudioTransport {
       media.pause();
       media.removeAttribute('src');
       media.load();
+      media.remove();
     }
     if (mediaUrl) URL.revokeObjectURL(mediaUrl);
   }

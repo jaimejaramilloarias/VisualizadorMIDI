@@ -38,8 +38,12 @@ class FakeAudioElement {
   static instance: FakeAudioElement | null = null;
 
   currentTime = 0;
+  className = '';
+  defaultMuted = false;
   error: MediaError | null = null;
+  muted = false;
   onended: (() => void) | null = null;
+  playsInline = false;
   preload = '';
   readyState = 1;
   src = '';
@@ -48,9 +52,11 @@ class FakeAudioElement {
   load = vi.fn();
   pause = vi.fn();
   play = vi.fn(() => this.playPromise);
+  remove = vi.fn();
   removeAttribute = vi.fn((name: string) => {
     if (name === 'src') this.src = '';
   });
+  setAttribute = vi.fn();
   addEventListener = vi.fn();
   removeEventListener = vi.fn();
 
@@ -122,12 +128,26 @@ describe('AudioTransport', () => {
     media.currentTime = 1.25;
 
     expect(media.volume).toBe(1);
+    expect(media.muted).toBe(false);
+    expect(media.defaultMuted).toBe(false);
     expect(media.play).toHaveBeenCalledTimes(1);
     expect(transport.getSnapshot()).toMatchObject({
       position: 1.25,
       playing: true,
       starting: false,
     });
+
+    transport.toggleMuted();
+    expect(transport.getSnapshot().muted).toBe(true);
+    expect(media.muted).toBe(true);
+
+    transport.setVolume(0.35);
+    expect(transport.getSnapshot()).toMatchObject({
+      volume: 0.35,
+      muted: false,
+    });
+    expect(media.volume).toBe(0.35);
+    expect(media.muted).toBe(false);
     await transport.destroy();
   });
 
@@ -152,5 +172,21 @@ describe('AudioTransport', () => {
     expect(media.play).toHaveBeenCalledTimes(1);
     expect(transport.getSnapshot().playing).toBe(true);
     await transport.destroy();
+  });
+
+  it('mantiene el motor audible montado en el documento', async () => {
+    const append = vi.fn();
+    vi.stubGlobal('document', { body: { append } });
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+
+    await transport.loadAudio(file);
+    const media = FakeAudioElement.instance!;
+
+    expect(append).toHaveBeenCalledWith(media);
+    await transport.destroy();
+    expect(media.remove).toHaveBeenCalledTimes(1);
   });
 });
