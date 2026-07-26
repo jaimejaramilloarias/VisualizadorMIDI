@@ -160,6 +160,58 @@ export const FAMILY_NAMES = [
 
 export const DEFAULT_FIGURE_COLOR = '#ffd500';
 
+const hslToHex = (
+  hue: number,
+  saturation: number,
+  lightness: number,
+): string => {
+  const normalizedHue = ((hue % 360) + 360) % 360;
+  const chroma =
+    (1 - Math.abs(2 * (lightness / 100) - 1)) * (saturation / 100);
+  const sector = normalizedHue / 60;
+  const intermediate = chroma * (1 - Math.abs((sector % 2) - 1));
+  const [red, green, blue] =
+    sector < 1
+      ? [chroma, intermediate, 0]
+      : sector < 2
+        ? [intermediate, chroma, 0]
+        : sector < 3
+          ? [0, chroma, intermediate]
+          : sector < 4
+            ? [0, intermediate, chroma]
+            : sector < 5
+              ? [intermediate, 0, chroma]
+              : [chroma, 0, intermediate];
+  const offset = lightness / 100 - chroma / 2;
+  return `#${[red, green, blue]
+    .map((channel) =>
+      Math.round((channel + offset) * 255)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+};
+
+export const createDistinctFamilyColors = (
+  familyNames: readonly string[],
+  random: () => number = Math.random,
+): Record<string, string> => {
+  const uniqueNames = [...new Set(familyNames.filter(Boolean))];
+  if (uniqueNames.length === 0) return {};
+  const origin = Math.max(0, Math.min(0.999999, random())) * 360;
+  const direction = random() < 0.5 ? -1 : 1;
+  return Object.fromEntries(
+    uniqueNames.map((familyName, index) => [
+      familyName,
+      hslToHex(
+        origin + direction * (index * 360) / uniqueNames.length,
+        82,
+        56,
+      ),
+    ]),
+  );
+};
+
 const DEFAULT_TRAVEL: TravelStyle = {
   enabled: true,
   intensity: 1,

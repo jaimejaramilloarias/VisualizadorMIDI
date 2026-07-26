@@ -48,7 +48,7 @@
 
 ## Cobertura
 
-- 43 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 50 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.

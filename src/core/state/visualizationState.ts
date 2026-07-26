@@ -146,6 +146,20 @@ export const mapAudioToMidiClock = (
   anchors: SyncAnchor[],
 ): MidiClockMapping => createSyncTimeline(anchors).map(audioTime);
 
+export const mapAudioToMidiClockWithOffset = (
+  audioTime: number,
+  offsetMs: number,
+  timeline: SyncTimeline,
+): MidiClockMapping => {
+  const effectiveAudioTime =
+    Math.max(0, Number.isFinite(audioTime) ? audioTime : 0) +
+    (Number.isFinite(offsetMs) ? offsetMs : 0) / 1000;
+  if (effectiveAudioTime < 0) {
+    return { midiTime: 0, playbackRate: 0 };
+  }
+  return timeline.map(effectiveAudioTime);
+};
+
 export const hasForwardSyncMapping = (anchors: SyncAnchor[]): boolean =>
   createSyncTimeline(anchors).forward;
 

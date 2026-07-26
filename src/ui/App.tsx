@@ -18,7 +18,7 @@ import {
   MAX_SCENE_GLOW,
   createSyncTimeline,
   createStateDocument,
-  mapAudioToMidi,
+  mapAudioToMidiClockWithOffset,
   normalizeAnchors,
   parseStateDocument,
   type SyncAnchor,
@@ -30,6 +30,7 @@ import {
   SHAPE_IDS,
   SHAPE_LABELS,
   cloneDefaultVisualConfiguration,
+  createDistinctFamilyColors,
   createRenderAppearance,
   resolveTrackVisualStyle,
   resolveTrackVisualStyleAtTime,
@@ -45,6 +46,7 @@ import { RendererBridge } from '../renderer/RendererBridge';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import { resolveTransportShortcut } from './transportShortcuts';
+import { SyncWorkspace } from './SyncWorkspace';
 import { WaveformEditor } from './WaveformEditor';
 
 interface ProjectSummary {
@@ -66,6 +68,7 @@ const EMPTY_TRANSPORT: TransportSnapshot = {
   position: 0,
   duration: 0,
   playing: false,
+  starting: false,
   hasAudio: false,
 };
 
@@ -135,7 +138,12 @@ const INSPECTOR_MENUS: ReadonlyArray<{
     description: 'Movimiento por voz',
     icon: 'motion',
   },
-  { id: 'sync', label: 'Sincronía', description: 'Audio y anclas', icon: 'sync' },
+  {
+    id: 'sync',
+    label: 'Sincronía',
+    description: 'Editor visual de audio',
+    icon: 'sync',
+  },
 ];
 
 const beatDurationAt = (time: number, tempoMap: TempoPoint[]): number => {
@@ -267,6 +275,7 @@ export function App() {
   const lastUiUpdateRef = useRef(0);
   const midiLoadGenerationRef = useRef(0);
   const audioLoadGenerationRef = useRef(0);
+  const preserveNextMidiPaletteRef = useRef(false);
   const busyGenerationRef = useRef(0);
   const lastClockRef = useRef({
     sentAt: 0,
@@ -289,12 +298,15 @@ export function App() {
     null,
   );
   const [selectedTrackNames, setSelectedTrackNames] = useState<string[]>([]);
+  const [selectedAnimationFamily, setSelectedAnimationFamily] =
+    useState<string | null>(null);
   const [voiceEditPoint, setVoiceEditPoint] = useState<number | null>(null);
   const [voiceEditScope, setVoiceEditScope] = useState<'start' | 'point'>(
     'start',
   );
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
   const [tapActive, setTapActive] = useState(false);
+  const [syncWorkspaceOpen, setSyncWorkspaceOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [transport, setTransport] =
     useState<TransportSnapshot>(EMPTY_TRANSPORT);
@@ -311,6 +323,27 @@ export function App() {
     'Carga un MIDI para comenzar. El audio es opcional.',
   );
   const [dragging, setDragging] = useState(false);
+
+  const clearAnchorPreview = useCallback(() => {
+    anchorPreviewRef.current = null;
+    setAnchorMidiDraft(null);
+  }, []);
+
+  const togglePlayback = useCallback(async () => {
+    const instance = transportRef.current;
+    if (!instance) return;
+    const snapshot = instance.getSnapshot();
+    if (!snapshot.playing && !snapshot.starting) clearAnchorPreview();
+    try {
+      await instance.toggle();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? `No fue posible iniciar la reproducción: ${error.message}`
+          : 'No fue posible iniciar la reproducción.',
+      );
+    }
+  }, [clearAnchorPreview]);
 
   useEffect(() => {
     syncTimelineRef.current = createSyncTimeline(syncAnchors);
@@ -443,13 +476,7 @@ export function App() {
       if (!shortcut || !instance || !projectRef.current) return;
       event.preventDefault();
       if (shortcut === 'toggle-playback') {
-        void instance.toggle().catch((error) => {
-          setNotice(
-            error instanceof Error
-              ? `No fue posible iniciar la reproducción: ${error.message}`
-              : 'No fue posible iniciar la reproducción.',
-          );
-        });
+        void togglePlayback();
         return;
       }
       const snapshot = instance.getSnapshot();
@@ -460,7 +487,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tapActive]);
+  }, [tapActive, togglePlayback]);
 
   useEffect(() => {
     if (!helpOpen) return;
@@ -477,13 +504,14 @@ export function App() {
       const instance = transportRef.current;
       if (instance) {
         const snapshot = instance.getSnapshot(now);
-        const offsetAudioTime =
-          snapshot.position +
-          visualConfigurationRef.current.global.audioOffsetMs / 1000;
         const preview = anchorPreviewRef.current;
         const mapping =
           preview === null
-            ? syncTimelineRef.current.map(offsetAudioTime)
+            ? mapAudioToMidiClockWithOffset(
+                snapshot.position,
+                visualConfigurationRef.current.global.audioOffsetMs,
+                syncTimelineRef.current,
+              )
             : { midiTime: preview, playbackRate: 0 };
         const rendererPlaying = snapshot.playing && preview === null;
         const previous = lastClockRef.current;
@@ -562,9 +590,26 @@ export function App() {
       );
       setVoiceEditPoint(null);
       setVoiceEditScope('start');
+      setSelectedAnimationFamily(null);
       selectionAnchorRef.current = summary.tracks[0]?.name ?? null;
       transportRef.current?.setMidiDuration(parsed.duration);
       transportRef.current?.seek(0);
+      if (preserveNextMidiPaletteRef.current) {
+        preserveNextMidiPaletteRef.current = false;
+      } else {
+        setVisualConfiguration((current) => {
+          const familyNames = summary.tracks.map(
+            (track) => resolveTrackVisualStyle(track, current).family,
+          );
+          const colors = createDistinctFamilyColors(familyNames);
+          const families = { ...current.families };
+          Object.entries(colors).forEach(([familyName, color]) => {
+            if (!families[familyName]) return;
+            families[familyName] = { ...families[familyName], color };
+          });
+          return { ...current, families };
+        });
+      }
       setNotice(
         `${parsed.noteCount.toLocaleString('es-CO')} notas listas en ${parsed.tracks.length} pistas.`,
       );
@@ -593,7 +638,7 @@ export function App() {
     try {
       const duration = await transportRef.current.loadAudio(file);
       if (loadGeneration !== audioLoadGenerationRef.current) return;
-      setWaveformPeaks(transportRef.current.getWaveformPeaks());
+      setWaveformPeaks(transportRef.current.getWaveformPeaks(12_000));
       setAudioFileName(file.name);
       setNotice(
         `Audio listo (${formatTime(duration)}). El archivo permanece en este dispositivo.`,
@@ -670,6 +715,7 @@ export function App() {
       setSettings(document.settings);
       setSyncAnchors(document.syncAnchors);
       setVisualConfiguration(document.visualConfiguration);
+      preserveNextMidiPaletteRef.current = true;
       const expected = [document.source.midiFileName, document.source.audioFileName]
         .filter(Boolean)
         .join(' + ');
@@ -688,10 +734,11 @@ export function App() {
   const addAnchorAtAudio = (audioTime: number, explicitMidiTime?: number) => {
     const midiTime =
       explicitMidiTime ??
-      mapAudioToMidi(
-        audioTime + visualConfiguration.global.audioOffsetMs / 1000,
-        syncAnchors,
-      );
+      mapAudioToMidiClockWithOffset(
+        audioTime,
+        visualConfiguration.global.audioOffsetMs,
+        createSyncTimeline(syncAnchors),
+      ).midiTime;
     setSyncAnchors((current) =>
       normalizeAnchors([
         ...current.filter(
@@ -717,9 +764,10 @@ export function App() {
     if (previous && audioTime - previous.audioTime < 0.12) return;
     const midiTime = previous
       ? previous.midiTime + beatDurationAt(previous.midiTime, project.tempoMap)
-      : syncTimelineRef.current.map(
-          audioTime +
-            visualConfigurationRef.current.global.audioOffsetMs / 1000,
+      : mapAudioToMidiClockWithOffset(
+          audioTime,
+          visualConfigurationRef.current.global.audioOffsetMs,
+          syncTimelineRef.current,
         ).midiTime;
     lastTapRef.current = { audioTime, midiTime };
     setSyncAnchors((current) =>
@@ -745,6 +793,7 @@ export function App() {
     }
     lastTapRef.current = null;
     setTapActive(true);
+    clearAnchorPreview();
     setNotice('Tap tempo activo: pulsa el botón o la barra espaciadora.');
     if (!transport.playing) {
       void transportRef.current?.play().catch((error) => {
@@ -1057,8 +1106,10 @@ export function App() {
   );
   const activeMidiTime = useMemo(
     () =>
-      syncTimeline.map(
-        transport.position + visualConfiguration.global.audioOffsetMs / 1000,
+      mapAudioToMidiClockWithOffset(
+        transport.position,
+        visualConfiguration.global.audioOffsetMs,
+        syncTimeline,
       ).midiTime,
     [
       syncTimeline,
@@ -1078,8 +1129,27 @@ export function App() {
           voiceEditPoint,
         )
     : null;
-  const selectedFamilyStyle = selectedResolvedStyle
-    ? visualConfiguration.families[selectedResolvedStyle.family]
+  const projectAnimationFamilies = useMemo(
+    () =>
+      project
+        ? [
+            ...new Set(
+              project.tracks.map(
+                (track) =>
+                  resolveTrackVisualStyle(track, visualConfiguration).family,
+              ),
+            ),
+          ]
+        : [],
+    [project, visualConfiguration],
+  );
+  const activeAnimationFamily =
+    selectedAnimationFamily &&
+    projectAnimationFamilies.includes(selectedAnimationFamily)
+      ? selectedAnimationFamily
+      : (projectAnimationFamilies[0] ?? null);
+  const selectedFamilyStyle = activeAnimationFamily
+    ? visualConfiguration.families[activeAnimationFamily]
     : null;
   const hasAnyNoteLabels =
     visualConfiguration.global.noteLabels.enabled ||
@@ -1209,12 +1279,32 @@ export function App() {
         <div className="menu-list">
           {INSPECTOR_MENUS.map((menu) => (
             <button
-              aria-pressed={inspectorTab === menu.id}
-              className={`menu-card${inspectorTab === menu.id ? ' is-selected' : ''}`}
+              aria-pressed={
+                menu.id === 'sync'
+                  ? syncWorkspaceOpen
+                  : inspectorTab === menu.id
+              }
+              className={`menu-card${
+                menu.id === 'sync'
+                  ? syncWorkspaceOpen
+                    ? ' is-selected'
+                    : ''
+                  : inspectorTab === menu.id
+                    ? ' is-selected'
+                    : ''
+              }`}
               key={menu.id}
               onClick={() => {
+                if (menu.id === 'sync') {
+                  setSyncWorkspaceOpen(true);
+                  if (window.matchMedia('(max-width: 800px)').matches) {
+                    setLeftCollapsed(true);
+                    setRightCollapsed(true);
+                  }
+                  return;
+                }
                 setInspectorTab(menu.id);
-                setRightCollapsed(menu.id === 'sync');
+                setRightCollapsed(false);
                 if (window.matchMedia('(max-width: 800px)').matches) {
                   setLeftCollapsed(true);
                 }
@@ -1309,14 +1399,27 @@ export function App() {
                     </span>
                   </div>
                   <WaveformEditor
-                    duration={transport.duration}
+                    audioDuration={transport.duration}
+                    interactionMode="anchors"
+                    landmarks={[]}
+                    magnetEnabled={false}
                     markers={syncAnchors}
+                    midiDuration={project?.duration ?? transport.duration}
                     onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
-                    onMove={(id, audioTime) =>
-                      updateAnchor(id, 'audioTime', audioTime)
+                    onDelete={(id) =>
+                      setSyncAnchors((current) =>
+                        current.filter((anchor) => anchor.id !== id),
+                      )
                     }
+                    onMove={updateAnchor}
+                    onPan={() => undefined}
+                    onSelect={() => undefined}
+                    onZoom={() => undefined}
                     peaks={waveformPeaks}
                     playhead={transport.position}
+                    selectedAnchorId={null}
+                    viewDuration={Math.max(0.001, transport.duration)}
+                    viewStart={0}
                   />
                   <div className="tap-actions">
                     <button
@@ -1585,15 +1688,7 @@ export function App() {
             aria-label={transport.playing ? 'Pausar' : 'Reproducir'}
             className="play-button"
             disabled={!project}
-            onClick={() => {
-              void transportRef.current?.toggle().catch((error) => {
-                setNotice(
-                  error instanceof Error
-                    ? `No fue posible iniciar la reproducción: ${error.message}`
-                    : 'No fue posible iniciar la reproducción.',
-                );
-              });
-            }}
+            onClick={() => void togglePlayback()}
             title={transport.playing ? 'Pausar' : 'Reproducir'}
             type="button"
           >
@@ -2508,31 +2603,39 @@ export function App() {
             <>
               <section className="inspector-section">
                 <label className="select-control">
-                  <span>Animación de voz o instrumento</span>
+                  <span>Familia de instrumentos</span>
                   <select
                     disabled={!project}
-                    onChange={(event) => {
-                      const name = event.target.value;
-                      setSelectedTrackName(name);
-                      setSelectedTrackNames(name ? [name] : []);
-                    }}
-                    value={selectedTrackName ?? ''}
+                    onChange={(event) =>
+                      setSelectedAnimationFamily(event.target.value || null)
+                    }
+                    value={activeAnimationFamily ?? ''}
                   >
                     {!project && <option value="">Carga un MIDI</option>}
-                    {project?.tracks.map((track) => (
-                      <option key={track.id} value={track.name}>
-                        {track.name}
+                    {projectAnimationFamilies.map((familyName) => (
+                      <option key={familyName} value={familyName}>
+                        {familyName} ·{' '}
+                        {
+                          project?.tracks.filter(
+                            (track) =>
+                              resolveTrackVisualStyle(
+                                track,
+                                visualConfiguration,
+                              ).family === familyName,
+                          ).length
+                        }{' '}
+                        pista(s)
                       </option>
                     ))}
                   </select>
                 </label>
               </section>
-              {selectedResolvedStyle && selectedFamilyStyle && (
+              {activeAnimationFamily && selectedFamilyStyle && (
                 <section className="inspector-section">
                   <div className="section-heading">
                     <span>
                       <small>AJUSTE POR FAMILIA</small>
-                      <strong>{selectedResolvedStyle.family}</strong>
+                      <strong>{activeAnimationFamily}</strong>
                     </span>
                   </div>
                   <RangeControl
@@ -2540,7 +2643,7 @@ export function App() {
                     max={4}
                     min={0.2}
                     onChange={(value) =>
-                      updateFamily(selectedResolvedStyle.family, {
+                      updateFamily(activeAnimationFamily, {
                         heightScale: value,
                       })
                     }
@@ -2553,7 +2656,7 @@ export function App() {
                     max={MAX_EFFECT_STRENGTH}
                     min={0}
                     onChange={(value) =>
-                      updateFamily(selectedResolvedStyle.family, {
+                      updateFamily(activeAnimationFamily, {
                         glowStrength: value,
                       })
                     }
@@ -2566,7 +2669,7 @@ export function App() {
                     max={MAX_EFFECT_STRENGTH}
                     min={0}
                     onChange={(value) =>
-                      updateFamily(selectedResolvedStyle.family, {
+                      updateFamily(activeAnimationFamily, {
                         bumpStrength: value,
                       })
                     }
@@ -2579,7 +2682,7 @@ export function App() {
                     <input
                       checked={selectedFamilyStyle.extension}
                       onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
+                        updateFamily(activeAnimationFamily, {
                           extension: event.target.checked,
                         })
                       }
@@ -2591,7 +2694,7 @@ export function App() {
                     <input
                       checked={selectedFamilyStyle.stretch}
                       onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
+                        updateFamily(activeAnimationFamily, {
                           stretch: event.target.checked,
                         })
                       }
@@ -2603,7 +2706,7 @@ export function App() {
                     <input
                       checked={selectedFamilyStyle.travel.enabled}
                       onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
+                        updateFamily(activeAnimationFamily, {
                           travel: {
                             ...selectedFamilyStyle.travel,
                             enabled: event.target.checked,
@@ -2620,7 +2723,7 @@ export function App() {
                         max={2}
                         min={0}
                         onChange={(value) =>
-                          updateFamily(selectedResolvedStyle.family, {
+                          updateFamily(activeAnimationFamily, {
                             travel: {
                               ...selectedFamilyStyle.travel,
                               intensity: value,
@@ -2636,7 +2739,7 @@ export function App() {
                         max={2}
                         min={0.5}
                         onChange={(value) =>
-                          updateFamily(selectedResolvedStyle.family, {
+                          updateFamily(activeAnimationFamily, {
                             travel: {
                               ...selectedFamilyStyle.travel,
                               magnetZone: value,
@@ -2668,14 +2771,27 @@ export function App() {
                   captura pulsos en tiempo real.
                 </p>
                 <WaveformEditor
-                  duration={transport.duration}
+                  audioDuration={transport.duration}
+                  interactionMode="anchors"
+                  landmarks={[]}
+                  magnetEnabled={false}
                   markers={syncAnchors}
+                  midiDuration={project?.duration ?? transport.duration}
                   onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
-                  onMove={(id, audioTime) =>
-                    updateAnchor(id, 'audioTime', audioTime)
+                  onDelete={(id) =>
+                    setSyncAnchors((current) =>
+                      current.filter((anchor) => anchor.id !== id),
+                    )
                   }
+                  onMove={updateAnchor}
+                  onPan={() => undefined}
+                  onSelect={() => undefined}
+                  onZoom={() => undefined}
                   peaks={waveformPeaks}
                   playhead={transport.position}
+                  selectedAnchorId={null}
+                  viewDuration={Math.max(0.001, transport.duration)}
+                  viewStart={0}
                 />
                 <div className="tap-actions">
                   <button
@@ -2885,6 +3001,45 @@ export function App() {
           )}
         </div>
       </aside>
+      {syncWorkspaceOpen && (
+        <SyncWorkspace
+          activeMidiTime={activeMidiTime}
+          anchors={syncAnchors}
+          audioFileName={audioFileName}
+          forward={syncMappingIsForward}
+          midiDuration={project?.duration ?? 0}
+          midiFileName={project?.fileName ?? null}
+          offsetMs={visualConfiguration.global.audioOffsetMs}
+          onAddAnchor={(audioTime) => addAnchorAtAudio(audioTime)}
+          onClearAnchors={() => {
+            setSyncAnchors([]);
+            lastTapRef.current = null;
+            setTapActive(false);
+            clearAnchorPreview();
+            setNotice('Todas las anclas fueron eliminadas.');
+          }}
+          onClose={() => setSyncWorkspaceOpen(false)}
+          onDeleteAnchor={(id) =>
+            setSyncAnchors((current) =>
+              current.filter((anchor) => anchor.id !== id),
+            )
+          }
+          onMoveAnchor={updateAnchor}
+          onOffsetChange={(value) =>
+            updateGlobalVisual('audioOffsetMs', value)
+          }
+          onRegisterTap={registerTap}
+          onSeek={(time) => {
+            clearAnchorPreview();
+            transportRef.current?.seek(time);
+          }}
+          onTapToggle={tapActive ? stopTapTempo : startTapTempo}
+          onTogglePlayback={() => void togglePlayback()}
+          peaks={waveformPeaks}
+          tapActive={tapActive}
+          transport={transport}
+        />
+      )}
       {helpOpen && (
         <div
           aria-label="Ayuda de MIDI Stage"
@@ -2926,8 +3081,9 @@ export function App() {
               <section>
                 <strong>3 · Sincronía</strong>
                 <p>
-                  Añade anclas manuales o usa tap tempo. En la forma de onda,
-                  toca para crear y arrastra para corregir.
+                  Abre el editor a pantalla completa. Arrastra los círculos de
+                  audio y los rombos MIDI, navega con zoom o usa tap tempo. El
+                  magnetismo aproxima las anclas a ataques claros del audio.
                 </p>
               </section>
               <section>

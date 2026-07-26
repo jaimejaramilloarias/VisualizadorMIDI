@@ -2,6 +2,7 @@ export interface TransportSnapshot {
   position: number;
   duration: number;
   playing: boolean;
+  starting: boolean;
   hasAudio: boolean;
 }
 
@@ -16,6 +17,7 @@ export class AudioTransport {
   private startedAtContext = 0;
   private startedAtPerformance = 0;
   private playing = false;
+  private starting = false;
   private generation = 0;
   private audioLoadGeneration = 0;
   private listeners = new Set<TransportListener>();
@@ -40,6 +42,7 @@ export class AudioTransport {
       position: nextPosition,
       duration,
       playing: this.playing,
+      starting: this.starting,
       hasAudio: this.buffer !== null,
     };
   }
@@ -117,35 +120,35 @@ export class AudioTransport {
 
   async play(): Promise<void> {
     const duration = this.getDuration();
-    if (this.playing || duration <= 0) return;
+    if (this.playing || this.starting || duration <= 0) return;
     if (this.position >= duration) this.position = 0;
 
     const generation = ++this.generation;
-    this.playing = true;
-    this.startedAtPerformance = performance.now();
+    this.starting = true;
+    this.emit();
 
     if (this.buffer) {
       const context = this.getContext();
-      this.startedAtContext = context.currentTime;
       try {
         await context.resume();
       } catch (error) {
         if (generation === this.generation) {
+          this.starting = false;
           this.playing = false;
           this.emit();
         }
         throw error;
       }
-      if (!this.playing || generation !== this.generation) return;
+      if (!this.starting || generation !== this.generation) return;
       const source = context.createBufferSource();
       source.buffer = this.buffer;
       source.connect(context.destination);
-      const startAt = context.currentTime + 0.025;
-      this.startedAtContext = startAt;
+      const startAt = context.currentTime;
       source.onended = () => {
         if (generation !== this.generation || !this.playing) return;
         this.position = this.getDuration();
         this.playing = false;
+        this.starting = false;
         this.source = null;
         this.emit();
       };
@@ -157,27 +160,35 @@ export class AudioTransport {
       } catch (error) {
         source.disconnect();
         if (generation === this.generation) {
+          this.starting = false;
           this.playing = false;
           this.emit();
         }
         throw error;
       }
       this.source = source;
+      this.startedAtContext = startAt;
+    } else {
+      this.startedAtPerformance = performance.now();
     }
 
+    if (!this.starting || generation !== this.generation) return;
+    this.starting = false;
+    this.playing = true;
     this.emit();
   }
 
   pause(): void {
-    if (!this.playing) return;
-    this.position = this.getSnapshot().position;
+    if (!this.playing && !this.starting) return;
+    if (this.playing) this.position = this.getSnapshot().position;
+    this.starting = false;
     this.playing = false;
     this.stopSource();
     this.emit();
   }
 
   async toggle(): Promise<void> {
-    if (this.playing) {
+    if (this.playing || this.starting) {
       this.pause();
     } else {
       await this.play();

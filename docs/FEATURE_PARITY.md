@@ -10,8 +10,8 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio |
 | Archivos | Importar/exportar configuración JSON | Migrada; contrato V2 versionado |
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
-| Transporte | Audio offset en milisegundos | Migrada; convive con las anclas |
-| Sincronía | Tap tempo, waveform y marcadores editables | Rediseñada en panel horizontal de ⅓ del canvas; los marcadores son anclas JSON |
+| Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |
+| Sincronía | Tap tempo, waveform y marcadores editables | Editor visual a pantalla completa con zoom, desplazamiento, magnetismo y edición directa |
 | Sincronía | Mapa de tempo MIDI | Migrada |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
@@ -53,6 +53,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 43 pruebas V2 correctas.
+- `npm run test`: 50 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

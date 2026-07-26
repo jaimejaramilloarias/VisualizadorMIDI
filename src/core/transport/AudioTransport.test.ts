@@ -81,14 +81,37 @@ describe('AudioTransport', () => {
     context.resumePromise = resumeGate;
 
     const playPromise = transport.play();
-    expect(transport.getSnapshot().playing).toBe(true);
+    expect(transport.getSnapshot()).toMatchObject({
+      playing: false,
+      starting: true,
+    });
     transport.pause();
     releaseResume();
     await playPromise;
 
     expect(context.sources).toHaveLength(0);
     expect(transport.getSnapshot().playing).toBe(false);
+    expect(transport.getSnapshot().starting).toBe(false);
     expect(transport.getSnapshot().position).toBe(0);
+    await transport.destroy();
+  });
+
+  it('publica reproducción solo después de programar la fuente de audio', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    await transport.play();
+
+    expect(context.sources).toHaveLength(1);
+    expect(context.sources[0].start).toHaveBeenCalledWith(0, 0);
+    expect(transport.getSnapshot()).toMatchObject({
+      playing: true,
+      starting: false,
+    });
     await transport.destroy();
   });
 });

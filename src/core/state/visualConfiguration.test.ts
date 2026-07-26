@@ -3,6 +3,7 @@ import {
   DEFAULT_FIGURE_COLOR,
   SHAPE_IDS,
   cloneDefaultVisualConfiguration,
+  createDistinctFamilyColors,
   createRenderAppearance,
   resolveTrackVisualStyle,
   resolveTrackVisualStyleAtTime,
@@ -23,6 +24,22 @@ describe('visualConfiguration', () => {
       ),
     ).toBe(true);
     expect(DEFAULT_FIGURE_COLOR).toBe('#ffd500');
+  });
+
+  it('genera colores distintos por familia con un origen aleatorio', () => {
+    const colors = createDistinctFamilyColors(
+      ['Metales', 'Cuerdas', 'Maderas', 'Metales'],
+      (() => {
+        const values = [0.25, 0.75];
+        return () => values.shift() ?? 0;
+      })(),
+    );
+
+    expect(Object.keys(colors)).toEqual(['Metales', 'Cuerdas', 'Maderas']);
+    expect(new Set(Object.values(colors))).toHaveLength(3);
+    expect(Object.values(colors).every((color) => /^#[0-9a-f]{6}$/.test(color))).toBe(
+      true,
+    );
   });
 
   it('convierte figuras dobles heredadas a su figura simple equivalente', () => {

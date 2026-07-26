@@ -6,12 +6,43 @@ import {
   hasForwardSyncMapping,
   mapAudioToMidi,
   mapAudioToMidiClock,
+  mapAudioToMidiClockWithOffset,
   parseStateDocument,
 } from './visualizationState';
 
 describe('mapAudioToMidi', () => {
   it('mantiene una relación identidad sin anclas', () => {
     expect(mapAudioToMidi(12.5, [])).toBe(12.5);
+  });
+
+  it('aplica el offset con espera real para valores negativos', () => {
+    const timeline = createSyncTimeline([]);
+
+    expect(mapAudioToMidiClockWithOffset(0, -1500, timeline)).toEqual({
+      midiTime: 0,
+      playbackRate: 0,
+    });
+    expect(mapAudioToMidiClockWithOffset(1, -1500, timeline)).toEqual({
+      midiTime: 0,
+      playbackRate: 0,
+    });
+    expect(mapAudioToMidiClockWithOffset(1.5, -1500, timeline)).toEqual({
+      midiTime: 0,
+      playbackRate: 1,
+    });
+    expect(mapAudioToMidiClockWithOffset(2, -1500, timeline)).toEqual({
+      midiTime: 0.5,
+      playbackRate: 1,
+    });
+  });
+
+  it('adelanta la animación cuando el offset es positivo', () => {
+    expect(
+      mapAudioToMidiClockWithOffset(0, 1250, createSyncTimeline([])),
+    ).toEqual({
+      midiTime: 1.25,
+      playbackRate: 1,
+    });
   });
 
   it('interpola y extrapola de forma continua entre anclas', () => {

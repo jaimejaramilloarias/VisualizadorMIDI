@@ -30,6 +30,12 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
   reproduce/pausa y las flechas saltan ±3 segundos.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
+- Editor de sincronía a pantalla completa con zoom, desplazamiento, anclas
+  editables por sus extremos de audio/MIDI y magnetismo opcional a ataques.
+- Offset inicial explícito: negativo hace esperar la animación; positivo la
+  adelanta respecto al audio.
+- Colores distintos generados por familia al cargar un MIDI, conservando la
+  edición manual y los colores restaurados desde JSON.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
 - Sincronía se trabaja en un panel horizontal del ancho del canvas y un tercio
