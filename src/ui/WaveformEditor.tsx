@@ -6,18 +6,12 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 import type { SyncAnchor } from '../core/state/visualizationState';
-import {
-  snapToAudioLandmark,
-  type AudioLandmark,
-} from './syncEditorMath';
 
 type InteractionMode = 'anchors' | 'pan';
 
 interface WaveformEditorProps {
   audioDuration: number;
   interactionMode: InteractionMode;
-  landmarks: readonly AudioLandmark[];
-  magnetEnabled: boolean;
   markers: SyncAnchor[];
   onAdd: (audioTime: number) => void;
   onDelete: (id: string) => void;
@@ -63,8 +57,6 @@ const niceGridStep = (duration: number): number => {
 export function WaveformEditor({
   audioDuration,
   interactionMode,
-  landmarks,
-  magnetEnabled,
   markers,
   onAdd,
   onDelete,
@@ -220,24 +212,6 @@ export function WaveformEditor({
       context.globalAlpha = 1;
     }
 
-    if (magnetEnabled) {
-      landmarks.forEach((landmark) => {
-        if (
-          landmark.time < viewStart ||
-          landmark.time > viewStart + viewDuration
-        ) {
-          return;
-        }
-        const x = timeToX(landmark.time);
-        context.strokeStyle = `rgba(255,213,0,${0.08 + landmark.strength * 0.16})`;
-        context.lineWidth = 1;
-        context.beginPath();
-        context.moveTo(x, audioTop);
-        context.lineTo(x, audioBottom);
-        context.stroke();
-      });
-    }
-
     const handles: AnchorHandle[] = [];
     markers.forEach((marker, index) => {
       const anchorX = timeToX(marker.audioTime);
@@ -314,8 +288,6 @@ export function WaveformEditor({
     canvas.dataset.xToTimeOrigin = String(xToTime(plotLeft));
   }, [
     audioDuration,
-    landmarks,
-    magnetEnabled,
     markers,
     peaks,
     playhead,
@@ -373,16 +345,10 @@ export function WaveformEditor({
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
-    const threshold = Math.min(0.3, (viewDuration / Math.max(1, bounds.width)) * 16);
     onAdd(
       Math.min(
         audioDuration,
-        snapToAudioLandmark(
-          timeFromClientX(event.clientX, event.currentTarget),
-          landmarks,
-          threshold,
-          magnetEnabled,
-        ),
+        timeFromClientX(event.clientX, event.currentTarget),
       ),
     );
   };
@@ -400,12 +366,7 @@ export function WaveformEditor({
       return;
     }
     if (!drag.id) return;
-    let time = timeFromClientX(event.clientX, event.currentTarget);
-    const threshold = Math.min(
-      0.3,
-      (viewDuration / Math.max(1, bounds.width)) * 16,
-    );
-    time = snapToAudioLandmark(time, landmarks, threshold, magnetEnabled);
+    const time = timeFromClientX(event.clientX, event.currentTarget);
     onMove(drag.id, Math.min(audioDuration, time));
   };
 

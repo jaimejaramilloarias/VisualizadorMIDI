@@ -418,8 +418,10 @@ export function SyncWorkspace({
             type="checkbox"
           />
           <span>
-            <strong>Magnetismo</strong>
-            <small>{landmarks.length} picos RMS detectados</small>
+            <strong>Magnetismo de tap</strong>
+            <small>
+              {landmarks.length} picos RMS disponibles para el próximo tap
+            </small>
           </span>
         </label>
       </div>
@@ -435,8 +437,6 @@ export function SyncWorkspace({
         <WaveformEditor
           audioDuration={transport.duration}
           interactionMode={interactionMode}
-          landmarks={landmarks}
-          magnetEnabled={magnetEnabled}
           markers={anchors}
           onAdd={(audioTime) => {
             onAddAnchor(audioTime);

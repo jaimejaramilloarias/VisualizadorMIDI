@@ -2683,7 +2683,7 @@ export function App() {
                 <p>
                   Abre el editor a pantalla completa. Arrastra los círculos de
                   audio y los rombos MIDI, navega con zoom o usa tap tempo. El
-                  magnetismo aproxima las anclas a ataques claros del audio.
+                  magnetismo aproxima únicamente cada tap a un pico RMS cercano.
                 </p>
               </section>
               <section>
