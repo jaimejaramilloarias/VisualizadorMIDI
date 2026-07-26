@@ -91,15 +91,3 @@ export const drawNoteShape = (
   context.fillStyle = primaryColor;
   context.fill();
 };
-
-export const strokeNoteShape = (
-  context: Context,
-  shape: ShapeId,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): void => {
-  traceShape(context, shape, x, y, width, height);
-  context.stroke();
-};

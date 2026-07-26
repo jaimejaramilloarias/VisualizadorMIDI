@@ -5,11 +5,13 @@ import type {
   RenderClock,
   RendererInboundMessage,
   RendererOutboundMessage,
+  RenderNoteSelection,
   RenderTelemetry,
 } from './protocol';
 
 export interface RendererBridgeOptions {
   onTelemetry?: (telemetry: RenderTelemetry) => void;
+  onNoteSelect?: (selection: RenderNoteSelection) => void;
   onError?: (message: string) => void;
 }
 
@@ -49,6 +51,8 @@ export class RendererBridge {
     ): void => {
       if (event.data.type === 'telemetry') {
         options.onTelemetry?.(event.data.telemetry);
+      } else if (event.data.type === 'note-selected') {
+        options.onNoteSelect?.(event.data.selection);
       } else if (event.data.type === 'error') {
         options.onError?.(event.data.message);
       }
@@ -73,12 +77,11 @@ export class RendererBridge {
       [offscreen],
     );
 
-    this.observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry || this.disposed) return;
-      const { width, height } = entry.contentRect;
-      const nextWidth = Math.max(1, width);
-      const nextHeight = Math.max(1, height);
+    this.observer = new ResizeObserver(() => {
+      if (this.disposed) return;
+      const visibleBounds = this.canvas.getBoundingClientRect();
+      const nextWidth = Math.max(1, visibleBounds.width);
+      const nextHeight = Math.max(1, visibleBounds.height);
       const nextDevicePixelRatio = window.devicePixelRatio || 1;
       if (
         Math.abs(nextWidth - this.lastWidth) < 0.25 &&
@@ -98,6 +101,7 @@ export class RendererBridge {
       });
     });
     this.observer.observe(canvas);
+    if (canvas.parentElement) this.observer.observe(canvas.parentElement);
     this.measureDisplayRefreshRate();
   }
 
@@ -145,6 +149,10 @@ export class RendererBridge {
 
   setVisibility(visible: boolean): void {
     this.post({ type: 'visibility', visible });
+  }
+
+  hitTest(x: number, y: number): void {
+    this.post({ type: 'hit-test', x, y });
   }
 
   refresh(): void {

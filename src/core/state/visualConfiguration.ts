@@ -12,30 +12,21 @@ export const SHAPE_IDS = [
 ] as const;
 
 export type ShapeId = (typeof SHAPE_IDS)[number];
-export type OutlineMode = 'full' | 'pre' | 'post';
 export type AspectRatioMode = 'responsive' | '16:9' | '9:16';
 export const FPS_MODES = ['auto', '60', '30'] as const;
 export type FpsMode = (typeof FPS_MODES)[number];
-
-export interface OutlineStyle {
-  enabled: boolean;
-  mode: OutlineMode;
-  width: number;
-  color: string;
-  useShapeColor: boolean;
-  opacity: number;
-}
-
-export interface LineStyle {
-  enabled: boolean;
-  opacity: number;
-  width: number;
-}
 
 export interface TravelStyle {
   enabled: boolean;
   intensity: number;
   magnetZone: number;
+}
+
+export interface InstrumentVisualCue {
+  at: number;
+  color?: string;
+  secondaryColor?: string;
+  shape?: ShapeId;
 }
 
 export interface FamilyVisualStyle {
@@ -47,8 +38,6 @@ export interface FamilyVisualStyle {
   bumpStrength: number;
   extension: boolean;
   stretch: boolean;
-  outline: OutlineStyle;
-  line: LineStyle;
   travel: TravelStyle;
 }
 
@@ -63,9 +52,9 @@ export interface InstrumentVisualStyle {
   bumpStrength?: number;
   extension?: boolean;
   stretch?: boolean;
-  outline?: Partial<OutlineStyle>;
-  line?: Partial<LineStyle>;
+  noteLabelsEnabled?: boolean;
   travel?: Partial<TravelStyle>;
+  cues?: InstrumentVisualCue[];
 }
 
 export interface NoteLabelSettings {
@@ -73,6 +62,10 @@ export interface NoteLabelSettings {
   color: string;
   size: number;
   font: string;
+  backgroundColor: string;
+  backgroundOpacity: number;
+  padding: number;
+  borderRadius: number;
 }
 
 export interface GlobalVisualConfiguration {
@@ -88,8 +81,6 @@ export interface GlobalVisualConfiguration {
   supersampling: number;
   aspectRatio: AspectRatioMode;
   noteLabels: NoteLabelSettings;
-  outline: OutlineStyle;
-  line: LineStyle;
   travel: TravelStyle;
 }
 
@@ -104,11 +95,18 @@ export interface VisualConfiguration {
 export interface ResolvedTrackVisualStyle extends FamilyVisualStyle {
   enabled: boolean;
   family: string;
+  noteLabelsEnabled: boolean;
+}
+
+export interface RenderTrackStyleCue {
+  at: number;
+  style: ResolvedTrackVisualStyle;
 }
 
 export interface RenderAppearance {
   global: GlobalVisualConfiguration;
   tracks: ResolvedTrackVisualStyle[];
+  trackCues: RenderTrackStyleCue[][];
 }
 
 export const SHAPE_LABELS: Record<ShapeId, string> = {
@@ -159,20 +157,7 @@ export const FAMILY_NAMES = [
   'Custom 5',
 ] as const;
 
-const DEFAULT_OUTLINE: OutlineStyle = {
-  enabled: true,
-  mode: 'full',
-  width: 2.5,
-  color: '#ffffff',
-  useShapeColor: false,
-  opacity: 1,
-};
-
-const DEFAULT_LINE: LineStyle = {
-  enabled: true,
-  opacity: 0.3,
-  width: 4.2,
-};
+export const DEFAULT_FIGURE_COLOR = '#ffd500';
 
 const DEFAULT_TRAVEL: TravelStyle = {
   enabled: true,
@@ -182,7 +167,7 @@ const DEFAULT_TRAVEL: TravelStyle = {
 
 const style = (
   shape: ShapeId,
-  color: string,
+  color = DEFAULT_FIGURE_COLOR,
   secondaryColor = '#ffffff',
 ): FamilyVisualStyle => ({
   color,
@@ -193,30 +178,28 @@ const style = (
   bumpStrength: 1.1,
   extension: true,
   stretch: true,
-  outline: { ...DEFAULT_OUTLINE },
-  line: { ...DEFAULT_LINE },
   travel: { ...DEFAULT_TRAVEL },
 });
 
 export const DEFAULT_FAMILY_STYLES: Record<string, FamilyVisualStyle> = {
-  'Maderas de timbre "redondo"': style('roundedSquare', '#769df3'),
-  'Dobles cañas': style('sixPointStar', '#c23afd'),
-  Saxofones: style('fourPointStar', '#ce8767'),
-  Metales: style('roundedSquare', '#edd113'),
-  Cornos: style('roundedSquare', '#edbe13'),
-  'Percusión menor': style('square', '#a78269'),
-  Tambores: style('circle', '#8f9aa0'),
-  Platillos: style('circle', '#c4ccd0'),
-  Placas: style('diamond', '#ed6b62'),
-  Auxiliares: style('roundedSquare', '#347875'),
-  'Cuerdas frotadas': style('diamond', '#41e342'),
-  'Cuerdas pulsadas': style('triangle', '#1abeb4'),
-  Voces: style('square', '#bebebe'),
-  'Custom 1': style('square', '#d52b2b'),
-  'Custom 2': style('circle', '#e99c53'),
-  'Custom 3': style('hexagon', '#77b8dd'),
-  'Custom 4': style('fourPointStar', '#b991e6'),
-  'Custom 5': style('triangle', '#72d1c4'),
+  'Maderas de timbre "redondo"': style('roundedSquare'),
+  'Dobles cañas': style('sixPointStar'),
+  Saxofones: style('fourPointStar'),
+  Metales: style('roundedSquare'),
+  Cornos: style('roundedSquare'),
+  'Percusión menor': style('square'),
+  Tambores: style('circle'),
+  Platillos: style('circle'),
+  Placas: style('diamond'),
+  Auxiliares: style('roundedSquare'),
+  'Cuerdas frotadas': style('diamond'),
+  'Cuerdas pulsadas': style('triangle'),
+  Voces: style('square'),
+  'Custom 1': style('square'),
+  'Custom 2': style('circle'),
+  'Custom 3': style('hexagon'),
+  'Custom 4': style('fourPointStar'),
+  'Custom 5': style('triangle'),
 };
 
 export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
@@ -237,9 +220,11 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
       color: '#ffffff',
       size: 16,
       font: 'Arial',
+      backgroundColor: '#000000',
+      backgroundOpacity: 0.72,
+      padding: 5,
+      borderRadius: 5,
     },
-    outline: { ...DEFAULT_OUTLINE },
-    line: { ...DEFAULT_LINE },
     travel: { ...DEFAULT_TRAVEL },
   },
   families: Object.fromEntries(
@@ -286,37 +271,6 @@ const clamp = (
     ? Math.min(maximum, Math.max(minimum, value))
     : fallback;
 
-const sanitizeOutline = (
-  incoming: Partial<OutlineStyle> | undefined,
-  fallback: OutlineStyle,
-): OutlineStyle => ({
-  enabled:
-    typeof incoming?.enabled === 'boolean' ? incoming.enabled : fallback.enabled,
-  mode:
-    incoming?.mode === 'pre' ||
-    incoming?.mode === 'post' ||
-    incoming?.mode === 'full'
-      ? incoming.mode
-      : fallback.mode,
-  width: clamp(incoming?.width, 0.25, 20, fallback.width),
-  color: validColor(incoming?.color, fallback.color),
-  useShapeColor:
-    typeof incoming?.useShapeColor === 'boolean'
-      ? incoming.useShapeColor
-      : fallback.useShapeColor,
-  opacity: clamp(incoming?.opacity, 0, 1, fallback.opacity),
-});
-
-const sanitizeLine = (
-  incoming: Partial<LineStyle> | undefined,
-  fallback: LineStyle,
-): LineStyle => ({
-  enabled:
-    typeof incoming?.enabled === 'boolean' ? incoming.enabled : fallback.enabled,
-  opacity: clamp(incoming?.opacity, 0, 1, fallback.opacity),
-  width: clamp(incoming?.width, 0.25, 24, fallback.width),
-});
-
 const sanitizeTravel = (
   incoming: Partial<TravelStyle> | undefined,
   fallback: TravelStyle,
@@ -348,8 +302,6 @@ const sanitizeFamilyStyle = (
     typeof incoming?.stretch === 'boolean'
       ? incoming.stretch
       : fallback.stretch,
-  outline: sanitizeOutline(incoming?.outline, fallback.outline),
-  line: sanitizeLine(incoming?.line, fallback.line),
   travel: sanitizeTravel(incoming?.travel, fallback.travel),
 });
 
@@ -391,9 +343,19 @@ export const sanitizeVisualConfiguration = (
         typeof global?.noteLabels?.font === 'string'
           ? global.noteLabels.font.slice(0, 80)
           : 'Arial',
+      backgroundColor: validColor(
+        global?.noteLabels?.backgroundColor,
+        '#000000',
+      ),
+      backgroundOpacity: clamp(
+        global?.noteLabels?.backgroundOpacity,
+        0,
+        1,
+        0.72,
+      ),
+      padding: clamp(global?.noteLabels?.padding, 0, 24, 5),
+      borderRadius: clamp(global?.noteLabels?.borderRadius, 0, 24, 5),
     },
-    outline: sanitizeOutline(global?.outline, DEFAULT_OUTLINE),
-    line: sanitizeLine(global?.line, DEFAULT_LINE),
     travel: sanitizeTravel(global?.travel, DEFAULT_TRAVEL),
   };
 
@@ -401,7 +363,7 @@ export const sanitizeVisualConfiguration = (
     Object.entries(incoming.families).forEach(([name, value]) => {
       if (!name || !value || typeof value !== 'object') return;
       const fallback =
-        defaults.families[name] ?? style('circle', '#e99c53');
+        defaults.families[name] ?? style('circle');
       defaults.families[name] = sanitizeFamilyStyle(value, fallback);
     });
   }
@@ -417,7 +379,7 @@ export const sanitizeVisualConfiguration = (
           : {}),
         ...(typeof item.family === 'string' ? { family: item.family } : {}),
         ...(typeof item.color === 'string'
-          ? { color: validColor(item.color, '#e99c53') }
+          ? { color: validColor(item.color, DEFAULT_FIGURE_COLOR) }
           : {}),
         ...(typeof item.secondaryColor === 'string'
           ? { secondaryColor: validColor(item.secondaryColor, '#ffffff') }
@@ -438,14 +400,42 @@ export const sanitizeVisualConfiguration = (
         ...(typeof item.stretch === 'boolean'
           ? { stretch: item.stretch }
           : {}),
-        ...(item.outline
-          ? { outline: sanitizeOutline(item.outline, defaults.global.outline) }
-          : {}),
-        ...(item.line
-          ? { line: sanitizeLine(item.line, defaults.global.line) }
+        ...(typeof item.noteLabelsEnabled === 'boolean'
+          ? { noteLabelsEnabled: item.noteLabelsEnabled }
           : {}),
         ...(item.travel
           ? { travel: sanitizeTravel(item.travel, defaults.global.travel) }
+          : {}),
+        ...(Array.isArray(item.cues)
+          ? {
+              cues: item.cues
+                .flatMap((cue) => {
+                  if (!cue || typeof cue !== 'object') return [];
+                  const shape = coerceShapeId(cue.shape);
+                  const sanitized: InstrumentVisualCue = {
+                    at: clamp(cue.at, 0, 1_000_000, 0),
+                    ...(typeof cue.color === 'string'
+                      ? {
+                          color: validColor(
+                            cue.color,
+                            DEFAULT_FIGURE_COLOR,
+                          ),
+                        }
+                      : {}),
+                    ...(typeof cue.secondaryColor === 'string'
+                      ? {
+                          secondaryColor: validColor(
+                            cue.secondaryColor,
+                            '#ffffff',
+                          ),
+                        }
+                      : {}),
+                    ...(shape ? { shape } : {}),
+                  };
+                  return [sanitized];
+                })
+                .sort((left, right) => left.at - right.at),
+            }
           : {}),
       };
     });
@@ -617,20 +607,6 @@ export const migrateV1VisualConfiguration = (
     migrated.families[family] = { ...fallback, stretch: enabled };
   });
 
-  const familyLineSettings =
-    value.familyLineSettings && typeof value.familyLineSettings === 'object'
-      ? (value.familyLineSettings as Record<string, Partial<LineStyle>>)
-      : {};
-  Object.entries(familyLineSettings).forEach(([family, line]) => {
-    const fallback =
-      migrated.families[family] ??
-      structuredClone(migrated.families['Custom 1']);
-    migrated.families[family] = {
-      ...fallback,
-      line: sanitizeLine(line, fallback.line),
-    };
-  });
-
   const travelSettings =
     value.familyTravelSettings && typeof value.familyTravelSettings === 'object'
       ? (value.familyTravelSettings as {
@@ -648,26 +624,6 @@ export const migrateV1VisualConfiguration = (
       travel: sanitizeTravel(travel, fallback.travel),
     };
   });
-
-  const outlineSettings =
-    value.outlineSettings && typeof value.outlineSettings === 'object'
-      ? (value.outlineSettings as {
-          global?: Partial<OutlineStyle>;
-          families?: Record<string, Partial<OutlineStyle>>;
-        })
-      : {};
-  global.outline = sanitizeOutline(outlineSettings.global, global.outline);
-  Object.entries(outlineSettings.families ?? {}).forEach(
-    ([family, outline]) => {
-      const fallback =
-        migrated.families[family] ??
-        structuredClone(migrated.families['Custom 1']);
-      migrated.families[family] = {
-        ...fallback,
-        outline: sanitizeOutline(outline, fallback.outline),
-      };
-    },
-  );
 
   if (value.shapeExtensions && typeof value.shapeExtensions === 'object') {
     Object.entries(value.shapeExtensions as Record<string, unknown>).forEach(
@@ -728,12 +684,14 @@ export const resolveTrackVisualStyle = (
   const family = instrument.family || detectedFamilyName(track);
   const familyStyle =
     configuration.families[family] ??
-    style('circle', '#e99c53', '#ffffff');
+    style('circle');
 
   const resolved: ResolvedTrackVisualStyle = {
     ...structuredClone(familyStyle),
     enabled: instrument.enabled !== false,
     family,
+    noteLabelsEnabled:
+      instrument.noteLabelsEnabled ?? configuration.global.noteLabels.enabled,
     ...(instrument.color ? { color: instrument.color } : {}),
     ...(instrument.secondaryColor
       ? { secondaryColor: instrument.secondaryColor }
@@ -754,10 +712,28 @@ export const resolveTrackVisualStyle = (
     ...(typeof instrument.stretch === 'boolean'
       ? { stretch: instrument.stretch }
       : {}),
-    outline: { ...familyStyle.outline, ...instrument.outline },
-    line: { ...familyStyle.line, ...instrument.line },
     travel: { ...familyStyle.travel, ...instrument.travel },
   };
+  resolved.extension =
+    resolved.extension && configuration.shapeExtensions[resolved.shape] !== false;
+  resolved.stretch =
+    resolved.stretch && configuration.shapeStretch[resolved.shape] !== false;
+  return resolved;
+};
+
+export const resolveTrackVisualStyleAtTime = (
+  track: MidiTrackInfo,
+  configuration: VisualConfiguration,
+  midiTime: number,
+): ResolvedTrackVisualStyle => {
+  const resolved = resolveTrackVisualStyle(track, configuration);
+  const cues = configuration.instruments[track.name]?.cues ?? [];
+  for (const cue of cues) {
+    if (cue.at > midiTime) break;
+    if (cue.color) resolved.color = cue.color;
+    if (cue.secondaryColor) resolved.secondaryColor = cue.secondaryColor;
+    if (cue.shape) resolved.shape = cue.shape;
+  }
   resolved.extension =
     resolved.extension && configuration.shapeExtensions[resolved.shape] !== false;
   resolved.stretch =
@@ -824,5 +800,22 @@ export const createRenderAppearance = (
         secondaryColor: shiftHexHue(resolved.secondaryColor, tone),
       };
     }),
+    trackCues: tracks.map((track) =>
+      (configuration.instruments[track.name]?.cues ?? []).map((cue) => {
+        const resolved = resolveTrackVisualStyleAtTime(
+          track,
+          configuration,
+          cue.at,
+        );
+        return {
+          at: cue.at,
+          style: {
+            ...resolved,
+            color: shiftHexHue(resolved.color, tone),
+            secondaryColor: shiftHexHue(resolved.secondaryColor, tone),
+          },
+        };
+      }),
+    ),
   };
 };

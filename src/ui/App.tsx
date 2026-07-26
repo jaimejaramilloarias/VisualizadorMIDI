@@ -30,6 +30,7 @@ import {
   cloneDefaultVisualConfiguration,
   createRenderAppearance,
   resolveTrackVisualStyle,
+  resolveTrackVisualStyleAtTime,
   type FamilyVisualStyle,
   type InstrumentVisualStyle,
   type VisualConfiguration,
@@ -41,6 +42,7 @@ import {
 import { RendererBridge } from '../renderer/RendererBridge';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
+import { resolveTransportShortcut } from './transportShortcuts';
 import { WaveformEditor } from './WaveformEditor';
 
 interface ProjectSummary {
@@ -83,6 +85,12 @@ const formatTime = (seconds: number): string => {
   const decimals = Math.floor((safe % 1) * 10);
   return `${minutes}:${String(remainder).padStart(2, '0')}.${decimals}`;
 };
+
+const isEditableTarget = (target: EventTarget | null): boolean =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLSelectElement ||
+  target instanceof HTMLTextAreaElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
 
 const createId = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -248,6 +256,7 @@ export function App() {
   const visualConfigurationRef = useRef<VisualConfiguration>(
     cloneDefaultVisualConfiguration(),
   );
+  const projectRef = useRef<ProjectSummary | null>(null);
   const anchorPreviewRef = useRef<number | null>(null);
   const selectionAnchorRef = useRef<string | null>(null);
   const lastTapRef = useRef<{ audioTime: number; midiTime: number } | null>(
@@ -278,6 +287,10 @@ export function App() {
     null,
   );
   const [selectedTrackNames, setSelectedTrackNames] = useState<string[]>([]);
+  const [voiceEditPoint, setVoiceEditPoint] = useState<number | null>(null);
+  const [voiceEditScope, setVoiceEditScope] = useState<'start' | 'point'>(
+    'start',
+  );
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
   const [tapActive, setTapActive] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -306,6 +319,10 @@ export function App() {
   }, [visualConfiguration]);
 
   useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+
+  useEffect(() => {
     anchorPreviewRef.current = anchorMidiDraft;
   }, [anchorMidiDraft]);
 
@@ -325,6 +342,23 @@ export function App() {
     try {
       const renderer = new RendererBridge(canvasRef.current, {
         onTelemetry: setTelemetry,
+        onNoteSelect: (selection) => {
+          const track = projectRef.current?.tracks[selection.trackIndex];
+          if (!track) return;
+          setSelectedTrackName(track.name);
+          setSelectedTrackNames([track.name]);
+          selectionAnchorRef.current = track.name;
+          setVoiceEditPoint(selection.midiTime);
+          setVoiceEditScope('point');
+          setInspectorTab('style');
+          setRightCollapsed(false);
+          if (window.matchMedia('(max-width: 800px)').matches) {
+            setLeftCollapsed(true);
+          }
+          setNotice(
+            `${track.name} seleccionada en ${formatTime(selection.midiTime)}. Elige si el cambio aplica desde ahí o desde el inicio.`,
+          );
+        },
         onError: setNotice,
       });
       rendererRef.current = renderer;
@@ -388,6 +422,39 @@ export function App() {
       }
       event.preventDefault();
       window.dispatchEvent(new CustomEvent('midi-stage-tap'));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tapActive]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const shortcut = resolveTransportShortcut({
+        code: event.code,
+        key: event.key,
+        repeat: event.repeat,
+        modified: event.metaKey || event.ctrlKey || event.altKey,
+        editing: isEditableTarget(event.target),
+        tapActive,
+      });
+      const instance = transportRef.current;
+      if (!shortcut || !instance || !projectRef.current) return;
+      event.preventDefault();
+      if (shortcut === 'toggle-playback') {
+        void instance.toggle().catch((error) => {
+          setNotice(
+            error instanceof Error
+              ? `No fue posible iniciar la reproducción: ${error.message}`
+              : 'No fue posible iniciar la reproducción.',
+          );
+        });
+        return;
+      }
+      const snapshot = instance.getSnapshot();
+      const offset = shortcut === 'seek-backward' ? -3 : 3;
+      instance.seek(
+        Math.min(snapshot.duration, Math.max(0, snapshot.position + offset)),
+      );
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -485,11 +552,14 @@ export function App() {
         tempoMap: parsed.tempoMap,
       };
       rendererRef.current?.setProject(parsed);
+      projectRef.current = summary;
       setProject(summary);
       setSelectedTrackName(summary.tracks[0]?.name ?? null);
       setSelectedTrackNames(
         summary.tracks[0]?.name ? [summary.tracks[0].name] : [],
       );
+      setVoiceEditPoint(null);
+      setVoiceEditScope('start');
       selectionAnchorRef.current = summary.tracks[0]?.name ?? null;
       transportRef.current?.setMidiDuration(parsed.duration);
       transportRef.current?.seek(0);
@@ -726,6 +796,43 @@ export function App() {
     }));
   };
 
+  const updateInstrumentAppearanceFromStart = (
+    trackName: string,
+    updates: Pick<
+      InstrumentVisualStyle,
+      'color' | 'secondaryColor' | 'shape'
+    >,
+  ) => {
+    setVisualConfiguration((current) => {
+      const existing = current.instruments[trackName] ?? {};
+      const cues = (existing.cues ?? [])
+        .map((cue) => {
+          const next = { ...cue };
+          if (updates.color !== undefined) delete next.color;
+          if (updates.secondaryColor !== undefined) delete next.secondaryColor;
+          if (updates.shape !== undefined) delete next.shape;
+          return next;
+        })
+        .filter(
+          (cue) =>
+            cue.color !== undefined ||
+            cue.secondaryColor !== undefined ||
+            cue.shape !== undefined,
+        );
+      return {
+        ...current,
+        instruments: {
+          ...current.instruments,
+          [trackName]: {
+            ...existing,
+            ...updates,
+            ...(cues.length > 0 ? { cues } : { cues: undefined }),
+          },
+        },
+      };
+    });
+  };
+
   const updateSelectedInstruments = (updates: InstrumentVisualStyle) => {
     const names =
       selectedTrackNames.length > 0
@@ -737,6 +844,74 @@ export function App() {
       const instruments = { ...current.instruments };
       names.forEach((name) => {
         instruments[name] = { ...instruments[name], ...updates };
+      });
+      return { ...current, instruments };
+    });
+  };
+
+  const updateSelectedAppearance = (
+    updates: Pick<
+      InstrumentVisualStyle,
+      'color' | 'secondaryColor' | 'shape'
+    >,
+  ) => {
+    const names =
+      selectedTrackNames.length > 0
+        ? selectedTrackNames
+        : selectedTrackName
+          ? [selectedTrackName]
+          : [];
+    if (
+      voiceEditScope !== 'point' ||
+      voiceEditPoint === null ||
+      names.length === 0
+    ) {
+      setVisualConfiguration((current) => {
+        const instruments = { ...current.instruments };
+        names.forEach((name) => {
+          const existing = instruments[name] ?? {};
+          const cues = (existing.cues ?? [])
+            .map((cue) => {
+              const next = { ...cue };
+              if (updates.color !== undefined) delete next.color;
+              if (updates.secondaryColor !== undefined) {
+                delete next.secondaryColor;
+              }
+              if (updates.shape !== undefined) delete next.shape;
+              return next;
+            })
+            .filter(
+              (cue) =>
+                cue.color !== undefined ||
+                cue.secondaryColor !== undefined ||
+                cue.shape !== undefined,
+            );
+          instruments[name] = {
+            ...existing,
+            ...updates,
+            ...(cues.length > 0 ? { cues } : { cues: undefined }),
+          };
+        });
+        return { ...current, instruments };
+      });
+      return;
+    }
+
+    setVisualConfiguration((current) => {
+      const instruments = { ...current.instruments };
+      names.forEach((name) => {
+        const existing = instruments[name] ?? {};
+        const cues = [...(existing.cues ?? [])];
+        const cueIndex = cues.findIndex(
+          (cue) => Math.abs(cue.at - voiceEditPoint) < 0.001,
+        );
+        if (cueIndex >= 0) {
+          cues[cueIndex] = { ...cues[cueIndex], ...updates };
+        } else {
+          cues.push({ at: voiceEditPoint, ...updates });
+        }
+        cues.sort((left, right) => left.at - right.at);
+        instruments[name] = { ...existing, cues };
       });
       return { ...current, instruments };
     });
@@ -770,6 +945,8 @@ export function App() {
       selectionAnchorRef.current = trackName;
     }
     setSelectedTrackName(trackName);
+    setVoiceEditPoint(null);
+    setVoiceEditScope('start');
   };
 
   const beginTrackDrag = (
@@ -891,11 +1068,22 @@ export function App() {
   const selectedTrack =
     project?.tracks.find((track) => track.name === selectedTrackName) ?? null;
   const selectedResolvedStyle = selectedTrack
-    ? resolveTrackVisualStyle(selectedTrack, visualConfiguration)
+    ? voiceEditPoint === null
+      ? resolveTrackVisualStyle(selectedTrack, visualConfiguration)
+      : resolveTrackVisualStyleAtTime(
+          selectedTrack,
+          visualConfiguration,
+          voiceEditPoint,
+        )
     : null;
   const selectedFamilyStyle = selectedResolvedStyle
     ? visualConfiguration.families[selectedResolvedStyle.family]
     : null;
+  const hasAnyNoteLabels =
+    visualConfiguration.global.noteLabels.enabled ||
+    Object.values(visualConfiguration.instruments).some(
+      (instrument) => instrument.noteLabelsEnabled === true,
+    );
   const progress =
     transport.duration > 0 ? transport.position / transport.duration : 0;
   const activeMenu =
@@ -1077,7 +1265,17 @@ export function App() {
           className="canvas-frame"
           data-aspect-ratio={visualConfiguration.global.aspectRatio}
         >
-          <canvas aria-label="Visualización MIDI" ref={canvasRef} />
+          <canvas
+            aria-label="Visualización MIDI interactiva"
+            onClick={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              rendererRef.current?.hitTest(
+                event.clientX - bounds.left,
+                event.clientY - bounds.top,
+              );
+            }}
+            ref={canvasRef}
+          />
           {!project && (
             <div className="empty-state">
               <span className="empty-icon">
@@ -1256,6 +1454,8 @@ export function App() {
                     const name = event.target.value;
                     setSelectedTrackName(name);
                     setSelectedTrackNames(name ? [name] : []);
+                    setVoiceEditPoint(null);
+                    setVoiceEditScope('start');
                   }}
                   value={selectedTrackName ?? ''}
                 >
@@ -1269,6 +1469,39 @@ export function App() {
               </label>
               {selectedTrack && selectedResolvedStyle && (
                 <>
+                  {voiceEditPoint !== null && (
+                    <div className="voice-edit-scope">
+                      <span>
+                        Nota elegida en <strong>{formatTime(voiceEditPoint)}</strong>
+                      </span>
+                      <div
+                        aria-label="Alcance de edición visual"
+                        className="segmented-control"
+                        role="group"
+                      >
+                        <button
+                          aria-pressed={voiceEditScope === 'start'}
+                          className={
+                            voiceEditScope === 'start' ? 'is-selected' : ''
+                          }
+                          onClick={() => setVoiceEditScope('start')}
+                          type="button"
+                        >
+                          Desde el inicio
+                        </button>
+                        <button
+                          aria-pressed={voiceEditScope === 'point'}
+                          className={
+                            voiceEditScope === 'point' ? 'is-selected' : ''
+                          }
+                          onClick={() => setVoiceEditScope('point')}
+                          type="button"
+                        >
+                          Desde este punto
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <label className="select-control">
                     <span>Familia</span>
                     <select
@@ -1290,7 +1523,7 @@ export function App() {
                     <span>Figura</span>
                     <select
                       onChange={(event) =>
-                        updateSelectedInstruments({
+                        updateSelectedAppearance({
                           shape: event.target.value as (typeof SHAPE_IDS)[number],
                         })
                       }
@@ -1309,7 +1542,7 @@ export function App() {
                       <input
                         aria-label="Color principal"
                         onChange={(event) =>
-                          updateSelectedInstruments({
+                          updateSelectedAppearance({
                             color: event.target.value,
                           })
                         }
@@ -1322,7 +1555,7 @@ export function App() {
                       <input
                         aria-label="Color secundario"
                         onChange={(event) =>
-                          updateSelectedInstruments({
+                          updateSelectedAppearance({
                             secondaryColor: event.target.value,
                           })
                         }
@@ -1331,6 +1564,18 @@ export function App() {
                       />
                     </label>
                   </div>
+                  <label className="switch-row">
+                    <span>Etiquetas en la selección</span>
+                    <input
+                      checked={selectedResolvedStyle.noteLabelsEnabled}
+                      onChange={(event) =>
+                        updateSelectedInstruments({
+                          noteLabelsEnabled: event.target.checked,
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </label>
                 </>
               )}
             </section>
@@ -1634,7 +1879,7 @@ export function App() {
                 {inspectorTab === 'style' && (
                   <>
                 <label className="switch-row">
-                  <span>Etiquetas de nota</span>
+                  <span>Etiquetas en todas las voces</span>
                   <input
                     checked={
                       visualConfiguration.global.noteLabels.enabled
@@ -1648,7 +1893,7 @@ export function App() {
                     type="checkbox"
                   />
                 </label>
-                {visualConfiguration.global.noteLabels.enabled && (
+                {hasAnyNoteLabels && (
                   <>
                     <label className="select-control">
                       <span>Fuente de etiqueta</span>
@@ -1689,8 +1934,26 @@ export function App() {
                         value={visualConfiguration.global.noteLabels.color}
                       />
                     </div>
+                    <div className="inline-control">
+                      <label htmlFor="label-background">
+                        Fondo del recuadro
+                      </label>
+                      <input
+                        id="label-background"
+                        onChange={(event) =>
+                          updateGlobalVisual('noteLabels', {
+                            ...visualConfiguration.global.noteLabels,
+                            backgroundColor: event.target.value,
+                          })
+                        }
+                        type="color"
+                        value={
+                          visualConfiguration.global.noteLabels.backgroundColor
+                        }
+                      />
+                    </div>
                     <RangeControl
-                      label="Tamaño de etiqueta"
+                      label="Tamaño de fuente"
                       max={42}
                       min={8}
                       onChange={(value) =>
@@ -1702,6 +1965,52 @@ export function App() {
                       step={1}
                       suffix=" px"
                       value={visualConfiguration.global.noteLabels.size}
+                    />
+                    <RangeControl
+                      label="Margen dinámico del recuadro"
+                      max={24}
+                      min={0}
+                      onChange={(value) =>
+                        updateGlobalVisual('noteLabels', {
+                          ...visualConfiguration.global.noteLabels,
+                          padding: value,
+                        })
+                      }
+                      step={1}
+                      suffix=" px"
+                      value={visualConfiguration.global.noteLabels.padding}
+                    />
+                    <RangeControl
+                      label="Opacidad del recuadro"
+                      max={1}
+                      min={0}
+                      onChange={(value) =>
+                        updateGlobalVisual('noteLabels', {
+                          ...visualConfiguration.global.noteLabels,
+                          backgroundOpacity: value,
+                        })
+                      }
+                      step={0.05}
+                      suffix=""
+                      value={
+                        visualConfiguration.global.noteLabels.backgroundOpacity
+                      }
+                    />
+                    <RangeControl
+                      label="Redondeo del recuadro"
+                      max={24}
+                      min={0}
+                      onChange={(value) =>
+                        updateGlobalVisual('noteLabels', {
+                          ...visualConfiguration.global.noteLabels,
+                          borderRadius: value,
+                        })
+                      }
+                      step={1}
+                      suffix=" px"
+                      value={
+                        visualConfiguration.global.noteLabels.borderRadius
+                      }
                     />
                   </>
                 )}
@@ -1828,7 +2137,7 @@ export function App() {
                               <select
                                 aria-label={`Figura de ${track.name}`}
                                 onChange={(event) =>
-                                  updateInstrument(track.name, {
+                                  updateInstrumentAppearanceFromStart(track.name, {
                                     shape: event.target
                                       .value as (typeof SHAPE_IDS)[number],
                                   })
@@ -1843,6 +2152,23 @@ export function App() {
                                   </option>
                                 ))}
                               </select>
+                            </label>
+                            <label className="track-color-control">
+                              <span className="visually-hidden">
+                                Color de {track.name}
+                              </span>
+                              <input
+                                aria-label={`Color de ${track.name}`}
+                                onChange={(event) =>
+                                  updateInstrumentAppearanceFromStart(track.name, {
+                                    color: event.target.value,
+                                  })
+                                }
+                                onClick={(event) => event.stopPropagation()}
+                                title={`Color de ${track.name}`}
+                                type="color"
+                                value={trackStyle.color}
+                              />
                             </label>
                           </div>
                         );
@@ -2007,109 +2333,6 @@ export function App() {
                     value={selectedFamilyStyle.bumpStrength}
                   />
                   <label className="switch-row">
-                    <span>Contorno activo</span>
-                    <input
-                      checked={selectedFamilyStyle.outline.enabled}
-                      onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
-                          outline: {
-                            ...selectedFamilyStyle.outline,
-                            enabled: event.target.checked,
-                          },
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <label className="select-control">
-                    <span>Modo de contorno</span>
-                    <select
-                      onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
-                          outline: {
-                            ...selectedFamilyStyle.outline,
-                            mode: event.target.value as
-                              | 'full'
-                              | 'pre'
-                              | 'post',
-                          },
-                        })
-                      }
-                      value={selectedFamilyStyle.outline.mode}
-                    >
-                      <option value="full">Completo</option>
-                      <option value="pre">Antes del presente</option>
-                      <option value="post">Después del presente</option>
-                    </select>
-                  </label>
-                  <RangeControl
-                    label="Grosor de contorno"
-                    max={12}
-                    min={0.25}
-                    onChange={(value) =>
-                      updateFamily(selectedResolvedStyle.family, {
-                        outline: {
-                          ...selectedFamilyStyle.outline,
-                          width: value,
-                        },
-                      })
-                    }
-                    step={0.25}
-                    suffix=" px"
-                    value={selectedFamilyStyle.outline.width}
-                  />
-                  <RangeControl
-                    label="Opacidad del contorno"
-                    max={1}
-                    min={0}
-                    onChange={(value) =>
-                      updateFamily(selectedResolvedStyle.family, {
-                        outline: {
-                          ...selectedFamilyStyle.outline,
-                          opacity: value,
-                        },
-                      })
-                    }
-                    step={0.05}
-                    suffix=""
-                    value={selectedFamilyStyle.outline.opacity}
-                  />
-                  <label className="switch-row">
-                    <span>Usar color de la figura</span>
-                    <input
-                      checked={selectedFamilyStyle.outline.useShapeColor}
-                      onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
-                          outline: {
-                            ...selectedFamilyStyle.outline,
-                            useShapeColor: event.target.checked,
-                          },
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  {!selectedFamilyStyle.outline.useShapeColor && (
-                    <div className="inline-control">
-                      <label htmlFor="family-outline-color">
-                        Color del contorno
-                      </label>
-                      <input
-                        id="family-outline-color"
-                        onChange={(event) =>
-                          updateFamily(selectedResolvedStyle.family, {
-                            outline: {
-                              ...selectedFamilyStyle.outline,
-                              color: event.target.value,
-                            },
-                          })
-                        }
-                        type="color"
-                        value={selectedFamilyStyle.outline.color}
-                      />
-                    </div>
-                  )}
-                  <label className="switch-row">
                     <span>Extensión de familia</span>
                     <input
                       checked={selectedFamilyStyle.extension}
@@ -2134,21 +2357,6 @@ export function App() {
                     />
                   </label>
                   <label className="switch-row">
-                    <span>Líneas de conexión</span>
-                    <input
-                      checked={selectedFamilyStyle.line.enabled}
-                      onChange={(event) =>
-                        updateFamily(selectedResolvedStyle.family, {
-                          line: {
-                            ...selectedFamilyStyle.line,
-                            enabled: event.target.checked,
-                          },
-                        })
-                      }
-                      type="checkbox"
-                    />
-                  </label>
-                  <label className="switch-row">
                     <span>Atracción hacia NOW</span>
                     <input
                       checked={selectedFamilyStyle.travel.enabled}
@@ -2163,42 +2371,6 @@ export function App() {
                       type="checkbox"
                     />
                   </label>
-                  {selectedFamilyStyle.line.enabled && (
-                    <>
-                      <RangeControl
-                        label="Grosor de conexión"
-                        max={16}
-                        min={0.25}
-                        onChange={(value) =>
-                          updateFamily(selectedResolvedStyle.family, {
-                            line: {
-                              ...selectedFamilyStyle.line,
-                              width: value,
-                            },
-                          })
-                        }
-                        step={0.25}
-                        suffix=" px"
-                        value={selectedFamilyStyle.line.width}
-                      />
-                      <RangeControl
-                        label="Opacidad de conexión"
-                        max={1}
-                        min={0}
-                        onChange={(value) =>
-                          updateFamily(selectedResolvedStyle.family, {
-                            line: {
-                              ...selectedFamilyStyle.line,
-                              opacity: value,
-                            },
-                          })
-                        }
-                        step={0.05}
-                        suffix=""
-                        value={selectedFamilyStyle.line.opacity}
-                      />
-                    </>
-                  )}
                   {selectedFamilyStyle.travel.enabled && (
                     <>
                       <RangeControl
@@ -2505,7 +2677,8 @@ export function App() {
                 <strong>2 · Pistas</strong>
                 <p>
                   Usa Shift para un rango, Cmd/Ctrl para combinar y arrastra la
-                  selección sobre una familia.
+                  selección sobre una familia. También puedes tocar una nota
+                  del canvas para editar esa voz desde el inicio o desde allí.
                 </p>
               </section>
               <section>
@@ -2520,6 +2693,13 @@ export function App() {
                 <p>
                   Los FPS siguen la frecuencia real de la pantalla. La calidad
                   Adaptativa protege esa cadencia; también puedes fijar 60 o 30.
+                </p>
+              </section>
+              <section>
+                <strong>5 · Transporte</strong>
+                <p>
+                  Espacio reproduce o pausa. Las flechas izquierda y derecha
+                  retroceden o avanzan tres segundos sin interferir con campos.
                 </p>
               </section>
             </div>

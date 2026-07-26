@@ -24,13 +24,19 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   aceleran de forma continua al acercarse a NOW. Cada nota tiene una sola figura
   en pantalla: no se generan copias ni estelas que puedan acumularse allí.
 - La extensión dinámica nace en NOW y crece únicamente hacia PAST.
-- Transporte sincronizado con Web Audio o reloj MIDI independiente.
+- Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
+  reproduce/pausa y las flechas saltan ±3 segundos.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
+- Selección directa de notas en el canvas para cambiar la figura o el color
+  desde el inicio o a partir de ese punto MIDI.
+- Etiquetas activables por voz, con recuadros que se ajustan automáticamente al
+  texto, la fuente y su margen.
 - Importación y exportación del estado JSON versionado.
-- Catálogo de ocho figuras simples, familias y efectos musicales de V1; las
-  figuras dobles, escenas y fondos fueron retirados por decisión de producto.
+- Catálogo de ocho figuras simples y familias de V1; las figuras dobles,
+  contornos, conexiones, escenas y fondos fueron retirados por decisión de
+  producto.
 
 ## Preparación
 

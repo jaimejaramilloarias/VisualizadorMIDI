@@ -20,6 +20,12 @@ export interface RenderTelemetry {
   targetFps: number;
 }
 
+export interface RenderNoteSelection {
+  noteIndex: number;
+  trackIndex: number;
+  midiTime: number;
+}
+
 export type RendererInboundMessage =
   | {
       type: 'init';
@@ -43,10 +49,12 @@ export type RendererInboundMessage =
   | { type: 'display-refresh-rate'; fps: number }
   | { type: 'clock'; clock: RenderClock }
   | { type: 'visibility'; visible: boolean }
+  | { type: 'hit-test'; x: number; y: number }
   | { type: 'refresh' }
   | { type: 'clear' };
 
 export type RendererOutboundMessage =
   | { type: 'ready' }
   | { type: 'telemetry'; telemetry: RenderTelemetry }
+  | { type: 'note-selected'; selection: RenderNoteSelection }
   | { type: 'error'; message: string };

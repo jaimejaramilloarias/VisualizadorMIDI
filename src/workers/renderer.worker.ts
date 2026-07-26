@@ -26,7 +26,7 @@ import {
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from '../renderer/renderMath';
-import { drawNoteShape, strokeNoteShape } from '../renderer/shapes';
+import { drawNoteShape } from '../renderer/shapes';
 
 const scope = self as DedicatedWorkerGlobalScope;
 
@@ -41,6 +41,7 @@ let settings: VisualizationSettings = { ...DEFAULT_SETTINGS };
 let appearance: RenderAppearance = {
   global: structuredClone(DEFAULT_VISUAL_CONFIGURATION.global),
   tracks: [],
+  trackCues: [],
 };
 let clock: RenderClock = {
   midiTime: 0,
@@ -61,11 +62,21 @@ let fastWindows = 0;
 let displayRefreshRate = 60;
 let previousAnimationFrame = 0;
 let frameAccumulator = 0;
+let hitRegions: Array<{
+  noteIndex: number;
+  trackIndex: number;
+  midiTime: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}> = [];
 
 const fallbackTrackStyle: ResolvedTrackVisualStyle = {
   ...structuredClone(DEFAULT_VISUAL_CONFIGURATION.families.Auxiliares),
   enabled: true,
   family: 'Auxiliares',
+  noteLabelsEnabled: false,
 };
 
 const send = (message: RendererOutboundMessage): void => {
@@ -159,7 +170,13 @@ const applySize = (): void => {
 const getTrackStyle = (noteIndex: number): ResolvedTrackVisualStyle => {
   if (!project) return fallbackTrackStyle;
   const trackIndex = project.notes.tracks[noteIndex];
-  return appearance.tracks[trackIndex] ?? fallbackTrackStyle;
+  const fallback = appearance.tracks[trackIndex] ?? fallbackTrackStyle;
+  const noteStart = project.notes.starts[noteIndex];
+  const cues = appearance.trackCues[trackIndex] ?? [];
+  for (let index = cues.length - 1; index >= 0; index -= 1) {
+    if (cues[index].at <= noteStart) return cues[index].style;
+  }
+  return fallback;
 };
 
 const spatialOpacity = (centerX: number): number => {
@@ -244,7 +261,8 @@ const drawHorizontalScene = (
   const noteHeight = Math.max(2.2, laneHeight * 1.55 * settings.noteScale);
 
   interface NoteLayout {
-    track: number;
+    noteIndex: number;
+    trackIndex: number;
     start: number;
     end: number;
     pitch: number;
@@ -254,7 +272,6 @@ const drawHorizontalScene = (
     width: number;
     height: number;
     centerX: number;
-    centerY: number;
     alpha: number;
     active: boolean;
     style: ResolvedTrackVisualStyle;
@@ -328,7 +345,8 @@ const drawHorizontalScene = (
     const y = cssHeight - lanePadding - pitch * laneHeight - height * 0.5;
     const centerX = x + width / 2;
     return {
-      track: project!.notes.tracks[index],
+      noteIndex: index,
+      trackIndex: project!.notes.tracks[index],
       start,
       end,
       pitch,
@@ -338,7 +356,6 @@ const drawHorizontalScene = (
       width: Math.max(0.5, width),
       height: Math.max(0.5, height),
       centerX,
-      centerY: y + height / 2,
       alpha:
         (0.48 + velocity * 0.5) * Math.max(0, spatialOpacity(centerX)),
       active: start <= time && end >= time,
@@ -353,39 +370,15 @@ const drawHorizontalScene = (
     if (layout) layouts.push(layout);
   });
   visibleNotes = layouts.length;
-
-  const byTrack = new Map<number, NoteLayout[]>();
-  layouts.forEach((layout) => {
-    if (!layout.style.line.enabled) return;
-    const group = byTrack.get(layout.track);
-    if (group) group.push(layout);
-    else byTrack.set(layout.track, [layout]);
-  });
-  byTrack.forEach((group) => {
-    for (let index = 0; index < group.length - 1; index += 1) {
-      const current = group[index];
-      const next = group[index + 1];
-      const lineStyle = current.style.line;
-      const alpha =
-        lineStyle.opacity * ((current.alpha + next.alpha) / 2);
-      if (alpha <= 0 || lineStyle.width <= 0) continue;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = current.style.color;
-      ctx.lineWidth = lineStyle.width;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(current.x, current.centerY);
-      ctx.quadraticCurveTo(
-        (current.x + next.x) / 2,
-        (current.centerY + next.centerY) / 2,
-        next.x,
-        next.centerY,
-      );
-      ctx.stroke();
-      ctx.restore();
-    }
-  });
+  hitRegions = layouts.map((layout) => ({
+    noteIndex: layout.noteIndex,
+    trackIndex: layout.trackIndex,
+    midiTime: layout.start,
+    x: layout.x,
+    y: layout.y,
+    width: layout.width,
+    height: layout.height,
+  }));
 
   const drawLayout = (layout: NoteLayout): void => {
     const { start, velocity, style, active, x, y, width, height } = layout;
@@ -413,38 +406,60 @@ const drawHorizontalScene = (
     );
     ctx.shadowBlur = 0;
 
-    const outlineAllowed =
-      style.outline.mode === 'full' ||
-      (style.outline.mode === 'pre' && start >= time) ||
-      (style.outline.mode === 'post' && start < time);
-    if (style.outline.enabled && outlineAllowed && style.outline.opacity > 0) {
-      ctx.save();
-      ctx.globalAlpha = style.outline.opacity;
-      ctx.strokeStyle = style.outline.useShapeColor
-        ? style.color
-        : style.outline.color;
-      ctx.lineWidth = style.outline.width;
-      ctx.lineJoin = 'round';
-      strokeNoteShape(ctx, style.shape, x, y, width, height);
-      ctx.restore();
-    }
-
     const labels = appearance.global.noteLabels;
-    if (
-      labels.enabled &&
-      height >= labels.size * 0.72 &&
-      width >= labels.size * 1.2
-    ) {
+    if (style.noteLabelsEnabled) {
       ctx.save();
-      ctx.globalAlpha = Math.max(0.35, spatialOpacity(centerX));
-      ctx.fillStyle = labels.color;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
-      ctx.lineWidth = Math.max(1, labels.size * 0.1);
       ctx.font = `${labels.size}px "${labels.font}"`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.strokeText(noteName(layout.pitch), centerX, y + height / 2);
-      ctx.fillText(noteName(layout.pitch), centerX, y + height / 2);
+      const text = noteName(layout.pitch);
+      const metrics = ctx.measureText(text);
+      const textHeight = Math.max(
+        labels.size,
+        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
+      );
+      const boxWidth = metrics.width + labels.padding * 2;
+      const boxHeight = textHeight + labels.padding * 2;
+      const boxX = centerX - boxWidth / 2;
+      const boxY = y + height / 2 - boxHeight / 2;
+      const radius = Math.min(
+        labels.borderRadius,
+        boxWidth / 2,
+        boxHeight / 2,
+      );
+      ctx.globalAlpha =
+        labels.backgroundOpacity * Math.max(0.35, spatialOpacity(centerX));
+      ctx.fillStyle = labels.backgroundColor;
+      ctx.beginPath();
+      ctx.moveTo(boxX + radius, boxY);
+      ctx.lineTo(boxX + boxWidth - radius, boxY);
+      ctx.quadraticCurveTo(
+        boxX + boxWidth,
+        boxY,
+        boxX + boxWidth,
+        boxY + radius,
+      );
+      ctx.lineTo(boxX + boxWidth, boxY + boxHeight - radius);
+      ctx.quadraticCurveTo(
+        boxX + boxWidth,
+        boxY + boxHeight,
+        boxX + boxWidth - radius,
+        boxY + boxHeight,
+      );
+      ctx.lineTo(boxX + radius, boxY + boxHeight);
+      ctx.quadraticCurveTo(
+        boxX,
+        boxY + boxHeight,
+        boxX,
+        boxY + boxHeight - radius,
+      );
+      ctx.lineTo(boxX, boxY + radius);
+      ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = Math.max(0.35, spatialOpacity(centerX));
+      ctx.fillStyle = labels.color;
+      ctx.fillText(text, centerX, y + height / 2);
       ctx.restore();
     }
   };
@@ -636,6 +651,27 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
         resetFrameCadence();
         requestRender();
       }
+    } else if (message.type === 'hit-test') {
+      for (let index = hitRegions.length - 1; index >= 0; index -= 1) {
+        const region = hitRegions[index];
+        const padding = Math.max(4, Math.min(10, region.height * 0.25));
+        if (
+          message.x >= region.x - padding &&
+          message.x <= region.x + region.width + padding &&
+          message.y >= region.y - padding &&
+          message.y <= region.y + region.height + padding
+        ) {
+          send({
+            type: 'note-selected',
+            selection: {
+              noteIndex: region.noteIndex,
+              trackIndex: region.trackIndex,
+              midiTime: region.midiTime,
+            },
+          });
+          break;
+        }
+      }
     } else if (message.type === 'refresh') {
       adaptiveRatio = 1;
       slowWindows = 0;
@@ -646,6 +682,7 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
     } else if (message.type === 'clear') {
       project = null;
       longNotes = new Uint32Array();
+      hitRegions = [];
       requestRender();
     }
   } catch (error) {

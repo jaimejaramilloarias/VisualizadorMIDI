@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_FIGURE_COLOR,
   SHAPE_IDS,
   cloneDefaultVisualConfiguration,
   createRenderAppearance,
   resolveTrackVisualStyle,
+  resolveTrackVisualStyleAtTime,
   sanitizeVisualConfiguration,
 } from './visualConfiguration';
 
@@ -11,6 +13,16 @@ describe('visualConfiguration', () => {
   it('ofrece únicamente las ocho figuras simples', () => {
     expect(SHAPE_IDS).toHaveLength(8);
     expect(SHAPE_IDS.every((shape) => !shape.endsWith('Double'))).toBe(true);
+  });
+
+  it('usa RGB 255, 213, 0 como color inicial de todas las familias', () => {
+    const configuration = cloneDefaultVisualConfiguration();
+    expect(
+      Object.values(configuration.families).every(
+        (family) => family.color === DEFAULT_FIGURE_COLOR,
+      ),
+    ).toBe(true);
+    expect(DEFAULT_FIGURE_COLOR).toBe('#ffd500');
   });
 
   it('convierte figuras dobles heredadas a su figura simple equivalente', () => {
@@ -108,5 +120,60 @@ describe('visualConfiguration', () => {
     expect(createRenderAppearance([track], configuration).tracks[0].color).toBe(
       '#00ff00',
     );
+  });
+
+  it('aplica cambios de figura y color desde un punto MIDI persistible', () => {
+    const configuration = cloneDefaultVisualConfiguration();
+    configuration.instruments.Flauta = {
+      color: '#112233',
+      shape: 'circle',
+      cues: [
+        { at: 12.5, color: '#abcdef' },
+        { at: 18, shape: 'triangle' },
+      ],
+    };
+    const track = {
+      id: 0,
+      name: 'Flauta',
+      instrument: 'Flauta',
+      family: 'woodwinds' as const,
+      noteCount: 12,
+    };
+
+    expect(resolveTrackVisualStyleAtTime(track, configuration, 12).color).toBe(
+      '#112233',
+    );
+    expect(
+      resolveTrackVisualStyleAtTime(track, configuration, 12.5).color,
+    ).toBe('#abcdef');
+    expect(resolveTrackVisualStyleAtTime(track, configuration, 20)).toMatchObject(
+      {
+        color: '#abcdef',
+        shape: 'triangle',
+      },
+    );
+    expect(createRenderAppearance([track], configuration).trackCues).toHaveLength(
+      1,
+    );
+    expect(createRenderAppearance([track], configuration).trackCues[0]).toHaveLength(
+      2,
+    );
+  });
+
+  it('permite activar etiquetas solo en instrumentos elegidos', () => {
+    const configuration = cloneDefaultVisualConfiguration();
+    configuration.instruments.Flauta = { noteLabelsEnabled: true };
+    const track = {
+      id: 0,
+      name: 'Flauta',
+      instrument: 'Flauta',
+      family: 'woodwinds' as const,
+      noteCount: 12,
+    };
+
+    expect(
+      resolveTrackVisualStyle(track, configuration).noteLabelsEnabled,
+    ).toBe(true);
+    expect(configuration.global.noteLabels.enabled).toBe(false);
   });
 });
