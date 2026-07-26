@@ -20,6 +20,7 @@ import {
   computeRenderScale,
   curveTravelOffset,
   extrapolateMidiTime,
+  lockNoteOnArrivalOffset,
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from '../renderer/renderMath';
@@ -274,17 +275,19 @@ const drawHorizontalScene = (
     const style = getTrackStyle(index);
     if (!style.enabled) return null;
 
-    const linearOffset = (start - time) * pixelsPerSecond;
+    const secondsUntilNoteOn = start - time;
+    const linearOffset = secondsUntilNoteOn * pixelsPerSecond;
+    const travelOffset = curveTravelOffset({
+      offset: linearOffset,
+      canvasWidth: cssWidth,
+      intensity: style.travel.intensity,
+      magnetZone: style.travel.magnetZone,
+      enabled: style.travel.enabled,
+      released: time > end,
+    });
     const x =
       playheadX +
-      curveTravelOffset({
-        offset: linearOffset,
-        canvasWidth: cssWidth,
-        intensity: style.travel.intensity,
-        magnetZone: style.travel.magnetZone,
-        enabled: style.travel.enabled,
-        released: time > end,
-      });
+      lockNoteOnArrivalOffset(travelOffset, secondsUntilNoteOn);
     const velocityScale = Math.max(
       0.22,
       Math.min(2.4, rawVelocity / Math.max(1, appearance.global.velocityBase)),
@@ -468,16 +471,18 @@ const drawHorizontalScene = (
       lanePadding -
       nextPitch * laneHeight -
       layout.height * 0.5;
+    const secondsUntilNextNoteOn = nextStart - time;
+    const targetOffset = curveTravelOffset({
+      offset: (nextStart - time) * pixelsPerSecond,
+      canvasWidth: cssWidth,
+      intensity: nextStyle.travel.intensity,
+      magnetZone: nextStyle.travel.magnetZone,
+      enabled: nextStyle.travel.enabled,
+      released: false,
+    });
     const targetX =
       playheadX +
-      curveTravelOffset({
-        offset: (nextStart - time) * pixelsPerSecond,
-        canvasWidth: cssWidth,
-        intensity: nextStyle.travel.intensity,
-        magnetZone: nextStyle.travel.magnetZone,
-        enabled: nextStyle.travel.enabled,
-        released: false,
-      });
+      lockNoteOnArrivalOffset(targetOffset, secondsUntilNextNoteOn);
     const scale = Math.max(0, 1 - progress);
     if (scale <= 0.02) return;
     const width = Math.max(0.5, layout.width * scale);

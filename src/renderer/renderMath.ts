@@ -125,6 +125,15 @@ export interface CurveTravelInput {
   released: boolean;
 }
 
+export const lockNoteOnArrivalOffset = (
+  offset: number,
+  secondsUntilNoteOn: number,
+): number => {
+  if (secondsUntilNoteOn > 0) return Math.max(0, offset);
+  if (secondsUntilNoteOn < 0) return Math.min(0, offset);
+  return 0;
+};
+
 export const curveTravelOffset = ({
   offset,
   canvasWidth,
@@ -140,7 +149,7 @@ export const curveTravelOffset = ({
   const safeMagnetZone = Math.max(0, Math.min(2, magnetZone));
   const curved =
     offset > 0
-      ? normalized ** (1 + safeMagnetZone * 1.7)
+      ? 1 - (1 - normalized) ** (1 + safeMagnetZone * 2.2)
       : 1 - (1 - normalized) ** (1 + safeMagnetZone * 0.45);
   const safeIntensity = Math.min(2, Math.max(0, intensity));
   let mixed =

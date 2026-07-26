@@ -273,7 +273,7 @@ export function App() {
     useState<VisualConfiguration>(() => cloneDefaultVisualConfiguration());
   const [anchorMidiDraft, setAnchorMidiDraft] = useState<number | null>(null);
   const [inspectorTab, setInspectorTab] =
-    useState<InspectorMenuId>('animation');
+    useState<InspectorMenuId>('style');
   const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
     null,
   );
@@ -1231,11 +1231,117 @@ export function App() {
         </div>
 
         <div className="panel-scroll">
+          {inspectorTab === 'style' && (
+            <section className="inspector-section">
+              <div className="section-heading">
+                <span>
+                  <small>CONTROLES PRINCIPALES</small>
+                  <strong>Voz, figura y color</strong>
+                </span>
+                {selectedTrack && (
+                  <button
+                    className="text-action"
+                    onClick={resetSelectedInstruments}
+                    type="button"
+                  >
+                    Restablecer
+                  </button>
+                )}
+              </div>
+              <label className="select-control">
+                <span>Voz o instrumento</span>
+                <select
+                  disabled={!project}
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    setSelectedTrackName(name);
+                    setSelectedTrackNames(name ? [name] : []);
+                  }}
+                  value={selectedTrackName ?? ''}
+                >
+                  {!project && <option value="">Carga un MIDI</option>}
+                  {project?.tracks.map((track) => (
+                    <option key={track.id} value={track.name}>
+                      {track.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedTrack && selectedResolvedStyle && (
+                <>
+                  <label className="select-control">
+                    <span>Familia</span>
+                    <select
+                      onChange={(event) =>
+                        updateSelectedInstruments({
+                          family: event.target.value,
+                        })
+                      }
+                      value={selectedResolvedStyle.family}
+                    >
+                      {FAMILY_NAMES.map((family) => (
+                        <option key={family} value={family}>
+                          {family}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="select-control">
+                    <span>Figura</span>
+                    <select
+                      onChange={(event) =>
+                        updateSelectedInstruments({
+                          shape: event.target.value as (typeof SHAPE_IDS)[number],
+                        })
+                      }
+                      value={selectedResolvedStyle.shape}
+                    >
+                      {SHAPE_IDS.map((shapeId) => (
+                        <option key={shapeId} value={shapeId}>
+                          {SHAPE_LABELS[shapeId]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="dual-color-control">
+                    <label>
+                      <span>Color principal</span>
+                      <input
+                        aria-label="Color principal"
+                        onChange={(event) =>
+                          updateSelectedInstruments({
+                            color: event.target.value,
+                          })
+                        }
+                        type="color"
+                        value={selectedResolvedStyle.color}
+                      />
+                    </label>
+                    <label>
+                      <span>Color secundario</span>
+                      <input
+                        aria-label="Color secundario"
+                        onChange={(event) =>
+                          updateSelectedInstruments({
+                            secondaryColor: event.target.value,
+                          })
+                        }
+                        type="color"
+                        value={selectedResolvedStyle.secondaryColor}
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
           {(['canvas', 'performance', 'animation', 'style'] as InspectorMenuId[]).includes(
             inspectorTab,
           ) && (
             <>
-              <section className="inspector-section">
+              {inspectorTab !== 'style' && (
+                <section className="inspector-section">
                 <div className="section-heading">
                   <span>
                     <small>{activeMenu.description.toUpperCase()}</small>
@@ -1409,7 +1515,8 @@ export function App() {
                 </div>
                   </>
                 )}
-              </section>
+                </section>
+              )}
 
               <section className="inspector-section">
                 <div className="section-heading">
@@ -1726,105 +1833,17 @@ export function App() {
 
           {inspectorTab === 'style' && (
             <>
-              <section className="inspector-section">
-                <label className="select-control">
-                  <span>Voz o instrumento</span>
-                  <select
-                    disabled={!project}
-                    onChange={(event) => {
-                      const name = event.target.value;
-                      setSelectedTrackName(name);
-                      setSelectedTrackNames(name ? [name] : []);
-                    }}
-                    value={selectedTrackName ?? ''}
-                  >
-                    {!project && <option value="">Carga un MIDI</option>}
-                    {project?.tracks.map((track) => (
-                      <option key={track.id} value={track.name}>
-                        {track.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </section>
               {selectedTrack && selectedResolvedStyle && (
                 <section className="inspector-section">
                   <div className="section-heading">
                     <span>
-                      <small>PERSONALIZACIÓN</small>
+                      <small>OPCIONES AVANZADAS</small>
                       <strong>
                         {selectedTrackNames.length > 1
                           ? `${selectedTrackNames.length} pistas`
                           : selectedTrack.name}
                       </strong>
                     </span>
-                    <button
-                      className="text-action"
-                      onClick={resetSelectedInstruments}
-                      type="button"
-                    >
-                      Restablecer
-                    </button>
-                  </div>
-                  <label className="select-control">
-                    <span>Familia</span>
-                    <select
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          family: event.target.value,
-                        })
-                      }
-                      value={selectedResolvedStyle.family}
-                    >
-                      {FAMILY_NAMES.map((family) => (
-                        <option key={family} value={family}>
-                          {family}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="select-control">
-                    <span>Figura</span>
-                    <select
-                      onChange={(event) =>
-                        updateSelectedInstruments({
-                          shape: event.target.value as (typeof SHAPE_IDS)[number],
-                        })
-                      }
-                      value={selectedResolvedStyle.shape}
-                    >
-                      {SHAPE_IDS.map((shapeId) => (
-                        <option key={shapeId} value={shapeId}>
-                          {SHAPE_LABELS[shapeId]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="dual-color-control">
-                    <label>
-                      <span>Principal</span>
-                      <input
-                        onChange={(event) =>
-                          updateSelectedInstruments({
-                            color: event.target.value,
-                          })
-                        }
-                        type="color"
-                        value={selectedResolvedStyle.color}
-                      />
-                    </label>
-                    <label>
-                      <span>Secundario</span>
-                      <input
-                        onChange={(event) =>
-                          updateSelectedInstruments({
-                            secondaryColor: event.target.value,
-                          })
-                        }
-                        type="color"
-                        value={selectedResolvedStyle.secondaryColor}
-                      />
-                    </label>
                   </div>
                   <label className="switch-row">
                     <span>Extensión dinámica</span>
@@ -2107,7 +2126,7 @@ export function App() {
                     />
                   </label>
                   <label className="switch-row">
-                    <span>Viaje desde NOTE ON</span>
+                    <span>Atracción hacia NOW</span>
                     <input
                       checked={selectedFamilyStyle.travel.enabled}
                       onChange={(event) =>
@@ -2160,7 +2179,7 @@ export function App() {
                   {selectedFamilyStyle.travel.enabled && (
                     <>
                       <RangeControl
-                        label="Intensidad del viaje"
+                        label="Intensidad magnética"
                         max={2}
                         min={0}
                         onChange={(value) =>
@@ -2176,7 +2195,7 @@ export function App() {
                         value={selectedFamilyStyle.travel.intensity}
                       />
                       <RangeControl
-                        label="Zona magnética"
+                        label="Zona de aceleración"
                         max={2}
                         min={0.5}
                         onChange={(value) =>

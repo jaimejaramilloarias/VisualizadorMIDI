@@ -4,6 +4,7 @@ import {
   curveTravelOffset,
   computeRenderScale,
   extrapolateMidiTime,
+  lockNoteOnArrivalOffset,
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from './renderMath';
@@ -114,5 +115,42 @@ describe('curveTravelOffset', () => {
 
     expect(Number.isFinite(result)).toBe(true);
     expect(result).toBeLessThan(0);
+  });
+
+  it('mantiene las notas futuras lejos de NOW durante la aproximación inicial', () => {
+    const curvedOffset = curveTravelOffset({
+      offset: 240,
+      canvasWidth: 1200,
+      intensity: 1,
+      magnetZone: 1,
+      enabled: true,
+      released: false,
+    });
+
+    expect(curvedOffset).toBeGreaterThan(240);
+  });
+
+  it('acelera la llegada magnética al entrar en el tramo cercano a NOW', () => {
+    const offsetAt = (offset: number) =>
+      curveTravelOffset({
+        offset,
+        canvasWidth: 1200,
+        intensity: 1,
+        magnetZone: 1,
+        enabled: true,
+        released: false,
+      });
+    const farTravel = offsetAt(500) - offsetAt(460);
+    const nearTravel = offsetAt(120) - offsetAt(80);
+
+    expect(nearTravel).toBeGreaterThan(farTravel);
+  });
+});
+
+describe('lockNoteOnArrivalOffset', () => {
+  it('impide cruzar NOW antes del note on y fija el impacto exactamente en cero', () => {
+    expect(lockNoteOnArrivalOffset(-12, 0.05)).toBe(0);
+    expect(lockNoteOnArrivalOffset(0.001, 0)).toBe(0);
+    expect(lockNoteOnArrivalOffset(12, -0.05)).toBe(0);
   });
 });

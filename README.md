@@ -18,9 +18,12 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - FPS `Auto`, `60` o `30`; Auto sigue la frecuencia real de la pantalla.
 - Movimiento calculado continuamente en segundos, sin cuantización musical ni
   rejilla temporal.
+- Aproximación magnética: las notas aparecen lentamente en la distancia y
+  aceleran de forma continua al acercarse a NOW.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
-- UI táctil tipo iPad con columnas laterales colapsables.
+- UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
+  son los controles iniciales.
 - Importación y exportación del estado JSON versionado.
 - Catálogo completo de figuras, familias y efectos musicales de V1, excepto las
   escenas y fondos retirados por decisión de producto.

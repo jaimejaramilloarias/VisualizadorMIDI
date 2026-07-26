@@ -16,6 +16,10 @@
   la configuración. Durante reproducción mantiene su bucle independiente.
 - El canvas se limpia con un color sólido; no hay rejilla, marcador vertical ni
   composición de imágenes de fondo.
+- Las notas futuras usan una curva espacial continua: avanzan lentamente desde
+  el extremo visible y aceleran al aproximarse a NOW, sin alterar su tiempo MIDI.
+- El borde de ataque queda bloqueado al lado futuro de NOW hasta el instante
+  exacto de `noteOn`; en ese tiempo su desplazamiento es exactamente cero.
 - `Adaptativa`, `Alta` y `Máxima` tienen presupuestos de 10, 16 y 24 megapíxeles.
   La escala puede bajar de 1 en superficies muy grandes para evitar presión
   excesiva de memoria.
@@ -38,7 +42,7 @@
 
 ## Cobertura
 
-- 25 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 28 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.
