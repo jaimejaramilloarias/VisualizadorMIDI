@@ -61,13 +61,13 @@ export function WaveformEditor({
 
     markers.forEach((marker, index) => {
       const x = (marker.audioTime / Math.max(duration, 0.001)) * width;
-      context.strokeStyle = '#ef9b52';
+      context.strokeStyle = '#ffd500';
       context.lineWidth = 1.5;
       context.beginPath();
       context.moveTo(x, 5);
       context.lineTo(x, height - 5);
       context.stroke();
-      context.fillStyle = '#ef9b52';
+      context.fillStyle = '#ffd500';
       context.beginPath();
       context.arc(x, 8, 4.5, 0, Math.PI * 2);
       context.fill();

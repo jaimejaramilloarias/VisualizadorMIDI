@@ -326,58 +326,107 @@ export const sanitizeVisualConfiguration = (
   if (!incoming || typeof incoming !== 'object') return defaults;
 
   const global = incoming.global;
+  const defaultGlobal = defaults.global;
+  const defaultLabels = defaultGlobal.noteLabels;
   defaults.global = {
-    velocityBase: clamp(global?.velocityBase, 1, 127, 67),
-    colorToneShift: clamp(global?.colorToneShift, -180, 180, 0),
-    opacityEdge: clamp(global?.opacityEdge, 0, 1, 0),
-    opacityCenter: clamp(global?.opacityCenter, 0, 1, 1),
-    heightScale: clamp(global?.heightScale, 0.2, 5, 1.8),
+    velocityBase: clamp(
+      global?.velocityBase,
+      1,
+      127,
+      defaultGlobal.velocityBase,
+    ),
+    colorToneShift: clamp(
+      global?.colorToneShift,
+      -180,
+      180,
+      defaultGlobal.colorToneShift,
+    ),
+    opacityEdge: clamp(
+      global?.opacityEdge,
+      0,
+      1,
+      defaultGlobal.opacityEdge,
+    ),
+    opacityCenter: clamp(
+      global?.opacityCenter,
+      0,
+      1,
+      defaultGlobal.opacityCenter,
+    ),
+    heightScale: clamp(
+      global?.heightScale,
+      0.2,
+      5,
+      defaultGlobal.heightScale,
+    ),
     glowStrength: clamp(
       global?.glowStrength,
       0,
       MAX_EFFECT_STRENGTH,
-      0.1,
+      defaultGlobal.glowStrength,
     ),
     bumpStrength: clamp(
       global?.bumpStrength,
       0,
       MAX_EFFECT_STRENGTH,
-      1.1,
+      defaultGlobal.bumpStrength,
     ),
-    audioOffsetMs: clamp(global?.audioOffsetMs, -60_000, 60_000, 0),
+    audioOffsetMs: clamp(
+      global?.audioOffsetMs,
+      -60_000,
+      60_000,
+      defaultGlobal.audioOffsetMs,
+    ),
     fpsMode: FPS_MODES.includes(global?.fpsMode as FpsMode)
       ? (global?.fpsMode as FpsMode)
-      : 'auto',
-    supersampling: clamp(global?.supersampling, 1, 3, 2.5),
+      : defaultGlobal.fpsMode,
+    supersampling: clamp(
+      global?.supersampling,
+      1,
+      3,
+      defaultGlobal.supersampling,
+    ),
     aspectRatio:
       global?.aspectRatio === '16:9' || global?.aspectRatio === '9:16'
         ? global.aspectRatio
-        : 'responsive',
+        : defaultGlobal.aspectRatio,
     noteLabels: {
       enabled:
         typeof global?.noteLabels?.enabled === 'boolean'
           ? global.noteLabels.enabled
-          : false,
-      color: validColor(global?.noteLabels?.color, '#ffffff'),
-      size: Math.round(clamp(global?.noteLabels?.size, 8, 64, 16)),
+          : defaultLabels.enabled,
+      color: validColor(global?.noteLabels?.color, defaultLabels.color),
+      size: Math.round(
+        clamp(global?.noteLabels?.size, 8, 64, defaultLabels.size),
+      ),
       font:
         typeof global?.noteLabels?.font === 'string'
           ? global.noteLabels.font.slice(0, 80)
-          : 'Arial',
+          : defaultLabels.font,
       backgroundColor: validColor(
         global?.noteLabels?.backgroundColor,
-        '#000000',
+        defaultLabels.backgroundColor,
       ),
       backgroundOpacity: clamp(
         global?.noteLabels?.backgroundOpacity,
         0,
         1,
-        0.72,
+        defaultLabels.backgroundOpacity,
       ),
-      padding: clamp(global?.noteLabels?.padding, 0, 24, 5),
-      borderRadius: clamp(global?.noteLabels?.borderRadius, 0, 24, 5),
+      padding: clamp(
+        global?.noteLabels?.padding,
+        0,
+        24,
+        defaultLabels.padding,
+      ),
+      borderRadius: clamp(
+        global?.noteLabels?.borderRadius,
+        0,
+        24,
+        defaultLabels.borderRadius,
+      ),
     },
-    travel: sanitizeTravel(global?.travel, DEFAULT_TRAVEL),
+    travel: sanitizeTravel(global?.travel, defaultGlobal.travel),
   };
 
   if (incoming.families && typeof incoming.families === 'object') {

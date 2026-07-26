@@ -52,30 +52,72 @@ describe('visualConfiguration', () => {
     expect(result.families['Mi familia'].shape).toBe('hexagon');
   });
 
-  it('fija como iniciales los valores de animación leídos en la aplicación', () => {
+  it('fija de forma exhaustiva los valores leídos en la aplicación como preset inicial', () => {
     const result = cloneDefaultVisualConfiguration();
 
-    expect(result.global).toMatchObject({
+    expect(result.global).toEqual({
       velocityBase: 67,
+      colorToneShift: 0,
       opacityEdge: 0,
       opacityCenter: 1,
       heightScale: 1.8,
       glowStrength: 0.1,
       bumpStrength: 1.1,
+      audioOffsetMs: 0,
+      fpsMode: 'auto',
+      supersampling: 2.5,
+      aspectRatio: 'responsive',
+      noteLabels: {
+        enabled: false,
+        color: '#ffffff',
+        size: 16,
+        font: 'Arial',
+        backgroundColor: '#000000',
+        backgroundOpacity: 0.72,
+        padding: 5,
+        borderRadius: 5,
+      },
       travel: {
         enabled: true,
         intensity: 1,
         magnetZone: 1,
       },
     });
+    expect(result.instruments).toEqual({});
+    expect(result.shapeExtensions).toEqual(
+      Object.fromEntries(SHAPE_IDS.map((shape) => [shape, true])),
+    );
+    expect(result.shapeStretch).toEqual(
+      Object.fromEntries(SHAPE_IDS.map((shape) => [shape, true])),
+    );
     expect(
       Object.values(result.families).every(
         (family) =>
+          family.color === '#ffd500' &&
+          family.secondaryColor === '#ffffff' &&
+          family.heightScale === 1 &&
+          family.glowStrength === 0.1 &&
+          family.bumpStrength === 1.1 &&
+          family.extension &&
+          family.stretch &&
           family.travel.enabled &&
           family.travel.intensity === 1 &&
           family.travel.magnetZone === 1,
       ),
     ).toBe(true);
+  });
+
+  it('completa configuraciones parciales con el preset inicial capturado', () => {
+    const result = sanitizeVisualConfiguration({
+      global: {
+        colorToneShift: 12,
+      } as never,
+    });
+
+    expect(result.global).toEqual({
+      ...cloneDefaultVisualConfiguration().global,
+      colorToneShift: 12,
+    });
   });
 
   it('permite sobreescritura por instrumento sin alterar su familia', () => {
