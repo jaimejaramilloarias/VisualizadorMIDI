@@ -19,6 +19,7 @@ import {
   createSyncTimeline,
   createStateDocument,
   mapAudioToMidiClockWithOffset,
+  moveSyncAnchorOnAudio,
   normalizeAnchors,
   parseStateDocument,
   type SyncAnchor,
@@ -70,6 +71,7 @@ const EMPTY_TRANSPORT: TransportSnapshot = {
   playing: false,
   starting: false,
   hasAudio: false,
+  trimOffset: 0,
 };
 
 const EMPTY_TELEMETRY: RenderTelemetry = {
@@ -640,8 +642,11 @@ export function App() {
       if (loadGeneration !== audioLoadGenerationRef.current) return;
       setWaveformPeaks(transportRef.current.getWaveformPeaks(12_000));
       setAudioFileName(file.name);
+      const trimOffset = transportRef.current.getSnapshot().trimOffset;
       setNotice(
-        `Audio listo (${formatTime(duration)}). El archivo permanece en este dispositivo.`,
+        trimOffset >= 0.01
+          ? `Audio listo (${formatTime(duration)}). Se ignoraron ${trimOffset.toFixed(2)} s de silencio inicial.`
+          : `Audio listo (${formatTime(duration)}). El archivo permanece en este dispositivo.`,
       );
     } catch (error) {
       if (loadGeneration !== audioLoadGenerationRef.current) return;
@@ -1086,16 +1091,14 @@ export function App() {
 
   const updateAnchor = (
     id: string,
-    field: 'audioTime' | 'midiTime',
-    value: number,
+    nextAudioTime: number,
   ) => {
     setSyncAnchors((current) =>
-      normalizeAnchors(
-        current.map((anchor) =>
-          anchor.id === id
-            ? { ...anchor, [field]: Math.max(0, value || 0) }
-            : anchor,
-        ),
+      moveSyncAnchorOnAudio(
+        current,
+        id,
+        nextAudioTime,
+        transport.duration,
       ),
     );
   };
@@ -1404,7 +1407,6 @@ export function App() {
                     landmarks={[]}
                     magnetEnabled={false}
                     markers={syncAnchors}
-                    midiDuration={project?.duration ?? transport.duration}
                     onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
                     onDelete={(id) =>
                       setSyncAnchors((current) =>
@@ -1568,11 +1570,7 @@ export function App() {
                             <input
                               min="0"
                               onChange={(event) =>
-                                updateAnchor(
-                                  anchor.id,
-                                  'audioTime',
-                                  Number(event.target.value),
-                                )
+                                updateAnchor(anchor.id, Number(event.target.value))
                               }
                               step="0.01"
                               type="number"
@@ -1583,13 +1581,7 @@ export function App() {
                             <span>MIDI</span>
                             <input
                               min="0"
-                              onChange={(event) =>
-                                updateAnchor(
-                                  anchor.id,
-                                  'midiTime',
-                                  Number(event.target.value),
-                                )
-                              }
+                              readOnly
                               step="0.01"
                               type="number"
                               value={anchor.midiTime}
@@ -2776,7 +2768,6 @@ export function App() {
                   landmarks={[]}
                   magnetEnabled={false}
                   markers={syncAnchors}
-                  midiDuration={project?.duration ?? transport.duration}
                   onAdd={(audioTime) => addAnchorAtAudio(audioTime)}
                   onDelete={(id) =>
                     setSyncAnchors((current) =>
@@ -2952,11 +2943,7 @@ export function App() {
                           <input
                             min="0"
                             onChange={(event) =>
-                              updateAnchor(
-                                anchor.id,
-                                'audioTime',
-                                Number(event.target.value),
-                              )
+                              updateAnchor(anchor.id, Number(event.target.value))
                             }
                             step="0.01"
                             type="number"
@@ -2967,13 +2954,7 @@ export function App() {
                           <span>MIDI</span>
                           <input
                             min="0"
-                            onChange={(event) =>
-                              updateAnchor(
-                                anchor.id,
-                                'midiTime',
-                                Number(event.target.value),
-                              )
-                            }
+                            readOnly
                             step="0.01"
                             type="number"
                             value={anchor.midiTime}

@@ -163,6 +163,39 @@ export const mapAudioToMidiClockWithOffset = (
 export const hasForwardSyncMapping = (anchors: SyncAnchor[]): boolean =>
   createSyncTimeline(anchors).forward;
 
+export const moveSyncAnchorOnAudio = (
+  anchors: SyncAnchor[],
+  id: string,
+  audioTime: number,
+  audioDuration: number,
+): SyncAnchor[] => {
+  const orderedByPulse = [...anchors].sort(
+    (left, right) =>
+      left.midiTime - right.midiTime || left.audioTime - right.audioTime,
+  );
+  const index = orderedByPulse.findIndex((anchor) => anchor.id === id);
+  if (index < 0) return normalizeAnchors(anchors);
+
+  const minimumGap = 0.001;
+  const previous = orderedByPulse[index - 1];
+  const next = orderedByPulse[index + 1];
+  const lowerBound = previous ? previous.audioTime + minimumGap : 0;
+  const duration = Number.isFinite(audioDuration)
+    ? Math.max(0, audioDuration)
+    : Number.MAX_SAFE_INTEGER;
+  const upperBound = next
+    ? Math.max(lowerBound, next.audioTime - minimumGap)
+    : Math.max(lowerBound, duration);
+  const requested = Number.isFinite(audioTime) ? audioTime : lowerBound;
+  const nextAudioTime = Math.min(upperBound, Math.max(lowerBound, requested));
+
+  return normalizeAnchors(
+    anchors.map((anchor) =>
+      anchor.id === id ? { ...anchor, audioTime: nextAudioTime } : anchor,
+    ),
+  );
+};
+
 export const createStateDocument = ({
   midiFileName,
   audioFileName,

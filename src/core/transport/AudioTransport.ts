@@ -1,9 +1,12 @@
+import { detectInitialSilence } from './audioAnalysis';
+
 export interface TransportSnapshot {
   position: number;
   duration: number;
   playing: boolean;
   starting: boolean;
   hasAudio: boolean;
+  trimOffset: number;
 }
 
 export type TransportListener = (snapshot: TransportSnapshot) => void;
@@ -14,6 +17,7 @@ export class AudioTransport {
   private source: AudioBufferSourceNode | null = null;
   private position = 0;
   private midiDuration = 0;
+  private trimOffset = 0;
   private startedAtContext = 0;
   private startedAtPerformance = 0;
   private playing = false;
@@ -44,6 +48,7 @@ export class AudioTransport {
       playing: this.playing,
       starting: this.starting,
       hasAudio: this.buffer !== null,
+      trimOffset: this.buffer ? this.trimOffset : 0,
     };
   }
 
@@ -63,6 +68,7 @@ export class AudioTransport {
     const loadGeneration = ++this.audioLoadGeneration;
     this.pause();
     this.buffer = null;
+    this.trimOffset = 0;
     this.position = 0;
     this.emit();
 
@@ -72,15 +78,21 @@ export class AudioTransport {
     if (loadGeneration !== this.audioLoadGeneration) {
       throw new DOMException('La carga de audio fue reemplazada.', 'AbortError');
     }
+    const channels = Array.from(
+      { length: decoded.numberOfChannels },
+      (_, channel) => decoded.getChannelData(channel),
+    );
+    this.trimOffset = detectInitialSilence(channels, decoded.sampleRate);
     this.buffer = decoded;
     this.emit();
-    return decoded.duration;
+    return this.getDuration();
   }
 
   unloadAudio(): void {
     this.audioLoadGeneration += 1;
     this.pause();
     this.buffer = null;
+    this.trimOffset = 0;
     this.position = 0;
     this.emit();
   }
@@ -93,12 +105,17 @@ export class AudioTransport {
       { length: this.buffer.numberOfChannels },
       (_, channel) => this.buffer!.getChannelData(channel),
     );
+    const firstFrame = Math.min(
+      this.buffer.length,
+      Math.max(0, Math.floor(this.trimOffset * this.buffer.sampleRate)),
+    );
+    const availableFrames = Math.max(0, this.buffer.length - firstFrame);
     const samplesPerPeak = Math.max(
       1,
-      Math.floor(this.buffer.length / count),
+      Math.floor(availableFrames / count),
     );
     for (let peak = 0; peak < count; peak += 1) {
-      const start = peak * samplesPerPeak;
+      const start = firstFrame + peak * samplesPerPeak;
       const end = Math.min(this.buffer.length, start + samplesPerPeak);
       let minimum = 1;
       let maximum = -1;
@@ -155,7 +172,10 @@ export class AudioTransport {
       try {
         source.start(
           startAt,
-          Math.min(this.position, Math.max(0, this.buffer.duration - 0.001)),
+          Math.min(
+            this.trimOffset + this.position,
+            Math.max(0, this.buffer.duration - 0.001),
+          ),
         );
       } catch (error) {
         source.disconnect();
@@ -223,10 +243,13 @@ export class AudioTransport {
     }
     this.context = null;
     this.buffer = null;
+    this.trimOffset = 0;
   }
 
   private getDuration(): number {
-    return this.buffer?.duration ?? this.midiDuration;
+    return this.buffer
+      ? Math.max(0, this.buffer.duration - this.trimOffset)
+      : this.midiDuration;
   }
 
   private getContext(): AudioContext {

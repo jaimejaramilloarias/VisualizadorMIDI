@@ -19,6 +19,7 @@ class FakeAudioSource {
 
 class FakeAudioContext {
   static instance: FakeAudioContext | null = null;
+  static decodedChannel = new Float32Array(48_000);
 
   currentTime = 0;
   destination = {} as AudioDestinationNode;
@@ -44,7 +45,8 @@ class FakeAudioContext {
       duration: 10,
       length: 48_000,
       numberOfChannels: 1,
-      getChannelData: () => new Float32Array(48_000),
+      sampleRate: 4_800,
+      getChannelData: () => FakeAudioContext.decodedChannel,
     } as unknown as AudioBuffer);
   }
 
@@ -58,6 +60,7 @@ class FakeAudioContext {
 describe('AudioTransport', () => {
   beforeEach(() => {
     FakeAudioContext.instance = null;
+    FakeAudioContext.decodedChannel = new Float32Array(48_000);
     vi.stubGlobal('AudioContext', FakeAudioContext);
   });
 
@@ -112,6 +115,25 @@ describe('AudioTransport', () => {
       playing: true,
       starting: false,
     });
+    await transport.destroy();
+  });
+
+  it('omite el silencio inicial y usa el primer contenido audible como tiempo cero', async () => {
+    FakeAudioContext.decodedChannel.fill(0.2, 2_400);
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+
+    const duration = await transport.loadAudio(file);
+    await transport.play();
+
+    expect(transport.getSnapshot().trimOffset).toBeCloseTo(0.5, 3);
+    expect(duration).toBeCloseTo(9.5, 3);
+    expect(FakeAudioContext.instance!.sources[0].start).toHaveBeenCalledWith(
+      0,
+      0.5,
+    );
     await transport.destroy();
   });
 });

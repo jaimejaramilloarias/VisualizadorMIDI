@@ -25,6 +25,7 @@ import {
   computeRenderScale,
   curveTravelOffset,
   extrapolateMidiTime,
+  familyDepthPriority,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
@@ -364,6 +365,13 @@ const drawHorizontalScene = (
     const layout = computeLayout(index);
     if (layout) layouts.push(layout);
   });
+  layouts.sort(
+    (left, right) =>
+      familyDepthPriority(left.style.family) -
+        familyDepthPriority(right.style.family) ||
+      left.trackIndex - right.trackIndex ||
+      left.noteIndex - right.noteIndex,
+  );
   visibleNotes = layouts.length;
   hitRegions = layouts.map((layout) => ({
     noteIndex: layout.noteIndex,

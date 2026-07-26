@@ -11,7 +11,6 @@ import {
   type AudioLandmark,
 } from './syncEditorMath';
 
-type AnchorField = 'audioTime' | 'midiTime';
 type InteractionMode = 'anchors' | 'pan';
 
 interface WaveformEditorProps {
@@ -20,10 +19,9 @@ interface WaveformEditorProps {
   landmarks: readonly AudioLandmark[];
   magnetEnabled: boolean;
   markers: SyncAnchor[];
-  midiDuration: number;
   onAdd: (audioTime: number) => void;
   onDelete: (id: string) => void;
-  onMove: (id: string, field: AnchorField, value: number) => void;
+  onMove: (id: string, audioTime: number) => void;
   onPan: (deltaSeconds: number) => void;
   onSelect: (id: string | null) => void;
   onZoom: (factor: number, focusTime: number) => void;
@@ -35,14 +33,12 @@ interface WaveformEditorProps {
 }
 
 interface AnchorHandle {
-  field: AnchorField;
   id: string;
   x: number;
   y: number;
 }
 
 interface DragState {
-  field?: AnchorField;
   id?: string;
   pointerStartX: number;
   viewStart: number;
@@ -70,7 +66,6 @@ export function WaveformEditor({
   landmarks,
   magnetEnabled,
   markers,
-  midiDuration,
   onAdd,
   onDelete,
   onMove,
@@ -231,39 +226,37 @@ export function WaveformEditor({
 
     const handles: AnchorHandle[] = [];
     markers.forEach((marker, index) => {
-      const audioX = timeToX(marker.audioTime);
-      const midiX = timeToX(marker.midiTime);
+      const anchorX = timeToX(marker.audioTime);
       const visible =
-        (audioX >= plotLeft - 20 && audioX <= plotLeft + plotWidth + 20) ||
-        (midiX >= plotLeft - 20 && midiX <= plotLeft + plotWidth + 20);
+        anchorX >= plotLeft - 20 && anchorX <= plotLeft + plotWidth + 20;
       if (!visible) return;
       const selected = marker.id === selectedAnchorId;
       context.strokeStyle = selected ? '#ffe55a' : 'rgba(255,213,0,.62)';
       context.lineWidth = selected ? 2.5 : 1.5;
       context.beginPath();
-      context.moveTo(audioX, audioMiddle);
-      context.lineTo(midiX, midiY);
+      context.moveTo(anchorX, audioMiddle);
+      context.lineTo(anchorX, midiY);
       context.stroke();
 
       context.fillStyle = selected ? '#fff3a5' : '#ffd500';
       context.beginPath();
-      context.arc(audioX, audioMiddle, selected ? 8 : 6, 0, Math.PI * 2);
+      context.arc(anchorX, audioMiddle, selected ? 8 : 6, 0, Math.PI * 2);
       context.fill();
       context.beginPath();
-      context.moveTo(midiX, midiY - (selected ? 9 : 7));
-      context.lineTo(midiX + (selected ? 9 : 7), midiY);
-      context.lineTo(midiX, midiY + (selected ? 9 : 7));
-      context.lineTo(midiX - (selected ? 9 : 7), midiY);
+      context.moveTo(anchorX, midiY - (selected ? 9 : 7));
+      context.lineTo(anchorX + (selected ? 9 : 7), midiY);
+      context.lineTo(anchorX, midiY + (selected ? 9 : 7));
+      context.lineTo(anchorX - (selected ? 9 : 7), midiY);
       context.closePath();
       context.fill();
 
       context.fillStyle = '#15120a';
       context.font = '900 8px system-ui';
       context.textAlign = 'center';
-      context.fillText(String(index + 1), audioX, audioMiddle + 3);
+      context.fillText(String(index + 1), anchorX, audioMiddle + 3);
       handles.push(
-        { field: 'audioTime', id: marker.id, x: audioX, y: audioMiddle },
-        { field: 'midiTime', id: marker.id, x: midiX, y: midiY },
+        { id: marker.id, x: anchorX, y: audioMiddle },
+        { id: marker.id, x: anchorX, y: midiY },
       );
     });
     handlesRef.current = handles;
@@ -310,7 +303,6 @@ export function WaveformEditor({
     landmarks,
     magnetEnabled,
     markers,
-    midiDuration,
     peaks,
     playhead,
     resizeRevision,
@@ -359,7 +351,6 @@ export function WaveformEditor({
     if (nearest && nearest.distance <= 18) {
       onSelect(nearest.id);
       dragRef.current = {
-        field: nearest.field,
         id: nearest.id,
         pointerStartX: x,
         type: 'anchor',
@@ -394,19 +385,14 @@ export function WaveformEditor({
       drag.pointerStartX = x;
       return;
     }
-    if (!drag.id || !drag.field) return;
+    if (!drag.id) return;
     let time = timeFromClientX(event.clientX, event.currentTarget);
-    if (drag.field === 'audioTime') {
-      const threshold = Math.min(
-        0.3,
-        (viewDuration / Math.max(1, bounds.width)) * 16,
-      );
-      time = snapToAudioLandmark(time, landmarks, threshold, magnetEnabled);
-      time = Math.min(audioDuration, time);
-    } else {
-      time = Math.min(midiDuration, time);
-    }
-    onMove(drag.id, drag.field, time);
+    const threshold = Math.min(
+      0.3,
+      (viewDuration / Math.max(1, bounds.width)) * 16,
+    );
+    time = snapToAudioLandmark(time, landmarks, threshold, magnetEnabled);
+    onMove(drag.id, Math.min(audioDuration, time));
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -443,7 +429,7 @@ export function WaveformEditor({
 
   return (
     <canvas
-      aria-label="Editor visual de sincronía. Círculos: tiempo de audio. Rombos: tiempo MIDI."
+      aria-label="Editor visual de sincronía. Cada ancla vertical une un tiempo de audio con su tiempo MIDI."
       className={`waveform-editor is-${interactionMode}`}
       onDoubleClick={onDoubleClick}
       onPointerCancel={endDrag}

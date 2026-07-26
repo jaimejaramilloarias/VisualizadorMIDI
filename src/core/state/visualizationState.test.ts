@@ -3,11 +3,12 @@ import {
   DEFAULT_SETTINGS,
   createSyncTimeline,
   createStateDocument,
-  hasForwardSyncMapping,
-  mapAudioToMidi,
-  mapAudioToMidiClock,
-  mapAudioToMidiClockWithOffset,
-  parseStateDocument,
+    hasForwardSyncMapping,
+    mapAudioToMidi,
+    mapAudioToMidiClock,
+    mapAudioToMidiClockWithOffset,
+    moveSyncAnchorOnAudio,
+    parseStateDocument,
 } from './visualizationState';
 
 describe('mapAudioToMidi', () => {
@@ -66,6 +67,52 @@ describe('mapAudioToMidi', () => {
 
     expect(result.midiTime).toBe(4.9);
     expect(result.playbackRate).toBeCloseTo(0.98);
+  });
+
+  it('cambia la velocidad MIDI al reubicar una ancla sobre el audio', () => {
+    const result = mapAudioToMidiClock(10, [
+      { id: 'pulse-1', audioTime: 0, midiTime: 0 },
+      { id: 'pulse-2', audioTime: 20, midiTime: 10 },
+    ]);
+
+    expect(result.midiTime).toBe(5);
+    expect(result.playbackRate).toBe(0.5);
+  });
+
+  it('mueve solo la posición de audio y conserva el pulso MIDI de la ancla', () => {
+    const moved = moveSyncAnchorOnAudio(
+      [
+        { id: 'pulse-1', audioTime: 0, midiTime: 0 },
+        { id: 'pulse-2', audioTime: 10, midiTime: 5 },
+        { id: 'pulse-3', audioTime: 20, midiTime: 10 },
+      ],
+      'pulse-2',
+      12,
+      30,
+    );
+
+    expect(moved[1]).toEqual({
+      id: 'pulse-2',
+      audioTime: 12,
+      midiTime: 5,
+    });
+    expect(mapAudioToMidiClock(6, moved).playbackRate).toBeCloseTo(5 / 12);
+  });
+
+  it('impide que una ancla cruce los pulsos MIDI vecinos', () => {
+    const moved = moveSyncAnchorOnAudio(
+      [
+        { id: 'pulse-1', audioTime: 0, midiTime: 0 },
+        { id: 'pulse-2', audioTime: 10, midiTime: 5 },
+        { id: 'pulse-3', audioTime: 20, midiTime: 10 },
+      ],
+      'pulse-2',
+      25,
+      30,
+    );
+
+    expect(moved[1].audioTime).toBeCloseTo(19.999, 3);
+    expect(hasForwardSyncMapping(moved)).toBe(true);
   });
 
   it('detecta anclas que harían retroceder la visualización', () => {

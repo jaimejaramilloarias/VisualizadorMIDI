@@ -76,6 +76,32 @@ export const resolveTargetFps = (
   return displayFps;
 };
 
+export const familyDepthPriority = (family: string): number => {
+  const normalized = family
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (
+    normalized.includes('percusion') ||
+    normalized.includes('tambor') ||
+    normalized.includes('platill') ||
+    normalized.includes('placa')
+  ) {
+    return 0;
+  }
+  if (
+    normalized.includes('madera') ||
+    normalized.includes('doble') ||
+    normalized.includes('cana') ||
+    normalized.includes('saxof')
+  ) {
+    return 2;
+  }
+  if (normalized.includes('cuerda')) return 3;
+  if (normalized.includes('metal') || normalized.includes('corno')) return 4;
+  return 1;
+};
+
 export interface FrameCadenceInput {
   accumulator: number;
   delta: number;

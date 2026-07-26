@@ -45,10 +45,14 @@
   seguro para que incluso el rango máximo conserve el presupuesto de cuadro.
 - Reproducir y pausar mientras `AudioContext` se reactiva no puede iniciar una
   fuente obsoleta.
+- La detección de silencio inicial recorre el audio por ventanas RMS y solo
+  refina el primer bloque audible.
+- El orden de profundidad por familia se calcula una vez por figura visible y
+  se reutiliza también para la selección táctil de la figura frontal.
 
 ## Cobertura
 
-- 50 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 59 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.

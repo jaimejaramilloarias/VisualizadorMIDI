@@ -7,12 +7,12 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Área | Función existente en V1 | Estado V2 |
 |---|---|---|
 | Archivos | MIDI local | Migrada |
-| Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio |
+| Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio; conserva la detección y omisión del silencio inicial |
 | Archivos | Importar/exportar configuración JSON | Migrada; contrato V2 versionado |
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
 | Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |
-| Sincronía | Tap tempo, waveform y marcadores editables | Editor visual a pantalla completa con zoom, desplazamiento, magnetismo y edición directa |
-| Sincronía | Mapa de tempo MIDI | Migrada |
+| Sincronía | Tap tempo, waveform y marcadores editables | Editor visual a pantalla completa con anclas verticales, zoom, desplazamiento, magnetismo y controles compactos |
+| Sincronía | Mapa de tempo MIDI | Migrada; mover una ancla conserva su pulso y cambia la velocidad MIDI del tramo |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
 | Visual | FPS y supersampling | Rediseñada; Auto sigue la pantalla, con límites de 60/30 y resolución adaptativa |
@@ -28,6 +28,7 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
+| Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente |
 | Efectos | Opacidad extremos/centro | Migrada |
 | Efectos | Glow y bump global/familia | Rediseñada; pulsos breves en Note On, halo independiente y rango ampliado |
 | Efectos | Contorno full/pre/post | Retirada por decisión de producto |
@@ -53,6 +54,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 50 pruebas V2 correctas.
+- `npm run test`: 59 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

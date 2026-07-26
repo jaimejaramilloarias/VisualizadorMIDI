@@ -8,7 +8,8 @@ import {
   computePastExtensionBounds,
   curveTravelOffset,
   computeRenderScale,
-  extrapolateMidiTime,
+    extrapolateMidiTime,
+    familyDepthPriority,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
@@ -52,6 +53,37 @@ describe('computeRenderScale', () => {
         supersampling: 2,
       }),
     ).toBe(2);
+  });
+});
+
+describe('familyDepthPriority', () => {
+  it('ordena las familias desde el fondo hasta el frente solicitado', () => {
+    const families = [
+      'Metales',
+      'Cuerdas frotadas',
+      'Maderas de timbre "redondo"',
+      'Auxiliares',
+      'Percusión menor',
+    ];
+
+    expect(
+      families.sort(
+        (left, right) =>
+          familyDepthPriority(left) - familyDepthPriority(right),
+      ),
+    ).toEqual([
+      'Percusión menor',
+      'Auxiliares',
+      'Maderas de timbre "redondo"',
+      'Cuerdas frotadas',
+      'Metales',
+    ]);
+  });
+
+  it('incluye las subfamilias instrumentales en su plano correcto', () => {
+    expect(familyDepthPriority('Platillos')).toBe(0);
+    expect(familyDepthPriority('Saxofones')).toBe(2);
+    expect(familyDepthPriority('Cornos')).toBe(4);
   });
 });
 

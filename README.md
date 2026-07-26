@@ -31,15 +31,21 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   reproduce/pausa y las flechas saltan ±3 segundos.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - Editor de sincronía a pantalla completa con zoom, desplazamiento, anclas
-  editables por sus extremos de audio/MIDI y magnetismo opcional a ataques.
+  verticales y magnetismo opcional a ataques. Cada ancla conserva su pulso MIDI:
+  moverla sobre el audio recalcula la velocidad MIDI entre pulsos vecinos.
+- Detección automática del primer contenido audible: el silencio inicial se
+  omite en reproducción, forma de onda y reloj sin modificar el archivo local.
+- Navegación, ancla seleccionada, tap tempo y offset reunidos en una franja
+  inferior compacta para maximizar el área de la forma de onda.
 - Offset inicial explícito: negativo hace esperar la animación; positivo la
   adelanta respecto al audio.
 - Colores distintos generados por familia al cargar un MIDI, conservando la
   edición manual y los colores restaurados desde JSON.
+- Superposición determinista por familia: percusión al fondo, seguida de
+  auxiliares, maderas y cuerdas, con metales al frente.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
-- Sincronía se trabaja en un panel horizontal del ancho del canvas y un tercio
-  de su altura, manteniendo visible la animación.
+- Sincronía se trabaja en un espacio visual dedicado a pantalla completa.
 - Selección directa de notas en el canvas para cambiar la figura o el color
   desde el inicio o a partir de ese punto MIDI.
 - Etiquetas activables por voz, con recuadros que se ajustan automáticamente al

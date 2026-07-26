@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { SyncAnchor } from '../core/state/visualizationState';
 import type { TransportSnapshot } from '../core/transport/AudioTransport';
 import { Icon } from './icons';
@@ -14,7 +8,6 @@ import {
 } from './syncEditorMath';
 import { WaveformEditor } from './WaveformEditor';
 
-type AnchorField = 'audioTime' | 'midiTime';
 type InteractionMode = 'anchors' | 'pan';
 
 interface SyncWorkspaceProps {
@@ -29,7 +22,7 @@ interface SyncWorkspaceProps {
   onClearAnchors: () => void;
   onClose: () => void;
   onDeleteAnchor: (id: string) => void;
-  onMoveAnchor: (id: string, field: AnchorField, value: number) => void;
+  onMoveAnchor: (id: string, audioTime: number) => void;
   onOffsetChange: (value: number) => void;
   onRegisterTap: () => void;
   onSeek: (time: number) => void;
@@ -49,120 +42,6 @@ const formatTime = (seconds: number): string => {
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
-
-const OffsetControl = ({
-  offsetMs,
-  onChange,
-}: {
-  offsetMs: number;
-  onChange: (value: number) => void;
-}) => {
-  const description =
-    offsetMs < 0
-      ? `La animación espera ${Math.abs(offsetMs / 1000).toFixed(2)} s después de iniciar el audio.`
-      : offsetMs > 0
-        ? `La animación comienza ${Math.abs(offsetMs / 1000).toFixed(2)} s adelantada respecto al audio.`
-        : 'Audio y animación comienzan juntos.';
-  return (
-    <section className="sync-offset-card">
-      <div>
-        <small>DESFASE INICIAL</small>
-        <strong>Offset de animación</strong>
-        <p>{description}</p>
-      </div>
-      <div className="sync-offset-control">
-        <button
-          aria-label="Reducir offset 10 milisegundos"
-          onClick={() => onChange(clamp(offsetMs - 10, -10_000, 10_000))}
-          type="button"
-        >
-          −
-        </button>
-        <label>
-          <span>{offsetMs > 0 ? '+' : ''}{offsetMs} ms</span>
-          <input
-            aria-label="Offset de animación respecto al audio"
-            max="10000"
-            min="-10000"
-            onChange={(event) => onChange(Number(event.target.value))}
-            step="10"
-            type="range"
-            value={offsetMs}
-          />
-        </label>
-        <button
-          aria-label="Aumentar offset 10 milisegundos"
-          onClick={() => onChange(clamp(offsetMs + 10, -10_000, 10_000))}
-          type="button"
-        >
-          +
-        </button>
-        <button className="sync-offset-reset" onClick={() => onChange(0)} type="button">
-          Volver a 0
-        </button>
-      </div>
-    </section>
-  );
-};
-
-const AnchorSelection = ({
-  anchors,
-  selectedId,
-  setSelectedId,
-  onDelete,
-  onMove,
-}: {
-  anchors: SyncAnchor[];
-  selectedId: string | null;
-  setSelectedId: Dispatch<SetStateAction<string | null>>;
-  onDelete: (id: string) => void;
-  onMove: (id: string, field: AnchorField, value: number) => void;
-}) => {
-  const selected = anchors.find((anchor) => anchor.id === selectedId) ?? null;
-  if (!selected) {
-    return (
-      <div className="sync-selection-empty">
-        Selecciona una ancla para desplazar por separado su punto de audio o su
-        punto MIDI.
-      </div>
-    );
-  }
-  const index = anchors.findIndex((anchor) => anchor.id === selected.id);
-  const nudge = (field: AnchorField, amount: number) => {
-    onMove(selected.id, field, Math.max(0, selected[field] + amount));
-  };
-  return (
-    <section className="sync-selection-card">
-      <span className="sync-selection-number">{index + 1}</span>
-      <div className="sync-selection-copy">
-        <strong>Ancla seleccionada</strong>
-        <small>
-          Audio {formatTime(selected.audioTime)} → MIDI {formatTime(selected.midiTime)}
-        </small>
-      </div>
-      <div className="sync-selection-nudges">
-        <span>Audio</span>
-        <button onClick={() => nudge('audioTime', -0.01)} type="button">−10 ms</button>
-        <button onClick={() => nudge('audioTime', 0.01)} type="button">+10 ms</button>
-        <span>MIDI</span>
-        <button onClick={() => nudge('midiTime', -0.01)} type="button">−10 ms</button>
-        <button onClick={() => nudge('midiTime', 0.01)} type="button">+10 ms</button>
-      </div>
-      <button
-        aria-label={`Eliminar ancla ${index + 1}`}
-        className="sync-delete-anchor"
-        onClick={() => {
-          onDelete(selected.id);
-          setSelectedId(null);
-        }}
-        type="button"
-      >
-        <Icon name="trash" />
-        Eliminar
-      </button>
-    </section>
-  );
-};
 
 export function SyncWorkspace({
   activeMidiTime,
@@ -199,6 +78,17 @@ export function SyncWorkspace({
   );
   const timelineDuration = Math.max(transport.duration, midiDuration, 1);
   const viewport = resolveSyncViewport(timelineDuration, zoom, viewStart);
+  const selectedAnchor =
+    anchors.find((anchor) => anchor.id === selectedAnchorId) ?? null;
+  const selectedIndex = selectedAnchor
+    ? anchors.findIndex((anchor) => anchor.id === selectedAnchor.id)
+    : -1;
+  const offsetDescription =
+    offsetMs < 0
+      ? `La animación espera ${Math.abs(offsetMs / 1000).toFixed(2)} segundos.`
+      : offsetMs > 0
+        ? `La animación comienza ${Math.abs(offsetMs / 1000).toFixed(2)} segundos adelantada.`
+        : 'Audio y animación comienzan juntos.';
 
   useEffect(() => {
     if (viewport.start !== viewStart) setViewStart(viewport.start);
@@ -262,6 +152,18 @@ export function SyncWorkspace({
     );
   };
 
+  const moveSelectedAnchor = (delta: number) => {
+    if (!selectedAnchor) return;
+    onMoveAnchor(
+      selectedAnchor.id,
+      clamp(
+        selectedAnchor.audioTime + delta,
+        0,
+        Math.max(0, transport.duration),
+      ),
+    );
+  };
+
   return (
     <div
       aria-label="Editor visual de sincronía"
@@ -279,7 +181,10 @@ export function SyncWorkspace({
         </div>
         <div className="sync-workspace-sources">
           <span><Icon name="music" />{midiFileName ?? 'Carga un MIDI'}</span>
-          <span><Icon name="audio" />{audioFileName ?? 'Carga audio local'}</span>
+          <span title={transport.trimOffset > 0 ? `${transport.trimOffset.toFixed(3)} s de silencio inicial ignorados` : undefined}>
+            <Icon name="audio" />
+            {audioFileName ?? 'Carga audio local'}
+          </span>
         </div>
         <button className="sync-close" onClick={onClose} type="button">
           Cerrar
@@ -364,8 +269,8 @@ export function SyncWorkspace({
 
       {!forward && (
         <p className="sync-workspace-warning">
-          Algunas anclas hacen retroceder el MIDI. Arrastra los rombos inferiores
-          hasta mantener un recorrido ascendente.
+          El orden de algunos pulsos MIDI se invirtió. Reubica sus anclas sobre
+          el audio hasta recuperar un recorrido ascendente.
         </p>
       )}
 
@@ -376,7 +281,6 @@ export function SyncWorkspace({
           landmarks={landmarks}
           magnetEnabled={magnetEnabled}
           markers={anchors}
-          midiDuration={Math.max(midiDuration, transport.duration)}
           onAdd={(audioTime) => {
             onAddAnchor(audioTime);
             setSelectedAnchorId(null);
@@ -393,28 +297,91 @@ export function SyncWorkspace({
           viewStart={viewport.start}
         />
         <div className="sync-editor-legend">
-          <span><i className="is-audio" />Círculo: audio</span>
-          <span><i className="is-midi" />Rombo: MIDI</span>
-          <span>Arrastra cada extremo de la ancla por separado</span>
-          <span>Doble clic sobre un extremo para eliminar</span>
+          <span><i className="is-audio" />Ancla vertical: posición en el audio</span>
+          <span><i className="is-midi" />Pulso MIDI asociado</span>
+          <span>Arrastra cualquier extremo para reubicar la ancla completa</span>
+          <span>Doble clic para eliminar</span>
         </div>
       </section>
 
-      <div className="sync-workspace-lower">
-        <AnchorSelection
-          anchors={anchors}
-          onDelete={onDeleteAnchor}
-          onMove={onMoveAnchor}
-          selectedId={selectedAnchorId}
-          setSelectedId={setSelectedAnchorId}
-        />
+      <footer className="sync-control-dock">
+        <section className="sync-dock-group sync-navigation-group">
+          <button
+            aria-label="Desplazar vista a la izquierda"
+            onClick={() => panBy(-viewport.duration * 0.8)}
+            type="button"
+          >
+            <Icon name="chevron-left" />
+          </button>
+          <label>
+            <span className="visually-hidden">Desplazamiento horizontal</span>
+            <input
+              disabled={viewport.maximumStart <= 0}
+              max={viewport.maximumStart}
+              min="0"
+              onChange={(event) => setViewStart(Number(event.target.value))}
+              step={Math.max(0.001, viewport.duration / 1000)}
+              type="range"
+              value={viewport.start}
+            />
+          </label>
+          <button
+            aria-label="Desplazar vista a la derecha"
+            onClick={() => panBy(viewport.duration * 0.8)}
+            type="button"
+          >
+            <Icon name="chevron-right" />
+          </button>
+          <span className="sync-view-range">
+            {formatTime(viewport.start)}—{formatTime(viewport.start + viewport.duration)}
+            {transport.trimOffset >= 0.01 && (
+              <small>inicio audible · {transport.trimOffset.toFixed(2)} s omitidos</small>
+            )}
+          </span>
+        </section>
 
-        <section className="sync-tap-card">
-          <div>
-            <small>CAPTURA RÍTMICA</small>
+        <section className="sync-dock-group sync-anchor-group">
+          {selectedAnchor ? (
+            <>
+              <span className="sync-anchor-badge">{selectedIndex + 1}</span>
+              <span className="sync-dock-copy">
+                <strong>Ancla</strong>
+                <small>
+                  Audio {formatTime(selectedAnchor.audioTime)} · pulso MIDI{' '}
+                  {formatTime(selectedAnchor.midiTime)}
+                </small>
+              </span>
+              <button onClick={() => moveSelectedAnchor(-0.01)} type="button">
+                −10 ms
+              </button>
+              <button onClick={() => moveSelectedAnchor(0.01)} type="button">
+                +10 ms
+              </button>
+              <button
+                aria-label={`Eliminar ancla ${selectedIndex + 1}`}
+                className="sync-danger-button"
+                onClick={() => {
+                  onDeleteAnchor(selectedAnchor.id);
+                  setSelectedAnchorId(null);
+                }}
+                type="button"
+              >
+                <Icon name="trash" />
+              </button>
+            </>
+          ) : (
+            <span className="sync-dock-copy">
+              <strong>Ancla</strong>
+              <small>Selecciona una línea para ajustar su posición</small>
+            </span>
+          )}
+        </section>
+
+        <section className="sync-dock-group sync-tap-group">
+          <span className="sync-dock-copy">
             <strong>Tap tempo</strong>
-            <p>Reproduce el audio y pulsa al escuchar cada ataque.</p>
-          </div>
+            <small>Pulsos MIDI sobre el audio</small>
+          </span>
           <button
             className={tapActive ? 'is-active' : ''}
             disabled={!transport.hasAudio || midiDuration <= 0}
@@ -424,15 +391,15 @@ export function SyncWorkspace({
             {tapActive ? 'Finalizar' : 'Iniciar'}
           </button>
           <button
-            className="sync-tap-pulse"
+            className="sync-primary-button"
             disabled={!tapActive}
             onClick={onRegisterTap}
             type="button"
           >
-            Pulso · Espacio
+            Pulso
           </button>
           <button
-            className={clearArmed ? 'sync-clear-anchors is-armed' : 'sync-clear-anchors'}
+            className={`sync-danger-button${clearArmed ? ' is-armed' : ''}`}
             disabled={anchors.length === 0}
             onClick={() => {
               if (!clearArmed) {
@@ -445,36 +412,51 @@ export function SyncWorkspace({
             }}
             type="button"
           >
-            {clearArmed ? 'Confirmar limpieza' : 'Limpiar anclas'}
+            {clearArmed ? 'Confirmar' : 'Limpiar'}
           </button>
         </section>
 
-        <OffsetControl offsetMs={offsetMs} onChange={onOffsetChange} />
-      </div>
-
-      <footer className="sync-navigator">
-        <button onClick={() => panBy(-viewport.duration * 0.8)} type="button">
-          <Icon name="chevron-left" />
-        </button>
-        <label>
-          <span className="visually-hidden">Desplazamiento horizontal</span>
-          <input
-            disabled={viewport.maximumStart <= 0}
-            max={viewport.maximumStart}
-            min="0"
-            onChange={(event) => setViewStart(Number(event.target.value))}
-            step={Math.max(0.001, viewport.duration / 1000)}
-            type="range"
-            value={viewport.start}
-          />
-        </label>
-        <button onClick={() => panBy(viewport.duration * 0.8)} type="button">
-          <Icon name="chevron-right" />
-        </button>
-        <span>
-          Vista {formatTime(viewport.start)} —{' '}
-          {formatTime(viewport.start + viewport.duration)}
-        </span>
+        <section
+          className="sync-dock-group sync-offset-group"
+          title={offsetDescription}
+        >
+          <span className="sync-dock-copy">
+            <strong>Offset</strong>
+            <small>{offsetMs > 0 ? '+' : ''}{offsetMs} ms</small>
+          </span>
+          <button
+            aria-label="Reducir offset 10 milisegundos"
+            onClick={() => onOffsetChange(clamp(offsetMs - 10, -10_000, 10_000))}
+            type="button"
+          >
+            −
+          </button>
+          <label>
+            <span className="visually-hidden">Offset de animación</span>
+            <input
+              max="10000"
+              min="-10000"
+              onChange={(event) => onOffsetChange(Number(event.target.value))}
+              step="10"
+              type="range"
+              value={offsetMs}
+            />
+          </label>
+          <button
+            aria-label="Aumentar offset 10 milisegundos"
+            onClick={() => onOffsetChange(clamp(offsetMs + 10, -10_000, 10_000))}
+            type="button"
+          >
+            +
+          </button>
+          <button
+            aria-label="Restablecer offset a cero"
+            onClick={() => onOffsetChange(0)}
+            type="button"
+          >
+            0
+          </button>
+        </section>
       </footer>
     </div>
   );
