@@ -20,6 +20,10 @@
   el extremo visible y aceleran al aproximarse a NOW, sin alterar su tiempo MIDI.
 - El borde de ataque queda bloqueado al lado futuro de NOW hasta el instante
   exacto de `noteOn`; en ese tiempo su desplazamiento es exactamente cero.
+- Cada nota produce una sola instancia visual. El antiguo duplicado que viajaba
+  después del `noteOn` fue retirado para impedir superposición y acumulación.
+- Durante una nota activa, la extensión mantiene su borde derecho en NOW y
+  desplaza todo crecimiento de ancho hacia PAST.
 - `Adaptativa`, `Alta` y `Máxima` tienen presupuestos de 10, 16 y 24 megapíxeles.
   La escala puede bajar de 1 en superficies muy grandes para evitar presión
   excesiva de memoria.
@@ -42,7 +46,7 @@
 
 ## Cobertura
 
-- 28 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 30 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.

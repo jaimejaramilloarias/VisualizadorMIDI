@@ -127,11 +127,44 @@ export interface CurveTravelInput {
 
 export const lockNoteOnArrivalOffset = (
   offset: number,
-  secondsUntilNoteOn: number,
+  linearOffset: number,
 ): number => {
-  if (secondsUntilNoteOn > 0) return Math.max(0, offset);
-  if (secondsUntilNoteOn < 0) return Math.min(0, offset);
+  if (linearOffset > 0) {
+    return Number.isFinite(offset) && offset > 0 ? offset : linearOffset;
+  }
+  if (linearOffset < 0) {
+    return Number.isFinite(offset) && offset < 0 ? offset : linearOffset;
+  }
   return 0;
+};
+
+export interface PastExtensionBoundsInput {
+  playheadX: number;
+  baseWidth: number;
+  finalWidth: number;
+  progress: number;
+}
+
+export interface HorizontalBounds {
+  x: number;
+  width: number;
+}
+
+export const computePastExtensionBounds = ({
+  playheadX,
+  baseWidth,
+  finalWidth,
+  progress,
+}: PastExtensionBoundsInput): HorizontalBounds => {
+  const safeBaseWidth = Math.max(0.5, baseWidth);
+  const safeFinalWidth = Math.max(safeBaseWidth, finalWidth);
+  const safeProgress = Math.max(0, Math.min(1, progress));
+  const width =
+    safeBaseWidth + safeProgress * (safeFinalWidth - safeBaseWidth);
+  return {
+    x: playheadX - width,
+    width,
+  };
 };
 
 export const curveTravelOffset = ({

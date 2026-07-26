@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   advanceFrameCadence,
+  computePastExtensionBounds,
   curveTravelOffset,
   computeRenderScale,
   extrapolateMidiTime,
@@ -148,9 +149,64 @@ describe('curveTravelOffset', () => {
 });
 
 describe('lockNoteOnArrivalOffset', () => {
-  it('impide cruzar NOW antes del note on y fija el impacto exactamente en cero', () => {
-    expect(lockNoteOnArrivalOffset(-12, 0.05)).toBe(0);
+  it('nunca estaciona una nota futura en NOW y fija el impacto en cero', () => {
+    expect(lockNoteOnArrivalOffset(-12, 5)).toBe(5);
+    expect(lockNoteOnArrivalOffset(Number.NaN, 5)).toBe(5);
     expect(lockNoteOnArrivalOffset(0.001, 0)).toBe(0);
-    expect(lockNoteOnArrivalOffset(12, -0.05)).toBe(0);
+    expect(lockNoteOnArrivalOffset(12, -5)).toBe(-5);
+  });
+
+  it('solo alcanza NOW cuando el tiempo restante al note on es cero', () => {
+    const canvasWidth = 1200;
+    const pixelsPerSecond = 100;
+    const positionAt = (secondsUntilNoteOn: number) => {
+      const linearOffset = secondsUntilNoteOn * pixelsPerSecond;
+      return lockNoteOnArrivalOffset(
+        curveTravelOffset({
+          offset: linearOffset,
+          canvasWidth,
+          intensity: 1,
+          magnetZone: 1,
+          enabled: true,
+          released: false,
+        }),
+        linearOffset,
+      );
+    };
+
+    expect([2, 1, 0.1, 0.001].every((time) => positionAt(time) > 0)).toBe(
+      true,
+    );
+    expect(positionAt(0)).toBe(0);
+    expect(positionAt(-0.001)).toBeLessThan(0);
+  });
+});
+
+describe('computePastExtensionBounds', () => {
+  it('mantiene el borde derecho en NOW y extiende solo hacia PAST', () => {
+    const start = computePastExtensionBounds({
+      playheadX: 400,
+      baseWidth: 12,
+      finalWidth: 120,
+      progress: 0,
+    });
+    const middle = computePastExtensionBounds({
+      playheadX: 400,
+      baseWidth: 12,
+      finalWidth: 120,
+      progress: 0.5,
+    });
+    const end = computePastExtensionBounds({
+      playheadX: 400,
+      baseWidth: 12,
+      finalWidth: 120,
+      progress: 1,
+    });
+
+    expect(start.x + start.width).toBe(400);
+    expect(middle.x + middle.width).toBe(400);
+    expect(end.x + end.width).toBe(400);
+    expect(middle.x).toBeLessThan(start.x);
+    expect(end.x).toBeLessThan(middle.x);
   });
 });

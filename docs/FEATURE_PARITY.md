@@ -26,12 +26,13 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Familias | Color principal/secundario y tono | Migrada |
 | Figuras | Catálogo completo de 16 figuras | Migrada |
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
+| Geometría | Dirección de extensión dinámica | Rediseñada; crece desde NOW exclusivamente hacia PAST |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Efectos | Opacidad extremos/centro | Migrada |
 | Efectos | Glow y bump global/familia | Migrada |
 | Efectos | Contorno full/pre/post | Migrada |
 | Efectos | Líneas de conexión por familia | Migrada |
-| Efectos | Atracción hacia NOW, intensidad y zona de aceleración | Migrada; entrada lenta y aceleración magnética continua |
+| Efectos | Atracción hacia NOW, intensidad y zona de aceleración | Rediseñada; trayectoria única, entrada lenta y aceleración magnética continua |
 | UX | Modal multiselección y asignación por arrastre/Shift | Migrada a selección iPad, Shift/Cmd y drag & drop |
 | UX | Ayuda contextual | Migrada a guía integrada y tooltips |
 | Motor | Render offscreen y ajuste por DPR | Migrada y mejorada con Worker |
@@ -51,6 +52,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 28 pruebas V2 correctas.
+- `npm run test`: 30 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

@@ -17,6 +17,7 @@ import type {
 } from '../renderer/protocol';
 import {
   advanceFrameCadence,
+  computePastExtensionBounds,
   computeRenderScale,
   curveTravelOffset,
   extrapolateMidiTime,
@@ -47,7 +48,6 @@ let clock: RenderClock = {
   playbackRate: 1,
 };
 let longNotes = new Uint32Array();
-let nextNoteIndices = new Uint32Array();
 let lastFrame = performance.now();
 let lastTelemetry = performance.now();
 let frameDurations: number[] = [];
@@ -85,21 +85,13 @@ const lowerBound = (values: Float64Array, target: number): number => {
 const rebuildLongNoteIndex = (): void => {
   if (!project) {
     longNotes = new Uint32Array();
-    nextNoteIndices = new Uint32Array();
     return;
   }
   const indices: number[] = [];
-  nextNoteIndices = new Uint32Array(project.noteCount);
-  nextNoteIndices.fill(0xffffffff);
-  const lastByTrack = new Map<number, number>();
   for (let index = 0; index < project.noteCount; index += 1) {
     if (project.notes.ends[index] - project.notes.starts[index] > 30) {
       indices.push(index);
     }
-    const track = project.notes.tracks[index];
-    const previous = lastByTrack.get(track);
-    if (previous !== undefined) nextNoteIndices[previous] = index;
-    lastByTrack.set(track, index);
   }
   longNotes = Uint32Array.from(indices);
 };
@@ -249,7 +241,6 @@ const drawHorizontalScene = (
   const noteHeight = Math.max(2.2, laneHeight * 1.55 * settings.noteScale);
 
   interface NoteLayout {
-    index: number;
     track: number;
     start: number;
     end: number;
@@ -285,9 +276,8 @@ const drawHorizontalScene = (
       enabled: style.travel.enabled,
       released: time > end,
     });
-    const x =
-      playheadX +
-      lockNoteOnArrivalOffset(travelOffset, secondsUntilNoteOn);
+    const arrivalX =
+      playheadX + lockNoteOnArrivalOffset(travelOffset, linearOffset);
     const velocityScale = Math.max(
       0.22,
       Math.min(2.4, rawVelocity / Math.max(1, appearance.global.velocityBase)),
@@ -313,17 +303,28 @@ const drawHorizontalScene = (
       velocityScale *
       bump;
     const durationWidth = Math.max(height, duration * pixelsPerSecond);
+    let x = arrivalX;
     let width = height;
     if (style.stretch && !style.extension) {
       width = style.shape.endsWith('Double') ? height : durationWidth;
     } else if (style.stretch && style.extension && start <= time) {
       const progress = Math.max(0, Math.min(1, (time - start) / duration));
-      width = height + progress * (durationWidth - height);
+      if (time <= end) {
+        const bounds = computePastExtensionBounds({
+          playheadX,
+          baseWidth: height,
+          finalWidth: durationWidth,
+          progress,
+        });
+        x = bounds.x;
+        width = bounds.width;
+      } else {
+        width = durationWidth;
+      }
     }
     const y = cssHeight - lanePadding - pitch * laneHeight - height * 0.5;
     const centerX = x + width / 2;
     return {
-      index,
       track: project!.notes.tracks[index],
       start,
       end,
@@ -383,16 +384,8 @@ const drawHorizontalScene = (
     }
   });
 
-  const drawLayout = (
-    layout: NoteLayout,
-    alphaScale = 1,
-    override?: { x: number; y: number; width: number; height: number },
-  ): void => {
-    const { start, velocity, style, active } = layout;
-    const x = override?.x ?? layout.x;
-    const y = override?.y ?? layout.y;
-    const width = override?.width ?? layout.width;
-    const height = override?.height ?? layout.height;
+  const drawLayout = (layout: NoteLayout): void => {
+    const { start, velocity, style, active, x, y, width, height } = layout;
     const centerX = x + width / 2;
     const noteOnGlow = noteOnGlowEnvelope(time, start);
     const glow =
@@ -400,7 +393,7 @@ const drawHorizontalScene = (
       (appearance.global.glowStrength + style.glowStrength) *
       (noteOnGlow * 1.8 + (active ? 0.35 : 0));
 
-    ctx.globalAlpha = layout.alpha * alphaScale;
+    ctx.globalAlpha = layout.alpha;
     if (glow > 0.02) {
       ctx.shadowColor = style.color;
       ctx.shadowBlur = Math.min(48, 12 * glow * velocity);
@@ -423,7 +416,7 @@ const drawHorizontalScene = (
       (style.outline.mode === 'post' && start < time);
     if (style.outline.enabled && outlineAllowed && style.outline.opacity > 0) {
       ctx.save();
-      ctx.globalAlpha = style.outline.opacity * alphaScale;
+      ctx.globalAlpha = style.outline.opacity;
       ctx.strokeStyle = style.outline.useShapeColor
         ? style.color
         : style.outline.color;
@@ -440,8 +433,7 @@ const drawHorizontalScene = (
       width >= labels.size * 1.2
     ) {
       ctx.save();
-      ctx.globalAlpha =
-        Math.max(0.35, spatialOpacity(centerX)) * alphaScale;
+      ctx.globalAlpha = Math.max(0.35, spatialOpacity(centerX));
       ctx.fillStyle = labels.color;
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
       ctx.lineWidth = Math.max(1, labels.size * 0.1);
@@ -455,48 +447,6 @@ const drawHorizontalScene = (
   };
 
   layouts.forEach((layout) => drawLayout(layout));
-  layouts.forEach((layout) => {
-    if (!layout.style.travel.enabled) return;
-    const nextIndex = nextNoteIndices[layout.index];
-    if (nextIndex === 0xffffffff) return;
-    const nextStart = project!.notes.starts[nextIndex];
-    const duration = nextStart - layout.start;
-    if (duration <= 0 || time < layout.start || time > nextStart) return;
-    const progress = Math.max(0, Math.min(1, (time - layout.start) / duration));
-    const nextPitch = project!.notes.pitches[nextIndex];
-    const nextStyle = getTrackStyle(nextIndex);
-    if (!nextStyle.enabled) return;
-    const targetY =
-      cssHeight -
-      lanePadding -
-      nextPitch * laneHeight -
-      layout.height * 0.5;
-    const secondsUntilNextNoteOn = nextStart - time;
-    const targetOffset = curveTravelOffset({
-      offset: (nextStart - time) * pixelsPerSecond,
-      canvasWidth: cssWidth,
-      intensity: nextStyle.travel.intensity,
-      magnetZone: nextStyle.travel.magnetZone,
-      enabled: nextStyle.travel.enabled,
-      released: false,
-    });
-    const targetX =
-      playheadX +
-      lockNoteOnArrivalOffset(targetOffset, secondsUntilNextNoteOn);
-    const scale = Math.max(0, 1 - progress);
-    if (scale <= 0.02) return;
-    const width = Math.max(0.5, layout.width * scale);
-    const height = Math.max(0.5, layout.height * scale);
-    drawLayout(layout, scale * 0.72, {
-      x: layout.x + (targetX - layout.x) * progress,
-      y:
-        layout.centerY +
-        (targetY + layout.height / 2 - layout.centerY) * progress -
-        height / 2,
-      width,
-      height,
-    });
-  });
 
   ctx.restore();
 };
@@ -693,7 +643,6 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
     } else if (message.type === 'clear') {
       project = null;
       longNotes = new Uint32Array();
-      nextNoteIndices = new Uint32Array();
       requestRender();
     }
   } catch (error) {

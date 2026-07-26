@@ -19,7 +19,9 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Movimiento calculado continuamente en segundos, sin cuantización musical ni
   rejilla temporal.
 - Aproximación magnética: las notas aparecen lentamente en la distancia y
-  aceleran de forma continua al acercarse a NOW.
+  aceleran de forma continua al acercarse a NOW. Cada nota tiene una sola figura
+  en pantalla: no se generan copias ni estelas que puedan acumularse allí.
+- La extensión dinámica nace en NOW y crece únicamente hacia PAST.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
