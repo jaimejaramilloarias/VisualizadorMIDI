@@ -302,6 +302,7 @@ export function App() {
   const audioLoadGenerationRef = useRef(0);
   const preserveNextMidiPaletteRef = useRef(false);
   const busyGenerationRef = useRef(0);
+  const fileDragDepthRef = useRef(0);
   const lastClockRef = useRef({
     sentAt: 0,
     midiTime: -1,
@@ -348,6 +349,19 @@ export function App() {
     'Carga un MIDI para comenzar. El audio es opcional.',
   );
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    const clearFileDragState = () => {
+      fileDragDepthRef.current = 0;
+      setDragging(false);
+    };
+    window.addEventListener('drop', clearFileDragState, true);
+    window.addEventListener('dragend', clearFileDragState, true);
+    return () => {
+      window.removeEventListener('drop', clearFileDragState, true);
+      window.removeEventListener('dragend', clearFileDragState, true);
+    };
+  }, []);
 
   const clearAnchorPreview = useCallback(() => {
     anchorPreviewRef.current = null;
@@ -714,6 +728,7 @@ export function App() {
 
   const onDrop = (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
+    fileDragDepthRef.current = 0;
     setDragging(false);
     const files = Array.from(event.dataTransfer.files);
     if (files.length > 0) loadDroppedFiles(files);
@@ -1228,10 +1243,24 @@ export function App() {
         ) {
           return;
         }
+        if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
+        fileDragDepthRef.current += 1;
         setDragging(true);
       }}
-      onDragOver={(event) => event.preventDefault()}
+      onDragLeave={(event) => {
+        if (!event.dataTransfer.types.includes('Files')) return;
+        fileDragDepthRef.current = Math.max(
+          0,
+          fileDragDepthRef.current - 1,
+        );
+        if (fileDragDepthRef.current === 0) setDragging(false);
+      }}
+      onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes('Files')) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
       onDrop={onDrop}
     >
       <input
@@ -1678,12 +1707,7 @@ export function App() {
             </div>
           )}
           {dragging && (
-            <div
-              className="drop-overlay"
-              onDragLeave={(event) => {
-                if (event.currentTarget === event.target) setDragging(false);
-              }}
-            >
+            <div className="drop-overlay">
               <Icon name="download" />
               <strong>Suelta el archivo aquí</strong>
               <span>

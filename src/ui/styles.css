@@ -755,6 +755,7 @@ input:focus-visible {
   border-radius: 21px;
   background: rgba(11, 14, 17, 0.9);
   backdrop-filter: blur(14px);
+  pointer-events: none;
 }
 
 .drop-overlay svg {
