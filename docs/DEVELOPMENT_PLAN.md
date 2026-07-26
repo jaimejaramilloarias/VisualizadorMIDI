@@ -67,6 +67,8 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - Transporte persistente bajo el lienzo.
 - Menús independientes para canvas, rendimiento, pistas, estilo, animación y
   sincronía.
+- El menú Voces ofrece un selector de figura en cada pista para cambios rápidos;
+  el catálogo se limita a ocho figuras simples.
 - El inspector abre en Estilo y presenta primero voz o instrumento, figura y
   colores; los ajustes globales y avanzados permanecen debajo.
 - Respeto de `prefers-reduced-motion`, áreas seguras y navegación por teclado.

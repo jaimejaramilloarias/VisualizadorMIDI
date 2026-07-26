@@ -63,6 +63,16 @@ describe('mapAudioToMidi', () => {
 });
 
 describe('estado JSON', () => {
+  it('usa los valores actuales de escena como predeterminados', () => {
+    expect(DEFAULT_SETTINGS).toEqual({
+      secondsVisible: 8,
+      glow: 0.8,
+      noteScale: 1,
+      quality: 'auto',
+      background: '#000000',
+    });
+  });
+
   it('no serializa el contenido del MIDI ni del audio', () => {
     const document = createStateDocument({
       midiFileName: 'obra.mid',
@@ -105,7 +115,7 @@ describe('estado JSON', () => {
       enabled: false,
     });
     expect(parsed.visualConfiguration.families['Custom 1'].shape).toBe(
-      'diamondDouble',
+      'diamond',
     );
   });
 

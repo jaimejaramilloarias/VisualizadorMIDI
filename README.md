@@ -18,6 +18,8 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - FPS `Auto`, `60` o `30`; Auto sigue la frecuencia real de la pantalla.
 - Movimiento calculado continuamente en segundos, sin cuantización musical ni
   rejilla temporal.
+- NOW centrado horizontalmente, con la misma ventana temporal hacia PAST y
+  hacia el futuro.
 - Aproximación magnética: las notas aparecen lentamente en la distancia y
   aceleran de forma continua al acercarse a NOW. Cada nota tiene una sola figura
   en pantalla: no se generan copias ni estelas que puedan acumularse allí.
@@ -27,8 +29,8 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
 - Importación y exportación del estado JSON versionado.
-- Catálogo completo de figuras, familias y efectos musicales de V1, excepto las
-  escenas y fondos retirados por decisión de producto.
+- Catálogo de ocho figuras simples, familias y efectos musicales de V1; las
+  figuras dobles, escenas y fondos fueron retirados por decisión de producto.
 
 ## Preparación
 

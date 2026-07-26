@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   advanceFrameCadence,
+  computeHorizontalViewport,
   computePastExtensionBounds,
   curveTravelOffset,
   computeRenderScale,
@@ -9,6 +10,17 @@ import {
   noteOnGlowEnvelope,
   resolveTargetFps,
 } from './renderMath';
+
+describe('computeHorizontalViewport', () => {
+  it('centra NOW y reparte la ventana temporal por mitades exactas', () => {
+    expect(computeHorizontalViewport(1200, 8)).toEqual({
+      playheadX: 600,
+      pastSeconds: 4,
+      futureSeconds: 4,
+      pixelsPerSecond: 150,
+    });
+  });
+});
 
 describe('computeRenderScale', () => {
   it('respeta el presupuesto de píxeles incluso en un canvas 8K', () => {

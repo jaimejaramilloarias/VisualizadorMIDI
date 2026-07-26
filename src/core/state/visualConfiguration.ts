@@ -2,21 +2,13 @@ import type { FamilyId, MidiTrackInfo } from '../midi/types';
 
 export const SHAPE_IDS = [
   'circle',
-  'circleDouble',
   'square',
-  'squareDouble',
   'roundedSquare',
-  'roundedSquareDouble',
   'diamond',
-  'diamondDouble',
   'hexagon',
-  'hexagonDouble',
   'fourPointStar',
-  'fourPointStarDouble',
   'sixPointStar',
-  'sixPointStarDouble',
   'triangle',
-  'triangleDouble',
 ] as const;
 
 export type ShapeId = (typeof SHAPE_IDS)[number];
@@ -121,21 +113,29 @@ export interface RenderAppearance {
 
 export const SHAPE_LABELS: Record<ShapeId, string> = {
   circle: 'Círculo clásico',
-  circleDouble: 'Círculo doble',
   square: 'Cuadrado sólido',
-  squareDouble: 'Cuadrado doble',
   roundedSquare: 'Cuadrado redondeado',
-  roundedSquareDouble: 'Cuadrado redondeado doble',
   diamond: 'Diamante facetado',
-  diamondDouble: 'Diamante doble',
   hexagon: 'Hexágono',
-  hexagonDouble: 'Hexágono doble',
   fourPointStar: 'Estrella de 4 puntas',
-  fourPointStarDouble: 'Estrella de 4 puntas doble',
   sixPointStar: 'Estrella de 6 puntas',
-  sixPointStarDouble: 'Estrella de 6 puntas doble',
   triangle: 'Triángulo',
-  triangleDouble: 'Triángulo doble',
+};
+
+const LEGACY_DOUBLE_SHAPES: Record<string, ShapeId> = {
+  circleDouble: 'circle',
+  squareDouble: 'square',
+  roundedSquareDouble: 'roundedSquare',
+  diamondDouble: 'diamond',
+  hexagonDouble: 'hexagon',
+  fourPointStarDouble: 'fourPointStar',
+  sixPointStarDouble: 'sixPointStar',
+  triangleDouble: 'triangle',
+};
+
+export const coerceShapeId = (value: unknown): ShapeId | null => {
+  if (SHAPE_IDS.includes(value as ShapeId)) return value as ShapeId;
+  return typeof value === 'string' ? (LEGACY_DOUBLE_SHAPES[value] ?? null) : null;
 };
 
 export const FAMILY_NAMES = [
@@ -203,20 +203,20 @@ export const DEFAULT_FAMILY_STYLES: Record<string, FamilyVisualStyle> = {
   'Dobles cañas': style('sixPointStar', '#c23afd'),
   Saxofones: style('fourPointStar', '#ce8767'),
   Metales: style('roundedSquare', '#edd113'),
-  Cornos: style('roundedSquareDouble', '#edbe13'),
+  Cornos: style('roundedSquare', '#edbe13'),
   'Percusión menor': style('square', '#a78269'),
   Tambores: style('circle', '#8f9aa0'),
-  Platillos: style('circleDouble', '#c4ccd0'),
-  Placas: style('diamondDouble', '#ed6b62'),
-  Auxiliares: style('roundedSquareDouble', '#347875'),
+  Platillos: style('circle', '#c4ccd0'),
+  Placas: style('diamond', '#ed6b62'),
+  Auxiliares: style('roundedSquare', '#347875'),
   'Cuerdas frotadas': style('diamond', '#41e342'),
   'Cuerdas pulsadas': style('triangle', '#1abeb4'),
-  Voces: style('squareDouble', '#bebebe'),
+  Voces: style('square', '#bebebe'),
   'Custom 1': style('square', '#d52b2b'),
   'Custom 2': style('circle', '#e99c53'),
   'Custom 3': style('hexagon', '#77b8dd'),
   'Custom 4': style('fourPointStar', '#b991e6'),
-  'Custom 5': style('triangleDouble', '#72d1c4'),
+  'Custom 5': style('triangle', '#72d1c4'),
 };
 
 export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
@@ -336,9 +336,7 @@ const sanitizeFamilyStyle = (
     incoming?.secondaryColor,
     fallback.secondaryColor,
   ),
-  shape: SHAPE_IDS.includes(incoming?.shape as ShapeId)
-    ? (incoming?.shape as ShapeId)
-    : fallback.shape,
+  shape: coerceShapeId(incoming?.shape) ?? fallback.shape,
   heightScale: clamp(incoming?.heightScale, 0.2, 5, fallback.heightScale),
   glowStrength: clamp(incoming?.glowStrength, 0, 3, fallback.glowStrength),
   bumpStrength: clamp(incoming?.bumpStrength, 0, 3, fallback.bumpStrength),
@@ -412,6 +410,7 @@ export const sanitizeVisualConfiguration = (
     Object.entries(incoming.instruments).forEach(([name, value]) => {
       if (!name || !value || typeof value !== 'object') return;
       const item = value as InstrumentVisualStyle;
+      const shape = coerceShapeId(item.shape);
       defaults.instruments[name] = {
         ...(typeof item.enabled === 'boolean'
           ? { enabled: item.enabled }
@@ -423,9 +422,7 @@ export const sanitizeVisualConfiguration = (
         ...(typeof item.secondaryColor === 'string'
           ? { secondaryColor: validColor(item.secondaryColor, '#ffffff') }
           : {}),
-        ...(SHAPE_IDS.includes(item.shape as ShapeId)
-          ? { shape: item.shape as ShapeId }
-          : {}),
+        ...(shape ? { shape } : {}),
         ...(typeof item.heightScale === 'number'
           ? { heightScale: clamp(item.heightScale, 0.2, 5, 1) }
           : {}),
@@ -459,11 +456,31 @@ export const sanitizeVisualConfiguration = (
       const value = incoming.shapeExtensions?.[shapeId];
       if (typeof value === 'boolean') defaults.shapeExtensions[shapeId] = value;
     });
+    Object.entries(incoming.shapeExtensions).forEach(([shapeId, value]) => {
+      const shape = LEGACY_DOUBLE_SHAPES[shapeId];
+      if (
+        shape &&
+        typeof value === 'boolean' &&
+        typeof incoming.shapeExtensions?.[shape] !== 'boolean'
+      ) {
+        defaults.shapeExtensions[shape] = value;
+      }
+    });
   }
   if (incoming.shapeStretch && typeof incoming.shapeStretch === 'object') {
     SHAPE_IDS.forEach((shapeId) => {
       const value = incoming.shapeStretch?.[shapeId];
       if (typeof value === 'boolean') defaults.shapeStretch[shapeId] = value;
+    });
+    Object.entries(incoming.shapeStretch).forEach(([shapeId, value]) => {
+      const shape = LEGACY_DOUBLE_SHAPES[shapeId];
+      if (
+        shape &&
+        typeof value === 'boolean' &&
+        typeof incoming.shapeStretch?.[shape] !== 'boolean'
+      ) {
+        defaults.shapeStretch[shape] = value;
+      }
     });
   }
 
@@ -655,11 +672,9 @@ export const migrateV1VisualConfiguration = (
   if (value.shapeExtensions && typeof value.shapeExtensions === 'object') {
     Object.entries(value.shapeExtensions as Record<string, unknown>).forEach(
       ([shapeId, enabled]) => {
-        if (
-          SHAPE_IDS.includes(shapeId as ShapeId) &&
-          typeof enabled === 'boolean'
-        ) {
-          migrated.shapeExtensions[shapeId as ShapeId] = enabled;
+        const shape = coerceShapeId(shapeId);
+        if (shape && typeof enabled === 'boolean') {
+          migrated.shapeExtensions[shape] = enabled;
         }
       },
     );
@@ -667,11 +682,9 @@ export const migrateV1VisualConfiguration = (
   if (value.shapeStretch && typeof value.shapeStretch === 'object') {
     Object.entries(value.shapeStretch as Record<string, unknown>).forEach(
       ([shapeId, enabled]) => {
-        if (
-          SHAPE_IDS.includes(shapeId as ShapeId) &&
-          typeof enabled === 'boolean'
-        ) {
-          migrated.shapeStretch[shapeId as ShapeId] = enabled;
+        const shape = coerceShapeId(shapeId);
+        if (shape && typeof enabled === 'boolean') {
+          migrated.shapeStretch[shape] = enabled;
         }
       },
     );

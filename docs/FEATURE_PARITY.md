@@ -24,9 +24,9 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Instrumentos | Color y figura por instrumento | Migrada |
 | Familias | Familias orquestales y cinco familias custom | Migrada |
 | Familias | Color principal/secundario y tono | Migrada |
-| Figuras | Catálogo completo de 16 figuras | Migrada |
+| Figuras | Catálogo de figuras | Rediseñada; ocho figuras simples, sin variantes dobles |
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
-| Geometría | Dirección de extensión dinámica | Rediseñada; crece desde NOW exclusivamente hacia PAST |
+| Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Efectos | Opacidad extremos/centro | Migrada |
 | Efectos | Glow y bump global/familia | Migrada |
@@ -52,6 +52,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 30 pruebas V2 correctas.
+- `npm run test`: 33 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

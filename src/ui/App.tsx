@@ -1821,6 +1821,29 @@ export function App() {
                                 </small>
                               </span>
                             </button>
+                            <label className="track-shape-control">
+                              <span className="visually-hidden">
+                                Figura de {track.name}
+                              </span>
+                              <select
+                                aria-label={`Figura de ${track.name}`}
+                                onChange={(event) =>
+                                  updateInstrument(track.name, {
+                                    shape: event.target
+                                      .value as (typeof SHAPE_IDS)[number],
+                                  })
+                                }
+                                onClick={(event) => event.stopPropagation()}
+                                title={`Figura de ${track.name}`}
+                                value={trackStyle.shape}
+                              >
+                                {SHAPE_IDS.map((shapeId) => (
+                                  <option key={shapeId} value={shapeId}>
+                                    {SHAPE_LABELS[shapeId]}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                           </div>
                         );
                       })}

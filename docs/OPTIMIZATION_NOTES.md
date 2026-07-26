@@ -16,6 +16,8 @@
   la configuración. Durante reproducción mantiene su bucle independiente.
 - El canvas se limpia con un color sólido; no hay rejilla, marcador vertical ni
   composición de imágenes de fondo.
+- NOW ocupa el centro horizontal; PAST y futuro reciben cada uno la mitad de la
+  ventana visible.
 - Las notas futuras usan una curva espacial continua: avanzan lentamente desde
   el extremo visible y aceleran al aproximarse a NOW, sin alterar su tiempo MIDI.
 - El borde de ataque queda bloqueado al lado futuro de NOW hasta el instante
@@ -46,7 +48,7 @@
 
 ## Cobertura
 
-- 30 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
+- 33 pruebas V2 para MIDI, configuración, sincronía, transporte y matemáticas de
   render.
 - 51 archivos de regresión de V1 para conservar todas las funciones migradas.
 - Compilación TypeScript y bundle de producción como condición de entrega.

@@ -13,6 +13,27 @@ const RATIO_CAPS: Record<QualityPreset, number> = {
   ultra: 4,
 };
 
+export interface HorizontalViewport {
+  playheadX: number;
+  pastSeconds: number;
+  futureSeconds: number;
+  pixelsPerSecond: number;
+}
+
+export const computeHorizontalViewport = (
+  canvasWidth: number,
+  secondsVisible: number,
+): HorizontalViewport => {
+  const safeWidth = Math.max(1, canvasWidth);
+  const safeSeconds = Math.max(0.001, secondsVisible);
+  return {
+    playheadX: safeWidth / 2,
+    pastSeconds: safeSeconds / 2,
+    futureSeconds: safeSeconds / 2,
+    pixelsPerSecond: safeWidth / safeSeconds,
+  };
+};
+
 export interface RenderScaleInput {
   cssWidth: number;
   cssHeight: number;

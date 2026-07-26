@@ -8,13 +8,12 @@ import {
 } from './visualConfiguration';
 
 describe('visualConfiguration', () => {
-  it('conserva las 16 figuras del prototipo original', () => {
-    expect(SHAPE_IDS).toHaveLength(16);
-    expect(SHAPE_IDS).toContain('sixPointStarDouble');
-    expect(SHAPE_IDS).toContain('roundedSquareDouble');
+  it('ofrece únicamente las ocho figuras simples', () => {
+    expect(SHAPE_IDS).toHaveLength(8);
+    expect(SHAPE_IDS.every((shape) => !shape.endsWith('Double'))).toBe(true);
   });
 
-  it('sanea configuraciones heredadas sin perder familias personalizadas', () => {
+  it('convierte figuras dobles heredadas a su figura simple equivalente', () => {
     const result = sanitizeVisualConfiguration({
       global: {
         ...cloneDefaultVisualConfiguration().global,
@@ -25,7 +24,7 @@ describe('visualConfiguration', () => {
         'Mi familia': {
           ...cloneDefaultVisualConfiguration().families['Custom 1'],
           color: '#ABCDEF',
-          shape: 'hexagonDouble',
+          shape: 'hexagonDouble' as never,
         },
       },
       instruments: {},
@@ -34,7 +33,33 @@ describe('visualConfiguration', () => {
     expect(result.global.supersampling).toBe(3);
     expect(result.global.fpsMode).toBe('auto');
     expect(result.families['Mi familia'].color).toBe('#abcdef');
-    expect(result.families['Mi familia'].shape).toBe('hexagonDouble');
+    expect(result.families['Mi familia'].shape).toBe('hexagon');
+  });
+
+  it('fija como iniciales los valores de animación leídos en la aplicación', () => {
+    const result = cloneDefaultVisualConfiguration();
+
+    expect(result.global).toMatchObject({
+      velocityBase: 67,
+      opacityEdge: 0,
+      opacityCenter: 1,
+      heightScale: 1.8,
+      glowStrength: 0.1,
+      bumpStrength: 1.1,
+      travel: {
+        enabled: true,
+        intensity: 1,
+        magnetZone: 1,
+      },
+    });
+    expect(
+      Object.values(result.families).every(
+        (family) =>
+          family.travel.enabled &&
+          family.travel.intensity === 1 &&
+          family.travel.magnetZone === 1,
+      ),
+    ).toBe(true);
   });
 
   it('permite sobreescritura por instrumento sin alterar su familia', () => {

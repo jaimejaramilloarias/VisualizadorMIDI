@@ -17,6 +17,7 @@ import type {
 } from '../renderer/protocol';
 import {
   advanceFrameCadence,
+  computeHorizontalViewport,
   computePastExtensionBounds,
   computeRenderScale,
   curveTravelOffset,
@@ -230,12 +231,14 @@ const drawHorizontalScene = (
   time: number,
 ): void => {
   if (!project) return;
-  const playheadX = cssWidth * 0.38;
-  const past = settings.secondsVisible * 0.38;
-  const future = settings.secondsVisible - past;
+  const {
+    playheadX,
+    pastSeconds: past,
+    futureSeconds: future,
+    pixelsPerSecond,
+  } = computeHorizontalViewport(cssWidth, settings.secondsVisible);
   const visibleStart = time - past;
   const visibleEnd = time + future;
-  const pixelsPerSecond = cssWidth / settings.secondsVisible;
   const lanePadding = Math.max(26, cssHeight * 0.075);
   const laneHeight = (cssHeight - lanePadding * 2) / 128;
   const noteHeight = Math.max(2.2, laneHeight * 1.55 * settings.noteScale);
@@ -306,7 +309,7 @@ const drawHorizontalScene = (
     let x = arrivalX;
     let width = height;
     if (style.stretch && !style.extension) {
-      width = style.shape.endsWith('Double') ? height : durationWidth;
+      width = durationWidth;
     } else if (style.stretch && style.extension && start <= time) {
       const progress = Math.max(0, Math.min(1, (time - start) / duration));
       if (time <= end) {

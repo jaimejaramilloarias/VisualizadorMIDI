@@ -2,19 +2,6 @@ import type { ShapeId } from '../core/state/visualConfiguration';
 
 type Context = OffscreenCanvasRenderingContext2D;
 
-const scaledFrame = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  scale: number,
-) => ({
-  x: x + (width * (1 - scale)) / 2,
-  y: y + (height * (1 - scale)) / 2,
-  width: width * scale,
-  height: height * scale,
-});
-
 const traceShape = (
   context: Context,
   shape: ShapeId,
@@ -25,10 +12,9 @@ const traceShape = (
 ): void => {
   const centerX = x + width / 2;
   const centerY = y + height / 2;
-  const singleShape = shape.replace(/Double$/, '') as ShapeId;
 
   context.beginPath();
-  if (singleShape === 'circle') {
+  if (shape === 'circle') {
     context.ellipse(
       centerX,
       centerY,
@@ -38,9 +24,9 @@ const traceShape = (
       0,
       Math.PI * 2,
     );
-  } else if (singleShape === 'square') {
+  } else if (shape === 'square') {
     context.rect(x, y, width, height);
-  } else if (singleShape === 'roundedSquare') {
+  } else if (shape === 'roundedSquare') {
     context.roundRect(
       x,
       y,
@@ -48,13 +34,13 @@ const traceShape = (
       height,
       Math.min(width, height) * 0.25,
     );
-  } else if (singleShape === 'diamond') {
+  } else if (shape === 'diamond') {
     context.moveTo(centerX, y);
     context.lineTo(x + width, centerY);
     context.lineTo(centerX, y + height);
     context.lineTo(x, centerY);
     context.closePath();
-  } else if (singleShape === 'hexagon') {
+  } else if (shape === 'hexagon') {
     context.moveTo(x + width * 0.25, y);
     context.lineTo(x + width * 0.75, y);
     context.lineTo(x + width, centerY);
@@ -62,7 +48,7 @@ const traceShape = (
     context.lineTo(x + width * 0.25, y + height);
     context.lineTo(x, centerY);
     context.closePath();
-  } else if (singleShape === 'fourPointStar') {
+  } else if (shape === 'fourPointStar') {
     context.moveTo(centerX, y);
     context.lineTo(x + width * 0.62, y + height * 0.38);
     context.lineTo(x + width, centerY);
@@ -72,7 +58,7 @@ const traceShape = (
     context.lineTo(x, centerY);
     context.lineTo(x + width * 0.38, y + height * 0.38);
     context.closePath();
-  } else if (singleShape === 'sixPointStar') {
+  } else if (shape === 'sixPointStar') {
     for (let point = 0; point < 12; point += 1) {
       const angle = -Math.PI / 2 + (point * Math.PI) / 6;
       const radius =
@@ -99,30 +85,11 @@ export const drawNoteShape = (
   width: number,
   height: number,
   primaryColor: string,
-  secondaryColor: string,
+  _secondaryColor: string,
 ): void => {
-  const isDouble = shape.endsWith('Double');
-  const layers = isDouble
-    ? [
-        { scale: 1, color: primaryColor },
-        { scale: 0.72, color: secondaryColor },
-        { scale: 0.414, color: primaryColor },
-      ]
-    : [{ scale: 1, color: primaryColor }];
-
-  layers.forEach((layer) => {
-    const frame = scaledFrame(x, y, width, height, layer.scale);
-    traceShape(
-      context,
-      shape,
-      frame.x,
-      frame.y,
-      frame.width,
-      frame.height,
-    );
-    context.fillStyle = layer.color;
-    context.fill();
-  });
+  traceShape(context, shape, x, y, width, height);
+  context.fillStyle = primaryColor;
+  context.fill();
 };
 
 export const strokeNoteShape = (
