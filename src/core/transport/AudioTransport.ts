@@ -14,11 +14,11 @@ export type TransportListener = (snapshot: TransportSnapshot) => void;
 export class AudioTransport {
   private context: AudioContext | null = null;
   private buffer: AudioBuffer | null = null;
-  private source: AudioBufferSourceNode | null = null;
+  private media: HTMLAudioElement | null = null;
+  private mediaUrl: string | null = null;
   private position = 0;
   private midiDuration = 0;
   private trimOffset = 0;
-  private startedAtContext = 0;
   private startedAtPerformance = 0;
   private playing = false;
   private starting = false;
@@ -29,8 +29,8 @@ export class AudioTransport {
   getSnapshot(now = performance.now()): TransportSnapshot {
     const duration = this.getDuration();
     const rawPosition = this.playing
-      ? this.buffer && this.context
-        ? this.position + Math.max(0, this.context.currentTime - this.startedAtContext)
+      ? this.buffer && this.media
+        ? Math.max(0, this.media.currentTime - this.trimOffset)
         : this.position + Math.max(0, now - this.startedAtPerformance) / 1000
       : this.position;
     const nextPosition = Math.min(duration, Math.max(0, rawPosition));
@@ -38,7 +38,7 @@ export class AudioTransport {
     if (this.playing && duration > 0 && nextPosition >= duration) {
       this.position = duration;
       this.playing = false;
-      this.stopSource();
+      this.pauseMedia();
       queueMicrotask(() => this.emit());
     }
 
@@ -70,22 +70,51 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
+    this.releaseMedia();
     this.emit();
 
     const context = this.getContext();
-    const bytes = await file.arrayBuffer();
-    const decoded = await context.decodeAudioData(bytes.slice(0));
-    if (loadGeneration !== this.audioLoadGeneration) {
-      throw new DOMException('La carga de audio fue reemplazada.', 'AbortError');
+    const media = new Audio();
+    media.preload = 'auto';
+    media.volume = 1;
+    const mediaUrl = URL.createObjectURL(file);
+    this.media = media;
+    this.mediaUrl = mediaUrl;
+    const mediaReady = this.waitForMediaMetadata(media);
+    media.src = mediaUrl;
+    media.load();
+
+    try {
+      const bytes = await file.arrayBuffer();
+      const [decoded] = await Promise.all([
+        context.decodeAudioData(bytes.slice(0)),
+        mediaReady,
+      ]);
+      if (loadGeneration !== this.audioLoadGeneration) {
+        throw new DOMException(
+          'La carga de audio fue reemplazada.',
+          'AbortError',
+        );
+      }
+      const channels = Array.from(
+        { length: decoded.numberOfChannels },
+        (_, channel) => decoded.getChannelData(channel),
+      );
+      this.trimOffset = detectInitialSilence(channels, decoded.sampleRate);
+      this.buffer = decoded;
+      media.onended = () => {
+        if (!this.playing) return;
+        this.position = this.getDuration();
+        this.playing = false;
+        this.starting = false;
+        this.emit();
+      };
+      this.emit();
+      return this.getDuration();
+    } catch (error) {
+      if (this.media === media) this.releaseMedia();
+      throw error;
     }
-    const channels = Array.from(
-      { length: decoded.numberOfChannels },
-      (_, channel) => decoded.getChannelData(channel),
-    );
-    this.trimOffset = detectInitialSilence(channels, decoded.sampleRate);
-    this.buffer = decoded;
-    this.emit();
-    return this.getDuration();
   }
 
   unloadAudio(): void {
@@ -94,6 +123,7 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
+    this.releaseMedia();
     this.emit();
   }
 
@@ -144,50 +174,25 @@ export class AudioTransport {
     this.starting = true;
     this.emit();
 
-    if (this.buffer) {
-      const context = this.getContext();
+    if (this.buffer && this.media) {
+      const media = this.media;
+      media.currentTime = Math.min(
+        this.trimOffset + this.position,
+        Math.max(0, this.buffer.duration - 0.001),
+      );
       try {
-        await context.resume();
+        await media.play();
       } catch (error) {
-        if (generation === this.generation) {
-          this.starting = false;
-          this.playing = false;
-          this.emit();
-        }
-        throw error;
-      }
-      if (!this.starting || generation !== this.generation) return;
-      const source = context.createBufferSource();
-      source.buffer = this.buffer;
-      source.connect(context.destination);
-      const startAt = context.currentTime;
-      source.onended = () => {
-        if (generation !== this.generation || !this.playing) return;
-        this.position = this.getDuration();
-        this.playing = false;
+        if (generation !== this.generation || !this.starting) return;
         this.starting = false;
-        this.source = null;
+        this.playing = false;
         this.emit();
-      };
-      try {
-        source.start(
-          startAt,
-          Math.min(
-            this.trimOffset + this.position,
-            Math.max(0, this.buffer.duration - 0.001),
-          ),
-        );
-      } catch (error) {
-        source.disconnect();
-        if (generation === this.generation) {
-          this.starting = false;
-          this.playing = false;
-          this.emit();
-        }
         throw error;
       }
-      this.source = source;
-      this.startedAtContext = startAt;
+      if (!this.starting || generation !== this.generation) {
+        media.pause();
+        return;
+      }
     } else {
       this.startedAtPerformance = performance.now();
     }
@@ -203,7 +208,8 @@ export class AudioTransport {
     if (this.playing) this.position = this.getSnapshot().position;
     this.starting = false;
     this.playing = false;
-    this.stopSource();
+    this.generation += 1;
+    this.pauseMedia();
     this.emit();
   }
 
@@ -216,28 +222,30 @@ export class AudioTransport {
   }
 
   seek(nextPosition: number): void {
-    const wasPlaying = this.playing;
-    if (wasPlaying) this.pause();
     this.position = Math.min(
       this.getDuration(),
       Math.max(0, Number.isFinite(nextPosition) ? nextPosition : 0),
     );
+    if (this.buffer && this.media) {
+      this.media.currentTime = Math.min(
+        this.trimOffset + this.position,
+        Math.max(0, this.buffer.duration - 0.001),
+      );
+    } else if (this.playing) {
+      this.startedAtPerformance = performance.now();
+    }
     this.emit();
-    if (wasPlaying) void this.play();
   }
 
   restart(): void {
-    const wasPlaying = this.playing;
-    if (wasPlaying) this.pause();
-    this.position = 0;
-    this.emit();
-    if (wasPlaying) void this.play();
+    this.seek(0);
   }
 
   async destroy(): Promise<void> {
     this.audioLoadGeneration += 1;
     this.pause();
     this.listeners.clear();
+    this.releaseMedia();
     if (this.context && this.context.state !== 'closed') {
       await this.context.close();
     }
@@ -259,17 +267,49 @@ export class AudioTransport {
     return this.context;
   }
 
-  private stopSource(): void {
-    this.generation += 1;
-    if (!this.source) return;
-    this.source.onended = null;
-    try {
-      this.source.stop();
-    } catch {
-      // A source that already ended is harmless.
+  private waitForMediaMetadata(media: HTMLAudioElement): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        media.removeEventListener('loadedmetadata', onReady);
+        media.removeEventListener('canplay', onReady);
+        media.removeEventListener('error', onError);
+      };
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(
+          new Error(
+            media.error?.message ??
+              'El navegador no pudo preparar este archivo para reproducirlo.',
+          ),
+        );
+      };
+      media.addEventListener('loadedmetadata', onReady);
+      media.addEventListener('canplay', onReady);
+      media.addEventListener('error', onError);
+      if (media.readyState >= HTMLMediaElement.HAVE_METADATA) onReady();
+    });
+  }
+
+  private pauseMedia(): void {
+    this.media?.pause();
+  }
+
+  private releaseMedia(): void {
+    const media = this.media;
+    const mediaUrl = this.mediaUrl;
+    this.media = null;
+    this.mediaUrl = null;
+    if (media) {
+      media.onended = null;
+      media.pause();
+      media.removeAttribute('src');
+      media.load();
     }
-    this.source.disconnect();
-    this.source = null;
+    if (mediaUrl) URL.revokeObjectURL(mediaUrl);
   }
 
   private emit(): void {
