@@ -81,6 +81,8 @@ describe('visualConfiguration', () => {
       heightScale: 1.8,
       glowStrength: 0.1,
       bumpStrength: 1.1,
+      extension: true,
+      stretch: true,
       audioOffsetMs: 0,
       fpsMode: 'auto',
       supersampling: 2.5,

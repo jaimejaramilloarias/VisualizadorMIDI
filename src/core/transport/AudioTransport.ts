@@ -9,6 +9,9 @@ export interface TransportSnapshot {
   trimOffset: number;
   volume: number;
   muted: boolean;
+  signalLevel: number;
+  audioState: AudioContextState | 'unavailable';
+  outputMode: 'native' | 'webaudio';
 }
 
 export type TransportListener = (snapshot: TransportSnapshot) => void;
@@ -16,12 +19,15 @@ export type TransportListener = (snapshot: TransportSnapshot) => void;
 export class AudioTransport {
   private context: AudioContext | null = null;
   private buffer: AudioBuffer | null = null;
-  private media: HTMLAudioElement | null = null;
-  private mediaUrl: string | null = null;
+  private source: AudioBufferSourceNode | null = null;
+  private outputGain: GainNode | null = null;
+  private outputAnalyser: AnalyserNode | null = null;
+  private signalSamples: Uint8Array<ArrayBuffer> | null = null;
   private position = 0;
   private midiDuration = 0;
   private trimOffset = 0;
   private startedAtPerformance = 0;
+  private startedAtAudioContext = 0;
   private playing = false;
   private starting = false;
   private volume = 1;
@@ -33,8 +39,9 @@ export class AudioTransport {
   getSnapshot(now = performance.now()): TransportSnapshot {
     const duration = this.getDuration();
     const rawPosition = this.playing
-      ? this.buffer && this.media
-        ? Math.max(0, this.media.currentTime - this.trimOffset)
+      ? this.buffer && this.context
+        ? this.position +
+          Math.max(0, this.context.currentTime - this.startedAtAudioContext)
         : this.position + Math.max(0, now - this.startedAtPerformance) / 1000
       : this.position;
     const nextPosition = Math.min(duration, Math.max(0, rawPosition));
@@ -42,7 +49,7 @@ export class AudioTransport {
     if (this.playing && duration > 0 && nextPosition >= duration) {
       this.position = duration;
       this.playing = false;
-      this.pauseMedia();
+      this.stopSource();
       queueMicrotask(() => this.emit());
     }
 
@@ -55,6 +62,9 @@ export class AudioTransport {
       trimOffset: this.buffer ? this.trimOffset : 0,
       volume: this.volume,
       muted: this.muted,
+      signalLevel: this.getSignalLevel(),
+      audioState: this.context?.state ?? 'unavailable',
+      outputMode: this.outputGain ? 'webaudio' : 'native',
     };
   }
 
@@ -76,34 +86,13 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
-    this.releaseMedia();
     this.emit();
 
     const context = this.getContext();
-    const media = new Audio();
-    media.preload = 'auto';
-    media.defaultMuted = false;
-    media.muted = this.muted;
-    media.volume = this.volume;
-    media.setAttribute('aria-hidden', 'true');
-    media.setAttribute('playsinline', '');
-    media.className = 'transport-audio-engine';
-    if (typeof document !== 'undefined') {
-      document.body.append(media);
-    }
-    const mediaUrl = URL.createObjectURL(file);
-    this.media = media;
-    this.mediaUrl = mediaUrl;
-    const mediaReady = this.waitForMediaMetadata(media);
-    media.src = mediaUrl;
-    media.load();
 
     try {
       const bytes = await file.arrayBuffer();
-      const [decoded] = await Promise.all([
-        context.decodeAudioData(bytes.slice(0)),
-        mediaReady,
-      ]);
+      const decoded = await context.decodeAudioData(bytes.slice(0));
       if (loadGeneration !== this.audioLoadGeneration) {
         throw new DOMException(
           'La carga de audio fue reemplazada.',
@@ -116,17 +105,14 @@ export class AudioTransport {
       );
       this.trimOffset = detectInitialSilence(channels, decoded.sampleRate);
       this.buffer = decoded;
-      media.onended = () => {
-        if (!this.playing) return;
-        this.position = this.getDuration();
-        this.playing = false;
-        this.starting = false;
-        this.emit();
-      };
+      this.applyOutputLevel();
       this.emit();
       return this.getDuration();
     } catch (error) {
-      if (this.media === media) this.releaseMedia();
+      if (loadGeneration === this.audioLoadGeneration) {
+        this.buffer = null;
+        this.trimOffset = 0;
+      }
       throw error;
     }
   }
@@ -137,7 +123,6 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
-    this.releaseMedia();
     this.emit();
   }
 
@@ -188,27 +173,26 @@ export class AudioTransport {
     this.starting = true;
     this.emit();
 
-    if (this.buffer && this.media) {
-      const media = this.media;
-      media.defaultMuted = false;
-      media.muted = this.muted;
-      media.volume = this.volume;
-      media.currentTime = Math.min(
-        this.trimOffset + this.position,
-        Math.max(0, this.buffer.duration - 0.001),
-      );
+    if (this.buffer) {
+      const context = this.getContext();
+      this.applyOutputLevel();
       try {
-        await media.play();
+        if (context.state !== 'running') await context.resume();
+        if (context.state !== 'running') {
+          throw new Error(
+            'El navegador mantuvo suspendida la salida de audio. Pulsa Play de nuevo.',
+          );
+        }
+        if (!this.starting || generation !== this.generation) return;
+        this.startedAtAudioContext = context.currentTime;
+        this.startBufferSource(generation);
       } catch (error) {
         if (generation !== this.generation || !this.starting) return;
         this.starting = false;
         this.playing = false;
+        this.stopSource();
         this.emit();
         throw error;
-      }
-      if (!this.starting || generation !== this.generation) {
-        media.pause();
-        return;
       }
     } else {
       this.startedAtPerformance = performance.now();
@@ -226,7 +210,7 @@ export class AudioTransport {
     this.starting = false;
     this.playing = false;
     this.generation += 1;
-    this.pauseMedia();
+    this.stopSource();
     this.emit();
   }
 
@@ -243,11 +227,15 @@ export class AudioTransport {
       this.getDuration(),
       Math.max(0, Number.isFinite(nextPosition) ? nextPosition : 0),
     );
-    if (this.buffer && this.media) {
-      this.media.currentTime = Math.min(
-        this.trimOffset + this.position,
-        Math.max(0, this.buffer.duration - 0.001),
-      );
+    if (this.buffer && this.playing && this.context) {
+      const generation = ++this.generation;
+      this.stopSource();
+      if (this.position >= this.getDuration()) {
+        this.playing = false;
+      } else {
+        this.startedAtAudioContext = this.context.currentTime;
+        this.startBufferSource(generation);
+      }
     } else if (this.playing) {
       this.startedAtPerformance = performance.now();
     }
@@ -264,16 +252,13 @@ export class AudioTransport {
       Math.max(0, Number.isFinite(nextVolume) ? nextVolume : 1),
     );
     if (this.volume > 0) this.muted = false;
-    if (this.media) {
-      this.media.volume = this.volume;
-      this.media.muted = this.muted;
-    }
+    this.applyOutputLevel();
     this.emit();
   }
 
   toggleMuted(): void {
     this.muted = !this.muted;
-    if (this.media) this.media.muted = this.muted;
+    this.applyOutputLevel();
     this.emit();
   }
 
@@ -281,7 +266,12 @@ export class AudioTransport {
     this.audioLoadGeneration += 1;
     this.pause();
     this.listeners.clear();
-    this.releaseMedia();
+    this.stopSource();
+    this.outputGain?.disconnect();
+    this.outputAnalyser?.disconnect();
+    this.outputGain = null;
+    this.outputAnalyser = null;
+    this.signalSamples = null;
     if (this.context && this.context.state !== 'closed') {
       await this.context.close();
     }
@@ -298,55 +288,95 @@ export class AudioTransport {
 
   private getContext(): AudioContext {
     if (!this.context) {
-      this.context = new AudioContext({ latencyHint: 'playback' });
+      const AudioContextConstructor =
+        globalThis.AudioContext ??
+        (
+          globalThis as typeof globalThis & {
+            webkitAudioContext?: typeof AudioContext;
+          }
+        ).webkitAudioContext;
+      if (!AudioContextConstructor) {
+        throw new Error(
+          'Este navegador no ofrece una salida Web Audio compatible.',
+        );
+      }
+      this.context = new AudioContextConstructor({ latencyHint: 'playback' });
+      const gain = this.context.createGain();
+      const analyser = this.context.createAnalyser();
+      analyser.fftSize = 256;
+      gain.connect(analyser);
+      analyser.connect(this.context.destination);
+      this.outputGain = gain;
+      this.outputAnalyser = analyser;
+      this.signalSamples = new Uint8Array(analyser.fftSize);
+      this.applyOutputLevel();
     }
     return this.context;
   }
 
-  private waitForMediaMetadata(media: HTMLAudioElement): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const cleanup = () => {
-        media.removeEventListener('loadedmetadata', onReady);
-        media.removeEventListener('canplay', onReady);
-        media.removeEventListener('error', onError);
-      };
-      const onReady = () => {
-        cleanup();
-        resolve();
-      };
-      const onError = () => {
-        cleanup();
-        reject(
-          new Error(
-            media.error?.message ??
-              'El navegador no pudo preparar este archivo para reproducirlo.',
-          ),
-        );
-      };
-      media.addEventListener('loadedmetadata', onReady);
-      media.addEventListener('canplay', onReady);
-      media.addEventListener('error', onError);
-      if (media.readyState >= HTMLMediaElement.HAVE_METADATA) onReady();
-    });
+  private startBufferSource(generation: number): void {
+    if (!this.context || !this.buffer) return;
+    const source = this.context.createBufferSource();
+    source.buffer = this.buffer;
+    source.connect(this.outputGain ?? this.context.destination);
+    source.onended = () => {
+      if (
+        source !== this.source ||
+        generation !== this.generation ||
+        !this.playing
+      ) {
+        return;
+      }
+      source.disconnect();
+      this.source = null;
+      this.position = this.getDuration();
+      this.playing = false;
+      this.starting = false;
+      this.emit();
+    };
+    this.source = source;
+    source.start(
+      0,
+      Math.min(
+        this.trimOffset + this.position,
+        Math.max(0, this.buffer.duration - 0.001),
+      ),
+    );
   }
 
-  private pauseMedia(): void {
-    this.media?.pause();
+  private applyOutputLevel(): void {
+    const outputLevel = this.muted ? 0 : this.volume;
+    if (this.outputGain) this.outputGain.gain.value = outputLevel;
   }
 
-  private releaseMedia(): void {
-    const media = this.media;
-    const mediaUrl = this.mediaUrl;
-    this.media = null;
-    this.mediaUrl = null;
-    if (media) {
-      media.onended = null;
-      media.pause();
-      media.removeAttribute('src');
-      media.load();
-      media.remove();
+  private getSignalLevel(): number {
+    if (
+      !this.playing ||
+      !this.outputAnalyser ||
+      !this.signalSamples ||
+      this.muted
+    ) {
+      return 0;
     }
-    if (mediaUrl) URL.revokeObjectURL(mediaUrl);
+    this.outputAnalyser.getByteTimeDomainData(this.signalSamples);
+    let peak = 0;
+    for (let index = 0; index < this.signalSamples.length; index += 1) {
+      peak = Math.max(peak, Math.abs(this.signalSamples[index] - 128));
+    }
+    return Math.min(1, peak / 128);
+  }
+
+  private stopSource(): void {
+    const source = this.source;
+    this.source = null;
+    if (!source) return;
+    source.onended = null;
+    try {
+      source.stop();
+    } catch {
+      // El nodo puede haber terminado entre dos cuadros.
+    }
+    source.disconnect();
   }
 
   private emit(): void {

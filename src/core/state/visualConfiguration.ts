@@ -77,6 +77,8 @@ export interface GlobalVisualConfiguration {
   heightScale: number;
   glowStrength: number;
   bumpStrength: number;
+  extension: boolean;
+  stretch: boolean;
   audioOffsetMs: number;
   fpsMode: FpsMode;
   supersampling: number;
@@ -264,6 +266,8 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
     heightScale: 1.8,
     glowStrength: 0.1,
     bumpStrength: 1.1,
+    extension: true,
+    stretch: true,
     audioOffsetMs: 0,
     fpsMode: 'auto',
     supersampling: 2.5,
@@ -437,6 +441,14 @@ export const sanitizeVisualConfiguration = (
       MAX_EFFECT_STRENGTH,
       defaultGlobal.bumpStrength,
     ),
+    extension:
+      typeof global?.extension === 'boolean'
+        ? global.extension
+        : defaultGlobal.extension,
+    stretch:
+      typeof global?.stretch === 'boolean'
+        ? global.stretch
+        : defaultGlobal.stretch,
     audioOffsetMs: clamp(
       global?.audioOffsetMs,
       -60_000,
@@ -887,9 +899,13 @@ export const resolveTrackVisualStyle = (
     travel: { ...familyStyle.travel, ...instrument.travel },
   };
   resolved.extension =
-    resolved.extension && configuration.shapeExtensions[resolved.shape] !== false;
+    configuration.global.extension &&
+    resolved.extension &&
+    configuration.shapeExtensions[resolved.shape] !== false;
   resolved.stretch =
-    resolved.stretch && configuration.shapeStretch[resolved.shape] !== false;
+    configuration.global.stretch &&
+    resolved.stretch &&
+    configuration.shapeStretch[resolved.shape] !== false;
   return resolved;
 };
 
@@ -907,9 +923,13 @@ export const resolveTrackVisualStyleAtTime = (
     if (cue.shape) resolved.shape = cue.shape;
   }
   resolved.extension =
-    resolved.extension && configuration.shapeExtensions[resolved.shape] !== false;
+    configuration.global.extension &&
+    resolved.extension &&
+    configuration.shapeExtensions[resolved.shape] !== false;
   resolved.stretch =
-    resolved.stretch && configuration.shapeStretch[resolved.shape] !== false;
+    configuration.global.stretch &&
+    resolved.stretch &&
+    configuration.shapeStretch[resolved.shape] !== false;
   return resolved;
 };
 

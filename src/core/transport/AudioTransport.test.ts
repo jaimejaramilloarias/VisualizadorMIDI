@@ -8,11 +8,45 @@ import {
 } from 'vitest';
 import { AudioTransport } from './AudioTransport';
 
+class FakeAudioNode {
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+class FakeBufferSourceNode extends FakeAudioNode {
+  buffer: AudioBuffer | null = null;
+  onended: (() => void) | null = null;
+  start = vi.fn();
+  stop = vi.fn();
+}
+
+class FakeGainNode extends FakeAudioNode {
+  gain = { value: 1 };
+}
+
+class FakeAnalyserNode extends FakeAudioNode {
+  fftSize = 256;
+  getByteTimeDomainData = vi.fn((samples: Uint8Array) => {
+    samples.fill(128);
+    samples[0] = 192;
+  });
+}
+
 class FakeAudioContext {
   static instance: FakeAudioContext | null = null;
   static decodedChannel = new Float32Array(48_000);
 
+  destination = {} as AudioDestinationNode;
+  sourceNodes: FakeBufferSourceNode[] = [];
+  gainNode = new FakeGainNode();
+  analyserNode = new FakeAnalyserNode();
   state: AudioContextState = 'running';
+  currentTime = 0;
+  resumePromise: Promise<void> = Promise.resolve();
+  resume = vi.fn(async () => {
+    await this.resumePromise;
+    this.state = 'running';
+  });
 
   constructor() {
     FakeAudioContext.instance = this;
@@ -32,36 +66,19 @@ class FakeAudioContext {
       getChannelData: () => FakeAudioContext.decodedChannel,
     } as unknown as AudioBuffer);
   }
-}
 
-class FakeAudioElement {
-  static instance: FakeAudioElement | null = null;
+  createBufferSource(): AudioBufferSourceNode {
+    const source = new FakeBufferSourceNode();
+    this.sourceNodes.push(source);
+    return source as unknown as AudioBufferSourceNode;
+  }
 
-  currentTime = 0;
-  className = '';
-  defaultMuted = false;
-  error: MediaError | null = null;
-  muted = false;
-  onended: (() => void) | null = null;
-  playsInline = false;
-  preload = '';
-  readyState = 1;
-  src = '';
-  volume = 0;
-  playPromise: Promise<void> = Promise.resolve();
-  load = vi.fn();
-  pause = vi.fn();
-  play = vi.fn(() => this.playPromise);
-  remove = vi.fn();
-  removeAttribute = vi.fn((name: string) => {
-    if (name === 'src') this.src = '';
-  });
-  setAttribute = vi.fn();
-  addEventListener = vi.fn();
-  removeEventListener = vi.fn();
+  createGain(): GainNode {
+    return this.gainNode as unknown as GainNode;
+  }
 
-  constructor() {
-    FakeAudioElement.instance = this;
+  createAnalyser(): AnalyserNode {
+    return this.analyserNode as unknown as AnalyserNode;
   }
 }
 
@@ -69,14 +86,7 @@ describe('AudioTransport', () => {
   beforeEach(() => {
     FakeAudioContext.instance = null;
     FakeAudioContext.decodedChannel = new Float32Array(48_000);
-    FakeAudioElement.instance = null;
     vi.stubGlobal('AudioContext', FakeAudioContext);
-    vi.stubGlobal('Audio', FakeAudioElement);
-    vi.stubGlobal('HTMLMediaElement', { HAVE_METADATA: 1 });
-    vi.stubGlobal('URL', {
-      createObjectURL: vi.fn(() => 'blob:audio-test'),
-      revokeObjectURL: vi.fn(),
-    });
   });
 
   afterEach(() => {
@@ -90,12 +100,12 @@ describe('AudioTransport', () => {
     } as File;
     await transport.loadAudio(file);
 
-    let releasePlay = (): void => undefined;
-    const playGate = new Promise<void>((resolve) => {
-      releasePlay = resolve;
+    const context = FakeAudioContext.instance!;
+    context.state = 'suspended';
+    let releaseResume = (): void => undefined;
+    context.resumePromise = new Promise<void>((resolve) => {
+      releaseResume = resolve;
     });
-    const media = FakeAudioElement.instance!;
-    media.playPromise = playGate;
 
     const playPromise = transport.play();
     expect(transport.getSnapshot()).toMatchObject({
@@ -103,11 +113,11 @@ describe('AudioTransport', () => {
       starting: true,
     });
     transport.pause();
-    releasePlay();
+    releaseResume();
     await playPromise;
 
-    expect(media.play).toHaveBeenCalledTimes(1);
-    expect(media.pause).toHaveBeenCalled();
+    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(context.sourceNodes).toHaveLength(0);
     expect(transport.getSnapshot()).toMatchObject({
       playing: false,
       starting: false,
@@ -116,42 +126,66 @@ describe('AudioTransport', () => {
     await transport.destroy();
   });
 
-  it('usa la salida de audio nativa a volumen completo como reloj maestro', async () => {
+  it('usa una salida Web Audio medible a volumen completo como reloj maestro', async () => {
     const transport = new AudioTransport();
     const file = {
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
     } as File;
     await transport.loadAudio(file);
-    const media = FakeAudioElement.instance!;
+    const context = FakeAudioContext.instance!;
 
     await transport.play();
-    media.currentTime = 1.25;
+    context.currentTime = 1.25;
+    const source = context.sourceNodes[0];
 
-    expect(media.volume).toBe(1);
-    expect(media.muted).toBe(false);
-    expect(media.defaultMuted).toBe(false);
-    expect(media.play).toHaveBeenCalledTimes(1);
+    expect(source.buffer).not.toBeNull();
+    expect(source.connect).toHaveBeenCalledWith(context.gainNode);
+    expect(source.start).toHaveBeenCalledWith(0, 0);
     expect(transport.getSnapshot()).toMatchObject({
       position: 1.25,
       playing: true,
       starting: false,
+      outputMode: 'webaudio',
+      audioState: 'running',
+      signalLevel: 0.5,
     });
 
     transport.toggleMuted();
     expect(transport.getSnapshot().muted).toBe(true);
-    expect(media.muted).toBe(true);
+    expect(context.gainNode.gain.value).toBe(0);
 
     transport.setVolume(0.35);
     expect(transport.getSnapshot()).toMatchObject({
       volume: 0.35,
       muted: false,
     });
-    expect(media.volume).toBe(0.35);
-    expect(media.muted).toBe(false);
+    expect(context.gainNode.gain.value).toBe(0.35);
     await transport.destroy();
   });
 
-  it('omite el silencio inicial y busca sin reiniciar la salida audible', async () => {
+  it('informa el bloqueo si el navegador no permite activar la salida', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+    context.state = 'suspended';
+    context.resume = vi.fn(async () => undefined);
+
+    await expect(transport.play()).rejects.toThrow(
+      'mantuvo suspendida la salida de audio',
+    );
+    expect(transport.getSnapshot()).toMatchObject({
+      playing: false,
+      starting: false,
+      audioState: 'suspended',
+    });
+    expect(context.sourceNodes).toHaveLength(0);
+    await transport.destroy();
+  });
+
+  it('omite el silencio inicial y recrea el nodo en la posición buscada', async () => {
     FakeAudioContext.decodedChannel.fill(0.2, 2_400);
     const transport = new AudioTransport();
     const file = {
@@ -160,33 +194,37 @@ describe('AudioTransport', () => {
 
     const duration = await transport.loadAudio(file);
     await transport.play();
-    const media = FakeAudioElement.instance!;
+    const context = FakeAudioContext.instance!;
+    const firstSource = context.sourceNodes[0];
 
     expect(transport.getSnapshot().trimOffset).toBeCloseTo(0.5, 3);
     expect(duration).toBeCloseTo(9.5, 3);
-    expect(media.currentTime).toBeCloseTo(0.5, 3);
+    expect(firstSource.start).toHaveBeenCalledWith(0, 0.5);
 
     transport.seek(4);
+    const secondSource = context.sourceNodes[1];
 
-    expect(media.currentTime).toBeCloseTo(4.5, 3);
-    expect(media.play).toHaveBeenCalledTimes(1);
+    expect(firstSource.stop).toHaveBeenCalledTimes(1);
+    expect(secondSource.start).toHaveBeenCalledWith(0, 4.5);
     expect(transport.getSnapshot().playing).toBe(true);
     await transport.destroy();
   });
 
-  it('mantiene el motor audible montado en el documento', async () => {
-    const append = vi.fn();
-    vi.stubGlobal('document', { body: { append } });
+  it('conecta una sola cadena de salida al destino y la libera al cerrar', async () => {
     const transport = new AudioTransport();
     const file = {
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
     } as File;
 
     await transport.loadAudio(file);
-    const media = FakeAudioElement.instance!;
+    const context = FakeAudioContext.instance!;
 
-    expect(append).toHaveBeenCalledWith(media);
+    expect(context.gainNode.connect).toHaveBeenCalledWith(context.analyserNode);
+    expect(context.analyserNode.connect).toHaveBeenCalledWith(
+      context.destination,
+    );
     await transport.destroy();
-    expect(media.remove).toHaveBeenCalledTimes(1);
+    expect(context.gainNode.disconnect).toHaveBeenCalledTimes(1);
+    expect(context.analyserNode.disconnect).toHaveBeenCalledTimes(1);
   });
 });
