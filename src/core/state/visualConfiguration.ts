@@ -22,7 +22,6 @@ export const SHAPE_IDS = [
 export type ShapeId = (typeof SHAPE_IDS)[number];
 export type OutlineMode = 'full' | 'pre' | 'post';
 export type AspectRatioMode = 'responsive' | '16:9' | '9:16';
-export type FpsMode = 'auto' | 'fixed';
 
 export interface OutlineStyle {
   enabled: boolean;
@@ -92,11 +91,7 @@ export interface GlobalVisualConfiguration {
   bumpStrength: number;
   audioOffsetMs: number;
   supersampling: number;
-  fpsMode: FpsMode;
-  fixedFps: number;
   aspectRatio: AspectRatioMode;
-  backgroundImageName: string | null;
-  backgroundImageOpacity: number;
   noteLabels: NoteLabelSettings;
   outline: OutlineStyle;
   line: LineStyle;
@@ -231,12 +226,8 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
     glowStrength: 0.1,
     bumpStrength: 1.1,
     audioOffsetMs: 0,
-    supersampling: 2,
-    fpsMode: 'auto',
-    fixedFps: 90,
+    supersampling: 2.5,
     aspectRatio: 'responsive',
-    backgroundImageName: null,
-    backgroundImageOpacity: 1,
     noteLabels: {
       enabled: false,
       color: '#ffffff',
@@ -379,18 +370,11 @@ export const sanitizeVisualConfiguration = (
     glowStrength: clamp(global?.glowStrength, 0, 3, 0.1),
     bumpStrength: clamp(global?.bumpStrength, 0, 3, 1.1),
     audioOffsetMs: clamp(global?.audioOffsetMs, -60_000, 60_000, 0),
-    supersampling: clamp(global?.supersampling, 1, 3, 2),
-    fpsMode: global?.fpsMode === 'fixed' ? 'fixed' : 'auto',
-    fixedFps: Math.round(clamp(global?.fixedFps, 30, 240, 90)),
+    supersampling: clamp(global?.supersampling, 1, 3, 2.5),
     aspectRatio:
       global?.aspectRatio === '16:9' || global?.aspectRatio === '9:16'
         ? global.aspectRatio
         : 'responsive',
-    backgroundImageName:
-      typeof global?.backgroundImageName === 'string'
-        ? global.backgroundImageName
-        : null,
-    backgroundImageOpacity: clamp(global?.backgroundImageOpacity, 0, 1, 1),
     noteLabels: {
       enabled:
         typeof global?.noteLabels?.enabled === 'boolean'

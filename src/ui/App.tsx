@@ -21,7 +21,6 @@ import {
   normalizeAnchors,
   parseStateDocument,
   type SyncAnchor,
-  type VisualizationId,
   type VisualizationSettings,
 } from '../core/state/visualizationState';
 import {
@@ -73,6 +72,7 @@ const EMPTY_TELEMETRY: RenderTelemetry = {
   renderWidth: 0,
   renderHeight: 0,
   scale: 1,
+  displayFps: 60,
 };
 
 const formatTime = (seconds: number): string => {
@@ -89,7 +89,43 @@ const createId = (): string =>
 
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
-const MAX_BACKGROUND_SIZE = 24 * 1024 * 1024;
+
+type InspectorMenuId =
+  | 'canvas'
+  | 'performance'
+  | 'tracks'
+  | 'style'
+  | 'animation'
+  | 'sync';
+
+const INSPECTOR_MENUS: ReadonlyArray<{
+  id: InspectorMenuId;
+  label: string;
+  description: string;
+  icon: IconName;
+}> = [
+  { id: 'canvas', label: 'Canvas', description: 'Fondo y formato', icon: 'canvas' },
+  {
+    id: 'performance',
+    label: 'Rendimiento',
+    description: 'Resolución y pantalla',
+    icon: 'gauge',
+  },
+  { id: 'tracks', label: 'Voces', description: 'Pistas e instrumentos', icon: 'music' },
+  {
+    id: 'style',
+    label: 'Color y forma',
+    description: 'Aspecto por voz',
+    icon: 'palette',
+  },
+  {
+    id: 'animation',
+    label: 'Animación',
+    description: 'Movimiento por voz',
+    icon: 'motion',
+  },
+  { id: 'sync', label: 'Sincronía', description: 'Audio y anclas', icon: 'sync' },
+];
 
 const beatDurationAt = (time: number, tempoMap: TempoPoint[]): number => {
   let selected = tempoMap[0];
@@ -206,7 +242,6 @@ export function App() {
   const transportRef = useRef<AudioTransport | null>(null);
   const midiInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const backgroundInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const syncTimelineRef = useRef(createSyncTimeline([]));
   const visualConfigurationRef = useRef<VisualConfiguration>(
@@ -220,7 +255,6 @@ export function App() {
   const lastUiUpdateRef = useRef(0);
   const midiLoadGenerationRef = useRef(0);
   const audioLoadGenerationRef = useRef(0);
-  const backgroundLoadGenerationRef = useRef(0);
   const busyGenerationRef = useRef(0);
   const lastClockRef = useRef({
     sentAt: 0,
@@ -231,25 +265,19 @@ export function App() {
 
   const [project, setProject] = useState<ProjectSummary | null>(null);
   const [audioFileName, setAudioFileName] = useState<string | null>(null);
-  const [visualization, setVisualization] =
-    useState<VisualizationId>('now-line');
   const [settings, setSettings] =
     useState<VisualizationSettings>(DEFAULT_SETTINGS);
   const [syncAnchors, setSyncAnchors] = useState<SyncAnchor[]>([]);
   const [visualConfiguration, setVisualConfiguration] =
     useState<VisualConfiguration>(() => cloneDefaultVisualConfiguration());
   const [anchorMidiDraft, setAnchorMidiDraft] = useState<number | null>(null);
-  const [inspectorTab, setInspectorTab] = useState<
-    'visual' | 'instruments' | 'sync'
-  >('visual');
+  const [inspectorTab, setInspectorTab] =
+    useState<InspectorMenuId>('animation');
   const [selectedTrackName, setSelectedTrackName] = useState<string | null>(
     null,
   );
   const [selectedTrackNames, setSelectedTrackNames] = useState<string[]>([]);
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
-  const [backgroundLoadedName, setBackgroundLoadedName] = useState<
-    string | null
-  >(null);
   const [tapActive, setTapActive] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [transport, setTransport] =
@@ -299,7 +327,7 @@ export function App() {
         onError: setNotice,
       });
       rendererRef.current = renderer;
-      renderer.setSettings(visualization, settings);
+      renderer.setSettings(settings);
       renderer.setVisibility(!document.hidden);
       return () => {
         renderer.dispose();
@@ -315,8 +343,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setSettings(visualization, settings);
-  }, [settings, visualization]);
+    rendererRef.current?.setSettings(settings);
+  }, [settings]);
 
   useEffect(() => {
     if (!project) return;
@@ -510,39 +538,6 @@ export function App() {
     }
   }, []);
 
-  const loadBackgroundImage = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setNotice('Selecciona una imagen compatible.');
-      return;
-    }
-    if (file.size > MAX_BACKGROUND_SIZE) {
-      setNotice('La imagen supera el límite seguro de 24 MB.');
-      return;
-    }
-    const loadGeneration = ++backgroundLoadGenerationRef.current;
-    try {
-      const bitmap = await createImageBitmap(file);
-      if (loadGeneration !== backgroundLoadGenerationRef.current) {
-        bitmap.close();
-        return;
-      }
-      rendererRef.current?.setBackgroundImage(bitmap);
-      setBackgroundLoadedName(file.name);
-      setVisualConfiguration((current) => ({
-        ...current,
-        global: {
-          ...current.global,
-          backgroundImageName: file.name,
-        },
-      }));
-      setNotice(
-        `${file.name} aplicada como fondo. El JSON guardará su nombre, no la imagen.`,
-      );
-    } catch {
-      setNotice('No fue posible decodificar la imagen de fondo.');
-    }
-  }, []);
-
   const loadDroppedFile = useCallback(
     (file: File) => {
       const lowerName = file.name.toLowerCase();
@@ -550,13 +545,11 @@ export function App() {
         void loadMidi(file);
       } else if (file.type.startsWith('audio/')) {
         void loadAudio(file);
-      } else if (file.type.startsWith('image/')) {
-        void loadBackgroundImage(file);
       } else {
-        setNotice('Usa un archivo MIDI, audio o imagen compatible.');
+        setNotice('Usa un archivo MIDI o audio compatible.');
       }
     },
-    [loadAudio, loadBackgroundImage, loadMidi],
+    [loadAudio, loadMidi],
   );
 
   const onDrop = (event: DragEvent<HTMLElement>) => {
@@ -577,7 +570,7 @@ export function App() {
     const document = createStateDocument({
       midiFileName: project?.fileName ?? null,
       audioFileName,
-      visualization,
+      visualization: 'now-line',
       settings,
       syncAnchors,
       visualConfiguration,
@@ -601,28 +594,16 @@ export function App() {
   const importState = async (file: File) => {
     try {
       const document = parseStateDocument(await file.text());
-      setVisualization(document.visualization);
       setSettings(document.settings);
       setSyncAnchors(document.syncAnchors);
       setVisualConfiguration(document.visualConfiguration);
-      backgroundLoadGenerationRef.current += 1;
-      rendererRef.current?.setBackgroundImage(null);
-      setBackgroundLoadedName(null);
       const expected = [document.source.midiFileName, document.source.audioFileName]
         .filter(Boolean)
         .join(' + ');
-      const backgroundName =
-        document.visualConfiguration.global.backgroundImageName;
       setNotice(
         expected
-          ? `Estado restaurado. Carga ${expected} para reproducirlo.${
-              backgroundName
-                ? ` Vuelve a seleccionar ${backgroundName} como fondo.`
-                : ''
-            }`
-          : backgroundName
-            ? `Estado restaurado. Vuelve a seleccionar ${backgroundName} como fondo.`
-            : 'Estado de visualización restaurado.',
+          ? `Estado restaurado. Carga ${expected} para reproducirlo.`
+          : 'Estado de visualización restaurado.',
       );
     } catch (error) {
       setNotice(
@@ -916,6 +897,9 @@ export function App() {
     : null;
   const progress =
     transport.duration > 0 ? transport.position / transport.duration : 0;
+  const activeMenu =
+    INSPECTOR_MENUS.find((menu) => menu.id === inspectorTab) ??
+    INSPECTOR_MENUS[0];
 
   return (
     <main
@@ -951,15 +935,6 @@ export function App() {
         className="visually-hidden"
         onChange={onFileInput((file) => void loadAudio(file))}
         ref={audioInputRef}
-        tabIndex={-1}
-        type="file"
-      />
-      <input
-        accept="image/*,.png,.jpg,.jpeg,.webp,.avif"
-        aria-hidden="true"
-        className="visually-hidden"
-        onChange={onFileInput((file) => void loadBackgroundImage(file))}
-        ref={backgroundInputRef}
         tabIndex={-1}
         type="file"
       />
@@ -1018,7 +993,7 @@ export function App() {
 
       <aside className="left-panel panel-surface">
         <button
-          aria-label={leftCollapsed ? 'Expandir visualizaciones' : 'Contraer visualizaciones'}
+          aria-label={leftCollapsed ? 'Expandir menús' : 'Contraer menús'}
           className="collapse-button"
           onClick={() => {
             setLeftCollapsed((value) => {
@@ -1028,73 +1003,43 @@ export function App() {
               return !value;
             });
           }}
-          title={leftCollapsed ? 'Expandir visualizaciones' : 'Contraer visualizaciones'}
+          title={leftCollapsed ? 'Expandir menús' : 'Contraer menús'}
           type="button"
         >
           <Icon name={leftCollapsed ? 'chevron-right' : 'chevron-left'} />
         </button>
         <div className="panel-heading">
-          <Icon name="layers" />
+          <Icon name="settings" />
           <span>
-            <small>ESCENA</small>
-            <strong>Visualización</strong>
+            <small>MENÚ</small>
+            <strong>Controles</strong>
           </span>
         </div>
-        <div className="scene-list">
-          <button
-            aria-pressed={visualization === 'now-line'}
-            className={`scene-card${visualization === 'now-line' ? ' is-selected' : ''}`}
-            onClick={() => setVisualization('now-line')}
-            title="NOW LINE"
-            type="button"
-          >
-            <span className="scene-preview now-line-preview">
-              <i />
-              <i />
-              <i />
-              <b />
-            </span>
-            <span className="scene-copy">
-              <strong>NOW LINE</strong>
-              <small>Partitura horizontal</small>
-            </span>
-          </button>
-          <button
-            aria-pressed={visualization === 'piano-roll'}
-            className={`scene-card${visualization === 'piano-roll' ? ' is-selected' : ''}`}
-            onClick={() => setVisualization('piano-roll')}
-            title="Piano Roll"
-            type="button"
-          >
-            <span className="scene-preview piano-preview">
-              <i />
-              <i />
-              <i />
-              <b />
-            </span>
-            <span className="scene-copy">
-              <strong>Piano Roll</strong>
-              <small>Caída vertical</small>
-            </span>
-          </button>
-          <button
-            aria-pressed={visualization === 'orbit'}
-            className={`scene-card${visualization === 'orbit' ? ' is-selected' : ''}`}
-            onClick={() => setVisualization('orbit')}
-            title="Órbita"
-            type="button"
-          >
-            <span className="scene-preview orbit-preview">
-              <i />
-              <i />
-              <i />
-              <b />
-            </span>
-            <span className="scene-copy">
-              <strong>Órbita</strong>
-              <small>Tiempo radial</small>
-            </span>
-          </button>
+        <div className="menu-list">
+          {INSPECTOR_MENUS.map((menu) => (
+            <button
+              aria-pressed={inspectorTab === menu.id}
+              className={`menu-card${inspectorTab === menu.id ? ' is-selected' : ''}`}
+              key={menu.id}
+              onClick={() => {
+                setInspectorTab(menu.id);
+                if (window.matchMedia('(max-width: 800px)').matches) {
+                  setLeftCollapsed(true);
+                  setRightCollapsed(false);
+                }
+              }}
+              title={`${menu.label} · ${menu.description}`}
+              type="button"
+            >
+              <span className="menu-icon">
+                <Icon name={menu.icon} />
+              </span>
+              <span className="menu-copy">
+                <strong>{menu.label}</strong>
+                <small>{menu.description}</small>
+              </span>
+            </button>
+          ))}
         </div>
         <div className="privacy-card">
           <Icon name="info" />
@@ -1119,7 +1064,9 @@ export function App() {
             </span>
           </div>
           <div className="telemetry" aria-label="Rendimiento del lienzo">
-            <span>{telemetry.fps || '—'} FPS</span>
+            <span>
+              {telemetry.fps || '—'} / {telemetry.displayFps} FPS
+            </span>
             <span>{telemetry.visibleNotes.toLocaleString('es-CO')} visibles</span>
             <span>{telemetry.scale.toFixed(1)}×</span>
           </div>
@@ -1275,44 +1222,27 @@ export function App() {
           <Icon name={rightCollapsed ? 'chevron-left' : 'chevron-right'} />
         </button>
         <div className="panel-heading">
-          <Icon name="settings" />
+          <Icon name={activeMenu.icon} />
           <span>
             <small>INSPECTOR</small>
-            <strong>Ajustes</strong>
+            <strong>{activeMenu.label}</strong>
           </span>
         </div>
 
-        <div className="inspector-tabs" role="tablist" aria-label="Inspector">
-          {(
-            [
-              ['visual', 'Visual'],
-              ['instruments', 'Pistas'],
-              ['sync', 'Sync'],
-            ] as const
-          ).map(([tab, label]) => (
-            <button
-              aria-selected={inspectorTab === tab}
-              className={inspectorTab === tab ? 'is-selected' : ''}
-              key={tab}
-              onClick={() => setInspectorTab(tab)}
-              role="tab"
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <div className="panel-scroll">
-          {inspectorTab === 'visual' && (
+          {(['canvas', 'performance', 'animation', 'style'] as InspectorMenuId[]).includes(
+            inspectorTab,
+          ) && (
             <>
               <section className="inspector-section">
                 <div className="section-heading">
                   <span>
-                    <small>APARIENCIA</small>
-                    <strong>Escena</strong>
+                    <small>{activeMenu.description.toUpperCase()}</small>
+                    <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
+                {inspectorTab === 'animation' && (
+                  <>
                 <RangeControl
                   label="Ventana visible"
                   max={24}
@@ -1340,15 +1270,10 @@ export function App() {
                   suffix="×"
                   value={settings.noteScale}
                 />
-                <RangeControl
-                  label="Cuadrícula"
-                  max={1}
-                  min={0}
-                  onChange={(value) => updateSetting('gridOpacity', value)}
-                  step={0.05}
-                  suffix=""
-                  value={settings.gridOpacity}
-                />
+                  </>
+                )}
+                {inspectorTab === 'canvas' && (
+                  <>
                 <div className="inline-control">
                   <label htmlFor="background-color">Color del canvas</label>
                   <input
@@ -1363,44 +1288,11 @@ export function App() {
                 </div>
                 <button
                   className="wide-action"
-                  onClick={() => backgroundInputRef.current?.click()}
+                  onClick={() => updateSetting('background', '#000000')}
                   type="button"
                 >
-                  {backgroundLoadedName
-                    ? `Cambiar fondo · ${backgroundLoadedName}`
-                    : visualConfiguration.global.backgroundImageName
-                      ? `Volver a cargar fondo · ${visualConfiguration.global.backgroundImageName}`
-                    : 'Añadir imagen de fondo'}
+                  Negro absoluto
                 </button>
-                {visualConfiguration.global.backgroundImageName && (
-                  <>
-                    <RangeControl
-                      label="Opacidad del fondo"
-                      max={1}
-                      min={0}
-                      onChange={(value) =>
-                        updateGlobalVisual('backgroundImageOpacity', value)
-                      }
-                      step={0.05}
-                      suffix=""
-                      value={
-                        visualConfiguration.global.backgroundImageOpacity
-                      }
-                    />
-                    <button
-                      className="text-action"
-                      onClick={() => {
-                        backgroundLoadGenerationRef.current += 1;
-                        rendererRef.current?.setBackgroundImage(null);
-                        setBackgroundLoadedName(null);
-                        updateGlobalVisual('backgroundImageName', null);
-                      }}
-                      type="button"
-                    >
-                      Quitar imagen
-                    </button>
-                  </>
-                )}
                 <span className="subcontrol-label">Relación de aspecto</span>
                 <div
                   className="segmented-control"
@@ -1434,6 +1326,28 @@ export function App() {
                 >
                   Pantalla completa
                 </button>
+                  </>
+                )}
+                {inspectorTab === 'performance' && (
+                  <>
+                <div className="performance-status">
+                  <span>
+                    <small>PANTALLA</small>
+                    <strong>{telemetry.displayFps} Hz</strong>
+                  </span>
+                  <span>
+                    <small>RENDER</small>
+                    <strong>{telemetry.fps || '—'} FPS</strong>
+                  </span>
+                  <span>
+                    <small>ESCALA</small>
+                    <strong>{telemetry.scale.toFixed(2)}×</strong>
+                  </span>
+                </div>
+                <p className="section-help">
+                  El motor sigue automáticamente la frecuencia real de la
+                  pantalla. No aplica un límite artificial de FPS.
+                </p>
                 <button
                   className="wide-action"
                   onClick={() => {
@@ -1461,22 +1375,26 @@ export function App() {
                       type="button"
                     >
                       {quality === 'auto'
-                        ? 'Auto'
+                        ? 'Adaptativa'
                         : quality === 'high'
                           ? 'Alta'
-                          : 'Ultra'}
+                          : 'Máxima'}
                     </button>
                   ))}
                 </div>
+                  </>
+                )}
               </section>
 
               <section className="inspector-section">
                 <div className="section-heading">
                   <span>
-                    <small>COMPORTAMIENTO V1</small>
-                    <strong>Geometría y efectos</strong>
+                    <small>AJUSTES DETALLADOS</small>
+                    <strong>{activeMenu.label}</strong>
                   </span>
                 </div>
+                {inspectorTab === 'animation' && (
+                  <>
                 <RangeControl
                   label="Velocidad base"
                   max={127}
@@ -1488,6 +1406,9 @@ export function App() {
                   suffix=""
                   value={visualConfiguration.global.velocityBase}
                 />
+                  </>
+                )}
+                {inspectorTab === 'style' && (
                 <RangeControl
                   label="Tono global"
                   max={180}
@@ -1499,6 +1420,9 @@ export function App() {
                   suffix="°"
                   value={visualConfiguration.global.colorToneShift}
                 />
+                )}
+                {inspectorTab === 'animation' && (
+                  <>
                 <RangeControl
                   label="Altura global"
                   max={4}
@@ -1550,6 +1474,10 @@ export function App() {
                   suffix="×"
                   value={visualConfiguration.global.bumpStrength}
                 />
+                  </>
+                )}
+                {inspectorTab === 'performance' && (
+                  <>
                 <RangeControl
                   label="Supersampling"
                   max={3}
@@ -1561,6 +1489,17 @@ export function App() {
                   suffix="×"
                   value={visualConfiguration.global.supersampling}
                 />
+                <div className="resolution-readout">
+                  <span>Resolución interna</span>
+                  <strong>
+                    {telemetry.renderWidth || '—'} × {telemetry.renderHeight || '—'}
+                  </strong>
+                  <small>P95 de cuadro: {telemetry.frameP95 || '—'} ms</small>
+                </div>
+                  </>
+                )}
+                {inspectorTab === 'style' && (
+                  <>
                 <label className="switch-row">
                   <span>Etiquetas de nota</span>
                   <input
@@ -1633,41 +1572,13 @@ export function App() {
                     />
                   </>
                 )}
-                <span className="subcontrol-label">Modo de FPS</span>
-                <div className="segmented-control" role="group">
-                  {(['auto', 'fixed'] as const).map((mode) => (
-                    <button
-                      className={
-                        visualConfiguration.global.fpsMode === mode
-                          ? 'is-selected'
-                          : ''
-                      }
-                      key={mode}
-                      onClick={() => updateGlobalVisual('fpsMode', mode)}
-                      type="button"
-                    >
-                      {mode === 'auto' ? 'Automático' : 'Fijo'}
-                    </button>
-                  ))}
-                </div>
-                {visualConfiguration.global.fpsMode === 'fixed' && (
-                  <RangeControl
-                    label="FPS fijos"
-                    max={240}
-                    min={30}
-                    onChange={(value) =>
-                      updateGlobalVisual('fixedFps', value)
-                    }
-                    step={1}
-                    suffix=""
-                    value={visualConfiguration.global.fixedFps}
-                  />
+                  </>
                 )}
               </section>
             </>
           )}
 
-          {inspectorTab === 'instruments' && (
+          {inspectorTab === 'tracks' && (
             <>
               <section className="inspector-section">
                 <div className="section-heading">
@@ -1784,7 +1695,32 @@ export function App() {
                   </>
                 )}
               </section>
+            </>
+          )}
 
+          {inspectorTab === 'style' && (
+            <>
+              <section className="inspector-section">
+                <label className="select-control">
+                  <span>Voz o instrumento</span>
+                  <select
+                    disabled={!project}
+                    onChange={(event) => {
+                      const name = event.target.value;
+                      setSelectedTrackName(name);
+                      setSelectedTrackNames(name ? [name] : []);
+                    }}
+                    value={selectedTrackName ?? ''}
+                  >
+                    {!project && <option value="">Carga un MIDI</option>}
+                    {project?.tracks.map((track) => (
+                      <option key={track.id} value={track.name}>
+                        {track.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
               {selectedTrack && selectedResolvedStyle && (
                 <section className="inspector-section">
                   <div className="section-heading">
@@ -1929,7 +1865,32 @@ export function App() {
                   </label>
                 </section>
               )}
+            </>
+          )}
 
+          {inspectorTab === 'animation' && (
+            <>
+              <section className="inspector-section">
+                <label className="select-control">
+                  <span>Animación de voz o instrumento</span>
+                  <select
+                    disabled={!project}
+                    onChange={(event) => {
+                      const name = event.target.value;
+                      setSelectedTrackName(name);
+                      setSelectedTrackNames(name ? [name] : []);
+                    }}
+                    value={selectedTrackName ?? ''}
+                  >
+                    {!project && <option value="">Carga un MIDI</option>}
+                    {project?.tracks.map((track) => (
+                      <option key={track.id} value={track.name}>
+                        {track.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
               {selectedResolvedStyle && selectedFamilyStyle && (
                 <section className="inspector-section">
                   <div className="section-heading">
@@ -2009,8 +1970,8 @@ export function App() {
                       value={selectedFamilyStyle.outline.mode}
                     >
                       <option value="full">Completo</option>
-                      <option value="pre">Antes de la línea</option>
-                      <option value="post">Después de la línea</option>
+                      <option value="pre">Antes del presente</option>
+                      <option value="post">Después del presente</option>
                     </select>
                   </label>
                   <RangeControl
@@ -2489,8 +2450,9 @@ export function App() {
               <section>
                 <strong>4 · Rendimiento</strong>
                 <p>
-                  Calidad Auto adapta la resolución. Alta y Ultra conservan el
-                  supersampling elegido; FPS fijo limita el ritmo del Worker.
+                  Los FPS siguen la frecuencia real de la pantalla. La calidad
+                  Adaptativa protege esa cadencia; Alta y Máxima priorizan
+                  definición.
                 </p>
               </section>
             </div>

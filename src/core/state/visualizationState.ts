@@ -1,4 +1,4 @@
-export const VISUALIZATION_IDS = ['now-line', 'piano-roll', 'orbit'] as const;
+export const VISUALIZATION_IDS = ['now-line'] as const;
 export type VisualizationId = (typeof VISUALIZATION_IDS)[number];
 
 export const QUALITY_PRESETS = ['auto', 'high', 'ultra'] as const;
@@ -25,7 +25,6 @@ export interface VisualizationSettings {
   secondsVisible: number;
   glow: number;
   noteScale: number;
-  gridOpacity: number;
   quality: QualityPreset;
   background: string;
 }
@@ -48,9 +47,8 @@ export const DEFAULT_SETTINGS: VisualizationSettings = {
   secondsVisible: 8,
   glow: 0.8,
   noteScale: 1,
-  gridOpacity: 0.25,
   quality: 'auto',
-  background: '#07090e',
+  background: '#000000',
 };
 
 const finiteNonNegative = (value: unknown): value is number =>
@@ -213,10 +211,6 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
   ) {
     throw new Error('La versión del estado no es compatible.');
   }
-  if (!VISUALIZATION_IDS.includes(candidate.visualization as VisualizationId)) {
-    throw new Error('La visualización guardada no es válida.');
-  }
-
   const incoming = candidate.settings as Partial<VisualizationSettings> | undefined;
   const quality = QUALITY_PRESETS.includes(incoming?.quality as QualityPreset)
     ? (incoming?.quality as QualityPreset)
@@ -238,9 +232,6 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
     noteScale: finiteNonNegative(incoming?.noteScale)
       ? Math.min(2, Math.max(0.4, incoming!.noteScale!))
       : DEFAULT_SETTINGS.noteScale,
-    gridOpacity: finiteNonNegative(incoming?.gridOpacity)
-      ? Math.min(1, incoming!.gridOpacity!)
-      : DEFAULT_SETTINGS.gridOpacity,
     quality,
     background,
   };
@@ -263,7 +254,7 @@ export const parseStateDocument = (raw: string): VisualizationStateDocument => {
       audioFileName:
         typeof source.audioFileName === 'string' ? source.audioFileName : null,
     },
-    visualization: candidate.visualization as VisualizationId,
+    visualization: 'now-line',
     settings,
     syncAnchors: normalizeAnchors(
       Array.isArray(candidate.syncAnchors)

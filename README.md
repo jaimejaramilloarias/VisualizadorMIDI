@@ -10,15 +10,18 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 
 ## MVP actual
 
-- Visualizaciones `NOW LINE`, `Piano Roll` y `Órbita`.
+- Escena horizontal única, sin rejilla ni marcador vertical de reproducción.
+- Fondo negro absoluto por defecto, con selector de color sólido.
 - Parser MIDI formato 0/1 con mapa de tempo, running status y sustain.
 - Parsing y renderizado en Workers.
-- `OffscreenCanvas` con resolución adaptativa `Auto`, `Alta` y `Ultra`.
+- `OffscreenCanvas` Retina con resolución `Adaptativa`, `Alta` y `Máxima`.
+- FPS sincronizados automáticamente con la frecuencia real de la pantalla.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables.
 - Importación y exportación del estado JSON versionado.
-- Catálogo completo de figuras, familias, efectos y controles de V1.
+- Catálogo completo de figuras, familias y efectos musicales de V1, excepto las
+  escenas y fondos retirados por decisión de producto.
 
 ## Preparación
 

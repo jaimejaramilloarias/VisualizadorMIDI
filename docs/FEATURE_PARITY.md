@@ -1,9 +1,8 @@
 # Contrato de paridad V1 → V2
 
-V2 no se considera reemplazo de V1 hasta que las funciones siguientes estén
-disponibles en la interfaz nueva y tengan una prueba equivalente. La exclusión
-de exportar video o audio se mantiene por decisión explícita de producto; no
-afecta la exportación del estado JSON.
+V2 conserva las funciones musicales de V1 salvo las retiradas explícitamente por
+producto: escenas alternativas, rejilla/marcador vertical e imagen de fondo.
+Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 
 | Área | Función existente en V1 | Estado V2 |
 |---|---|---|
@@ -16,9 +15,9 @@ afecta la exportación del estado JSON.
 | Sincronía | Mapa de tempo MIDI | Migrada |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
-| Visual | FPS auto/fijo y supersampling | Migrada; Auto adapta resolución y DPR |
+| Visual | FPS y supersampling | Rediseñada; sigue el refresco de pantalla y adapta resolución/DPR |
 | Visual | Color de canvas | Migrada |
-| Visual | Imagen de fondo y opacidad | Migrada; la imagen permanece local |
+| Visual | Imagen de fondo y opacidad | Retirada por decisión de producto; solo color sólido |
 | Visual | Etiquetas de nota, fuente, color y tamaño | Migrada |
 | Instrumentos | Activar/desactivar uno, todos o ninguno | Migrada |
 | Instrumentos | Asignar instrumento a familia | Migrada |
@@ -46,7 +45,8 @@ Cada fila que pase a “Migrada” debe:
 2. poder operarse desde la UI iPad-first;
 3. modificar el Worker de render o el transporte sin depender del DOM;
 4. tener prueba V2 o una regresión manual reproducible;
-5. conservar la lectura de configuraciones V1 cuando el campo sea compatible.
+5. conservar la lectura de configuraciones V1 compatibles y descartar con
+   seguridad los campos de funciones retiradas.
 
 ## Evidencia de esta etapa
 

@@ -9,7 +9,7 @@ servidor.
 
 El único artefacto persistente e intercambiable es un JSON pequeño que contiene:
 
-- visualización seleccionada;
+- configuración de la escena horizontal;
 - parámetros visuales;
 - nombres de referencia del MIDI y del audio;
 - pares `audioTime → midiTime` usados para sincronización.
@@ -49,8 +49,10 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - El lienzo usa `OffscreenCanvas` en otro Worker.
 - React no recibe una actualización por fotograma; la UI se refresca a una
   frecuencia menor mientras el reloj visual conserva la precisión.
-- El render limita la densidad física a un presupuesto de píxeles según
-  `Auto`, `Alta` o `Ultra`.
+- El render mide la frecuencia real de la pantalla y sigue su `requestAnimationFrame`
+  sin un límite fijo artificial.
+- La densidad Retina se ajusta a un presupuesto de píxeles según `Adaptativa`,
+  `Alta` o `Máxima`.
 - La búsqueda visible usa notas ordenadas, búsqueda binaria y un índice separado
   para notas de más de 30 segundos.
 - La sincronización interpola por tramos entre anclas y extrapola en los extremos.
@@ -61,7 +63,8 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - Iconos coherentes con etiqueta visible en anchos amplios y `aria-label`/tooltip.
 - Columnas laterales colapsables; en pantallas estrechas funcionan como paneles.
 - Transporte persistente bajo el lienzo.
-- Ajustes agrupados en un inspector y visualizaciones en una biblioteca de escenas.
+- Menús independientes para canvas, rendimiento, pistas, estilo, animación y
+  sincronía.
 - Respeto de `prefers-reduced-motion`, áreas seguras y navegación por teclado.
 
 ## Etapas
@@ -77,7 +80,7 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 
 - Transporte con Web Audio y reloj MIDI sin audio.
 - Parsing en Worker.
-- Render en Worker con NOW LINE y Piano Roll.
+- Render horizontal único en Worker, sin rejilla ni marcador vertical.
 - Presupuestos de resolución y telemetría.
 
 ### 3. Experiencia de producto — completada para MVP
@@ -92,8 +95,9 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 Completado en el primer hito:
 
 - Mapa de anclas compilado con búsqueda binaria.
-- Render bajo demanda en pausa y caché del fondo estático.
+- Render bajo demanda en pausa y relleno sólido del canvas.
 - Presupuestos de resolución comprobados con pruebas.
+- Detección de 60/90/120 Hz o de la frecuencia ofrecida por la pantalla.
 - Protección contra carreras al reactivar Web Audio.
 - Mensajes de configuración agrupados y redimensiones redundantes eliminadas.
 - Controles de pistas sin elementos interactivos anidados y ayuda cerrable con
@@ -104,7 +108,7 @@ Siguiente:
 - Pruebas con corpus amplio de MIDI formato 0/1.
 - Métricas en iPad Safari, Chrome y equipos con GPU integrada.
 - Fallback de render en hilo principal para navegadores sin OffscreenCanvas.
-- Presets visuales adicionales con el mismo contrato.
+- Presets de color y animación con el mismo contrato.
 - Accesibilidad auditada con lector de pantalla.
 
 Los invariantes y pruebas de este hito se detallan en

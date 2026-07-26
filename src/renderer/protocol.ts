@@ -1,8 +1,5 @@
 import type { PackedMidiProject } from '../core/midi/types';
-import type {
-  VisualizationId,
-  VisualizationSettings,
-} from '../core/state/visualizationState';
+import type { VisualizationSettings } from '../core/state/visualizationState';
 import type { RenderAppearance } from '../core/state/visualConfiguration';
 
 export interface RenderClock {
@@ -19,6 +16,7 @@ export interface RenderTelemetry {
   renderWidth: number;
   renderHeight: number;
   scale: number;
+  displayFps: number;
 }
 
 export type RendererInboundMessage =
@@ -38,11 +36,10 @@ export type RendererInboundMessage =
   | { type: 'project'; project: PackedMidiProject }
   | {
       type: 'settings';
-      visualization: VisualizationId;
       settings: VisualizationSettings;
     }
   | { type: 'appearance'; appearance: RenderAppearance }
-  | { type: 'background-image'; bitmap: ImageBitmap | null }
+  | { type: 'display-refresh-rate'; fps: number }
   | { type: 'clock'; clock: RenderClock }
   | { type: 'visibility'; visible: boolean }
   | { type: 'refresh' }

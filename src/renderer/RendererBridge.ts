@@ -1,8 +1,5 @@
 import type { PackedMidiProject } from '../core/midi/types';
-import type {
-  VisualizationId,
-  VisualizationSettings,
-} from '../core/state/visualizationState';
+import type { VisualizationSettings } from '../core/state/visualizationState';
 import type { RenderAppearance } from '../core/state/visualConfiguration';
 import type {
   RenderClock,
@@ -25,10 +22,9 @@ export class RendererBridge {
   private lastDevicePixelRatio = 0;
   private settingsFrame = 0;
   private appearanceFrame = 0;
-  private pendingSettings: {
-    visualization: VisualizationId;
-    settings: VisualizationSettings;
-  } | null = null;
+  private refreshSampleFrame = 0;
+  private refreshSampleTimer = 0;
+  private pendingSettings: VisualizationSettings | null = null;
   private pendingAppearance: RenderAppearance | null = null;
 
   constructor(
@@ -99,6 +95,7 @@ export class RendererBridge {
       });
     });
     this.observer.observe(canvas);
+    this.measureDisplayRefreshRate();
   }
 
   setProject(project: PackedMidiProject): void {
@@ -114,22 +111,15 @@ export class RendererBridge {
     this.post({ type: 'project', project }, buffers);
   }
 
-  setSettings(
-    visualization: VisualizationId,
-    settings: VisualizationSettings,
-  ): void {
-    this.pendingSettings = { visualization, settings };
+  setSettings(settings: VisualizationSettings): void {
+    this.pendingSettings = settings;
     if (this.settingsFrame) return;
     this.settingsFrame = requestAnimationFrame(() => {
       this.settingsFrame = 0;
       const pending = this.pendingSettings;
       this.pendingSettings = null;
       if (pending) {
-        this.post({
-          type: 'settings',
-          visualization: pending.visualization,
-          settings: pending.settings,
-        });
+        this.post({ type: 'settings', settings: pending });
       }
     });
   }
@@ -143,13 +133,6 @@ export class RendererBridge {
       this.pendingAppearance = null;
       if (pending) this.post({ type: 'appearance', appearance: pending });
     });
-  }
-
-  setBackgroundImage(bitmap: ImageBitmap | null): void {
-    this.post(
-      { type: 'background-image', bitmap },
-      bitmap ? [bitmap] : [],
-    );
   }
 
   setClock(clock: RenderClock): void {
@@ -173,6 +156,12 @@ export class RendererBridge {
     this.disposed = true;
     if (this.settingsFrame) cancelAnimationFrame(this.settingsFrame);
     if (this.appearanceFrame) cancelAnimationFrame(this.appearanceFrame);
+    if (this.refreshSampleFrame) {
+      cancelAnimationFrame(this.refreshSampleFrame);
+    }
+    if (this.refreshSampleTimer) {
+      window.clearTimeout(this.refreshSampleTimer);
+    }
     this.observer.disconnect();
     this.worker.terminate();
   }
@@ -182,5 +171,31 @@ export class RendererBridge {
     transfer: Transferable[] = [],
   ): void {
     if (!this.disposed) this.worker.postMessage(message, transfer);
+  }
+
+  private measureDisplayRefreshRate(): void {
+    const intervals: number[] = [];
+    let previous = 0;
+    const sample = (now: number): void => {
+      if (this.disposed) return;
+      if (previous > 0) intervals.push(now - previous);
+      previous = now;
+      if (intervals.length < 24) {
+        this.refreshSampleFrame = requestAnimationFrame(sample);
+        return;
+      }
+      this.refreshSampleFrame = 0;
+      const sorted = [...intervals].sort((left, right) => left - right);
+      const median = sorted[Math.floor(sorted.length / 2)] || 1000 / 60;
+      this.post({
+        type: 'display-refresh-rate',
+        fps: Math.min(240, Math.max(30, Math.round(1000 / median))),
+      });
+      this.refreshSampleTimer = window.setTimeout(() => {
+        this.refreshSampleTimer = 0;
+        this.measureDisplayRefreshRate();
+      }, 3000);
+    };
+    this.refreshSampleFrame = requestAnimationFrame(sample);
   }
 }

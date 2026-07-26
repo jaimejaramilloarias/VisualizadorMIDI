@@ -2,13 +2,17 @@ import type { SVGProps } from 'react';
 
 export type IconName =
   | 'audio'
+  | 'canvas'
   | 'chevron-left'
   | 'chevron-right'
   | 'download'
   | 'folder'
+  | 'gauge'
   | 'info'
   | 'layers'
   | 'music'
+  | 'motion'
+  | 'palette'
   | 'pause'
   | 'piano'
   | 'play'
@@ -16,6 +20,7 @@ export type IconName =
   | 'restart'
   | 'settings'
   | 'sparkles'
+  | 'sync'
   | 'trash'
   | 'upload';
 
@@ -33,6 +38,12 @@ export function Icon({
         <path d="M20 10v4" />
       </>
     ),
+    canvas: (
+      <>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M7 16h10" />
+      </>
+    ),
     'chevron-left': <path d="m15 18-6-6 6-6" />,
     'chevron-right': <path d="m9 18 6-6-6-6" />,
     download: (
@@ -44,6 +55,13 @@ export function Icon({
     ),
     folder: (
       <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2H19a2 2 0 0 1 2 2v8.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z" />
+    ),
+    gauge: (
+      <>
+        <path d="M4 17a8 8 0 1 1 16 0" />
+        <path d="m12 17 4-5" />
+        <path d="M6 17h12" />
+      </>
     ),
     info: (
       <>
@@ -64,6 +82,22 @@ export function Icon({
         <path d="M9 18V5l10-2v13" />
         <circle cx="6" cy="18" r="3" />
         <circle cx="16" cy="16" r="3" />
+      </>
+    ),
+    motion: (
+      <>
+        <path d="M3 8h7" />
+        <path d="M3 12h12" />
+        <path d="M3 16h17" />
+        <path d="m17 9 4 3-4 3" />
+      </>
+    ),
+    palette: (
+      <>
+        <path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h4a5 5 0 0 0 0-10Z" />
+        <circle cx="7.5" cy="9" r=".8" />
+        <circle cx="10.5" cy="6.5" r=".8" />
+        <circle cx="14" cy="6.5" r=".8" />
       </>
     ),
     pause: (
@@ -103,6 +137,14 @@ export function Icon({
         <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2Z" />
         <path d="m18.5 14 .7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7Z" />
         <path d="m5 13 .8 2.2L8 16l-2.2.8L5 19l-.8-2.2L2 16l2.2-.8Z" />
+      </>
+    ),
+    sync: (
+      <>
+        <path d="M20 7h-6V1" />
+        <path d="M4 17h6v6" />
+        <path d="M5.5 9a7.5 7.5 0 0 1 12.8-3L20 7" />
+        <path d="M18.5 15a7.5 7.5 0 0 1-12.8 3L4 17" />
       </>
     ),
     trash: (

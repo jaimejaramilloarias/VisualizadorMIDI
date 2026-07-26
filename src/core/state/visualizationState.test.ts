@@ -116,7 +116,7 @@ describe('estado JSON', () => {
         version: 1,
         savedAt: '2026-01-01T00:00:00.000Z',
         source: { midiFileName: 'obra.mid', audioFileName: null },
-        visualization: 'piano-roll',
+        visualization: 'escena-retirada',
         settings: {
           secondsVisible: 500,
           glow: 9,
@@ -129,29 +129,28 @@ describe('estado JSON', () => {
       }),
     );
 
-    expect(parsed.visualization).toBe('piano-roll');
+    expect(parsed.visualization).toBe('now-line');
     expect(parsed.settings).toEqual({
       secondsVisible: 30,
       glow: 2,
       noteScale: 0.4,
-      gridOpacity: 1,
       quality: 'auto',
-      background: '#07090e',
+      background: '#000000',
     });
   });
 
-  it('acepta la visualización orbital en estados nuevos', () => {
+  it('normaliza cualquier escena heredada a la escena horizontal única', () => {
     const parsed = parseStateDocument(
       JSON.stringify({
         schema: 'midi-visualizer-state',
         version: 1,
         source: { midiFileName: null, audioFileName: null },
-        visualization: 'orbit',
+        visualization: 'visualizacion-v1',
         settings: DEFAULT_SETTINGS,
         syncAnchors: [],
       }),
     );
 
-    expect(parsed.visualization).toBe('orbit');
+    expect(parsed.visualization).toBe('now-line');
   });
 });

@@ -1,15 +1,15 @@
 import type { QualityPreset } from '../core/state/visualizationState';
 
 const MEGAPIXEL_BUDGETS: Record<QualityPreset, number> = {
-  auto: 8_000_000,
-  high: 12_000_000,
-  ultra: 20_000_000,
+  auto: 10_000_000,
+  high: 16_000_000,
+  ultra: 24_000_000,
 };
 
 const RATIO_CAPS: Record<QualityPreset, number> = {
-  auto: 2,
-  high: 2.5,
-  ultra: 3,
+  auto: 2.5,
+  high: 3,
+  ultra: 4,
 };
 
 export interface RenderScaleInput {

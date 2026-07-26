@@ -13,7 +13,7 @@ describe('computeRenderScale', () => {
     });
 
     expect(scale).toBeLessThan(1);
-    expect(7680 * 4320 * scale ** 2).toBeLessThanOrEqual(8_000_001);
+    expect(7680 * 4320 * scale ** 2).toBeLessThanOrEqual(10_000_001);
   });
 
   it('conserva densidad retina cuando cabe en el presupuesto', () => {

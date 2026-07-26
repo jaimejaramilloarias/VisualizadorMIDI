@@ -3,7 +3,6 @@
 import type { PackedMidiProject } from '../core/midi/types';
 import {
   DEFAULT_SETTINGS,
-  type VisualizationId,
   type VisualizationSettings,
 } from '../core/state/visualizationState';
 import {
@@ -27,15 +26,10 @@ const scope = self as DedicatedWorkerGlobalScope;
 let canvas: OffscreenCanvas | null = null;
 let context: OffscreenCanvasRenderingContext2D | null = null;
 let project: PackedMidiProject | null = null;
-let backgroundBitmap: ImageBitmap | null = null;
-let backdropCanvas: OffscreenCanvas | null = null;
-let backdropContext: OffscreenCanvasRenderingContext2D | null = null;
-let backdropDirty = true;
 let cssWidth = 1;
 let cssHeight = 1;
 let devicePixelRatio = 1;
 let renderScale = 1;
-let visualization: VisualizationId = 'now-line';
 let settings: VisualizationSettings = { ...DEFAULT_SETTINGS };
 let appearance: RenderAppearance = {
   global: structuredClone(DEFAULT_VISUAL_CONFIGURATION.global),
@@ -58,7 +52,7 @@ let rendererVisible = true;
 let adaptiveRatio = 1;
 let slowWindows = 0;
 let fastWindows = 0;
-let lastRenderedAt = 0;
+let displayRefreshRate = 60;
 
 const fallbackTrackStyle: ResolvedTrackVisualStyle = {
   ...structuredClone(DEFAULT_VISUAL_CONFIGURATION.families.Auxiliares),
@@ -113,10 +107,6 @@ const currentMidiTime = (now: number): number =>
         : 0),
   );
 
-const invalidateBackdrop = (): void => {
-  backdropDirty = true;
-};
-
 const applySize = (): void => {
   if (!canvas || !context) return;
   renderScale = computeRenderScale({
@@ -132,7 +122,6 @@ const applySize = (): void => {
   context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = 'high';
-  invalidateBackdrop();
 };
 
 const getTrackStyle = (noteIndex: number): ResolvedTrackVisualStyle => {
@@ -169,93 +158,11 @@ const noteName = (pitch: number): string =>
     'B',
   ][((Math.round(pitch) % 12) + 12) % 12];
 
-const roundedRect = (
-  ctx: OffscreenCanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-): void => {
-  const safeRadius = Math.min(radius, Math.abs(width) / 2, Math.abs(height) / 2);
-  ctx.beginPath();
-  ctx.roundRect(x, y, width, height, safeRadius);
-};
-
-const rebuildBackdrop = (): void => {
-  if (!canvas) return;
-  if (
-    !backdropCanvas ||
-    backdropCanvas.width !== canvas.width ||
-    backdropCanvas.height !== canvas.height
-  ) {
-    backdropCanvas = new OffscreenCanvas(canvas.width, canvas.height);
-    backdropContext = backdropCanvas.getContext('2d', { alpha: false });
-  }
-  if (!backdropContext) return;
-  const ctx = backdropContext;
-  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-  ctx.fillStyle = settings.background;
-  ctx.fillRect(0, 0, cssWidth, cssHeight);
-
-  if (backgroundBitmap && appearance.global.backgroundImageOpacity > 0) {
-    const scale = Math.max(
-      cssWidth / backgroundBitmap.width,
-      cssHeight / backgroundBitmap.height,
-    );
-    const width = backgroundBitmap.width * scale;
-    const height = backgroundBitmap.height * scale;
-    ctx.globalAlpha = appearance.global.backgroundImageOpacity;
-    ctx.drawImage(
-      backgroundBitmap,
-      (cssWidth - width) / 2,
-      (cssHeight - height) / 2,
-      width,
-      height,
-    );
-    ctx.globalAlpha = 1;
-  }
-
-  const wash = ctx.createRadialGradient(
-    cssWidth * 0.48,
-    cssHeight * 0.5,
-    0,
-    cssWidth * 0.48,
-    cssHeight * 0.5,
-    Math.max(cssWidth, cssHeight) * 0.7,
-  );
-  wash.addColorStop(0, 'rgba(33, 65, 82, 0.18)');
-  wash.addColorStop(0.5, 'rgba(24, 38, 50, 0.07)');
-  wash.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, cssWidth, cssHeight);
-  backdropDirty = false;
-};
-
 const renderBackdrop = (
   ctx: OffscreenCanvasRenderingContext2D,
-  time: number,
 ): void => {
-  if (backdropDirty) rebuildBackdrop();
-  ctx.save();
-  if (backdropCanvas) {
-    ctx.drawImage(backdropCanvas, 0, 0, cssWidth, cssHeight);
-  } else {
-    ctx.fillStyle = settings.background;
-    ctx.fillRect(0, 0, cssWidth, cssHeight);
-  }
-
-  ctx.strokeStyle = `rgba(195, 213, 220, ${settings.gridOpacity * 0.16})`;
-  ctx.lineWidth = 1;
-  const spacing = Math.max(56, cssWidth / 18);
-  const offset = ((time * 18) % spacing + spacing) % spacing;
-  for (let x = -offset; x < cssWidth + spacing; x += spacing) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, cssHeight);
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.fillStyle = settings.background;
+  ctx.fillRect(0, 0, cssWidth, cssHeight);
 };
 
 const forEachVisibleNote = (
@@ -287,7 +194,7 @@ const forEachVisibleNote = (
   return count;
 };
 
-const drawNowLine = (
+const drawHorizontalScene = (
   ctx: OffscreenCanvasRenderingContext2D,
   time: number,
 ): void => {
@@ -395,22 +302,6 @@ const drawNowLine = (
   };
 
   ctx.save();
-  ctx.strokeStyle = `rgba(210, 224, 230, ${settings.gridOpacity})`;
-  ctx.lineWidth = 1;
-  for (
-    let second = Math.floor(visibleStart);
-    second <= visibleEnd;
-    second += 1
-  ) {
-    const x = playheadX + (second - time) * pixelsPerSecond;
-    ctx.globalAlpha = second % 4 === 0 ? 0.55 : 0.18;
-    ctx.beginPath();
-    ctx.moveTo(x, lanePadding * 0.55);
-    ctx.lineTo(x, cssHeight - lanePadding * 0.55);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
   const layouts: NoteLayout[] = [];
   forEachVisibleNote(visibleStart, visibleEnd, (index) => {
     const layout = computeLayout(index);
@@ -565,240 +456,19 @@ const drawNowLine = (
     });
   });
 
-  const line = ctx.createLinearGradient(
-    playheadX,
-    lanePadding * 0.35,
-    playheadX,
-    cssHeight - lanePadding * 0.35,
-  );
-  line.addColorStop(0, 'rgba(255,255,255,0)');
-  line.addColorStop(0.12, 'rgba(242,248,250,0.92)');
-  line.addColorStop(0.88, 'rgba(242,248,250,0.92)');
-  line.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = line;
-  ctx.lineWidth = 1.5;
-  ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.moveTo(playheadX, lanePadding * 0.35);
-  ctx.lineTo(playheadX, cssHeight - lanePadding * 0.35);
-  ctx.stroke();
-  ctx.restore();
-};
-
-const drawPianoRoll = (
-  ctx: OffscreenCanvasRenderingContext2D,
-  time: number,
-): void => {
-  if (!project) return;
-  const keyboardHeight = Math.max(52, cssHeight * 0.1);
-  const playheadY = cssHeight - keyboardHeight;
-  const visibleStart = time - 0.45;
-  const visibleEnd = time + settings.secondsVisible;
-  const pixelsPerSecond = playheadY / settings.secondsVisible;
-  const noteWidth = Math.max(3, (cssWidth / 128) * 1.25 * settings.noteScale);
-
-  ctx.save();
-  ctx.strokeStyle = `rgba(210, 224, 230, ${settings.gridOpacity * 0.7})`;
-  for (
-    let second = Math.floor(visibleStart);
-    second <= visibleEnd;
-    second += 1
-  ) {
-    const y = playheadY - (second - time) * pixelsPerSecond;
-    ctx.globalAlpha = second % 4 === 0 ? 0.5 : 0.16;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(cssWidth, y);
-    ctx.stroke();
-  }
-
-  visibleNotes = forEachVisibleNote(visibleStart, visibleEnd, (index) => {
-    const start = project!.notes.starts[index];
-    const end = project!.notes.ends[index];
-    const pitch = project!.notes.pitches[index];
-    const velocity = project!.notes.velocities[index] / 127;
-    const style = getTrackStyle(index);
-    if (!style.enabled) return false;
-    const x = ((pitch + 0.5) / 128) * cssWidth - noteWidth / 2;
-    const bottom = playheadY - (start - time) * pixelsPerSecond;
-    const top = playheadY - (end - time) * pixelsPerSecond;
-    const height = Math.max(3, bottom - top);
-    const color = style.color;
-
-    ctx.globalAlpha = 0.5 + velocity * 0.46;
-    ctx.fillStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 7 * settings.glow * velocity;
-    roundedRect(ctx, x, top, noteWidth, height, noteWidth * 0.45);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    return true;
-  });
-
-  ctx.globalAlpha = 1;
-  const keyboardGradient = ctx.createLinearGradient(
-    0,
-    playheadY,
-    0,
-    cssHeight,
-  );
-  keyboardGradient.addColorStop(0, 'rgba(237, 242, 243, 0.18)');
-  keyboardGradient.addColorStop(1, 'rgba(212, 222, 224, 0.07)');
-  ctx.fillStyle = keyboardGradient;
-  ctx.fillRect(0, playheadY, cssWidth, keyboardHeight);
-
-  ctx.strokeStyle = 'rgba(238, 245, 246, 0.9)';
-  ctx.lineWidth = 1.5;
-  ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.moveTo(0, playheadY);
-  ctx.lineTo(cssWidth, playheadY);
-  ctx.stroke();
-  ctx.restore();
-};
-
-const drawOrbit = (
-  ctx: OffscreenCanvasRenderingContext2D,
-  time: number,
-): void => {
-  if (!project) return;
-  const centerX = cssWidth * 0.5;
-  const centerY = cssHeight * 0.51;
-  const outerRadius = Math.max(
-    80,
-    Math.min(cssWidth, cssHeight) * 0.44,
-  );
-  const playheadRadius = Math.max(32, outerRadius * 0.18);
-  const radialSpan = outerRadius - playheadRadius;
-  const visibleStart = time - 0.35;
-  const visibleEnd = time + settings.secondsVisible;
-  const pulse = 0.5 + Math.sin(time * Math.PI * 2) * 0.5;
-
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.lineWidth = 1;
-  for (let ring = 0; ring < 6; ring += 1) {
-    const radius = playheadRadius + (radialSpan * ring) / 5;
-    ctx.strokeStyle = `rgba(205, 221, 225, ${
-      settings.gridOpacity * (ring === 0 ? 0.46 : 0.13)
-    })`;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  for (let spoke = 0; spoke < 12; spoke += 1) {
-    const angle = (spoke / 12) * Math.PI * 2 - Math.PI / 2;
-    ctx.strokeStyle = `rgba(205, 221, 225, ${settings.gridOpacity * 0.08})`;
-    ctx.beginPath();
-    ctx.moveTo(
-      Math.cos(angle) * playheadRadius,
-      Math.sin(angle) * playheadRadius,
-    );
-    ctx.lineTo(
-      Math.cos(angle) * outerRadius,
-      Math.sin(angle) * outerRadius,
-    );
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  visibleNotes = forEachVisibleNote(visibleStart, visibleEnd, (index) => {
-    const start = project!.notes.starts[index];
-    const end = project!.notes.ends[index];
-    const pitch = project!.notes.pitches[index];
-    const velocity = project!.notes.velocities[index] / 127;
-    const style = getTrackStyle(index);
-    if (!style.enabled) return false;
-    const active = start <= time && end >= time;
-    const timeProgress = Math.max(
-      0,
-      Math.min(1, (start - time) / settings.secondsVisible),
-    );
-    const radius = active
-      ? playheadRadius
-      : playheadRadius + timeProgress * radialSpan;
-    const angle = (pitch / 128) * Math.PI * 2 - Math.PI / 2;
-    const noteDuration = Math.min(
-      0.48,
-      Math.max(0.018, ((end - start) / settings.secondsVisible) * 2.4),
-    );
-    const color = style.color;
-    const lineWidth =
-      (1.2 + velocity * 2.6 + (active ? pulse * 1.5 : 0)) *
-      settings.noteScale;
-
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.globalAlpha = active ? 0.9 : 0.38 + velocity * 0.5;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = color;
-    ctx.shadowBlur =
-      (active ? 12 + pulse * 8 : 5 + velocity * 5) * settings.glow;
-    ctx.beginPath();
-    ctx.arc(
-      0,
-      0,
-      radius,
-      angle - noteDuration,
-      angle,
-      false,
-    );
-    ctx.stroke();
-
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-    ctx.beginPath();
-    ctx.arc(x, y, lineWidth * (active ? 1.4 : 0.8), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    return true;
-  });
-
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  const core = ctx.createRadialGradient(
-    0,
-    0,
-    playheadRadius * 0.2,
-    0,
-    0,
-    playheadRadius * 1.45,
-  );
-  core.addColorStop(0, `rgba(239, 155, 82, ${0.12 + pulse * 0.06})`);
-  core.addColorStop(0.7, 'rgba(239, 155, 82, 0.035)');
-  core.addColorStop(1, 'rgba(239, 155, 82, 0)');
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.arc(0, 0, playheadRadius * 1.45, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(248, 242, 234, 0.9)';
-  ctx.lineWidth = 1.3;
-  ctx.shadowColor = '#ef9b52';
-  ctx.shadowBlur = 8 + pulse * 4;
-  ctx.beginPath();
-  ctx.arc(0, 0, playheadRadius, 0, Math.PI * 2);
-  ctx.stroke();
   ctx.restore();
 };
 
 const adaptResolution = (fps: number, p95: number): void => {
-  if (
-    settings.quality !== 'auto' ||
-    appearance.global.fpsMode === 'fixed'
-  ) {
-    return;
-  }
-  if (p95 > 21 || fps < 52) {
+  if (settings.quality !== 'auto') return;
+  const frameBudget = 1000 / displayRefreshRate;
+  if (p95 > frameBudget * 1.18 || fps < displayRefreshRate * 0.86) {
     slowWindows += 1;
     fastWindows = 0;
-  } else if (p95 < 17.8 && fps >= 57) {
+  } else if (
+    p95 < frameBudget * 1.02 &&
+    fps >= displayRefreshRate * 0.94
+  ) {
     fastWindows += 1;
     slowWindows = 0;
   } else {
@@ -806,8 +476,8 @@ const adaptResolution = (fps: number, p95: number): void => {
     fastWindows = 0;
   }
 
-  if (slowWindows >= 2 && adaptiveRatio > 0.65) {
-    adaptiveRatio = Math.max(0.65, adaptiveRatio - 0.1);
+  if (slowWindows >= 2 && adaptiveRatio > 0.8) {
+    adaptiveRatio = Math.max(0.8, adaptiveRatio - 0.05);
     slowWindows = 0;
     applySize();
   } else if (fastWindows >= 4 && adaptiveRatio < 1) {
@@ -824,15 +494,6 @@ const renderFrame = (now: number): void => {
     animationHandle = scope.requestAnimationFrame(renderFrame);
   }
 
-  if (
-    clock.playing &&
-    appearance.global.fpsMode === 'fixed' &&
-    now - lastRenderedAt < 1000 / appearance.global.fixedFps
-  ) {
-    return;
-  }
-  lastRenderedAt = now;
-
   if (clock.playing) {
     const frameDuration = Math.max(0.01, now - lastFrame);
     lastFrame = now;
@@ -842,16 +503,10 @@ const renderFrame = (now: number): void => {
 
   const time = currentMidiTime(now);
   context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-  renderBackdrop(context, time);
+  renderBackdrop(context);
 
   if (project) {
-    if (visualization === 'piano-roll') {
-      drawPianoRoll(context, time);
-    } else if (visualization === 'orbit') {
-      drawOrbit(context, time);
-    } else {
-      drawNowLine(context, time);
-    }
+    drawHorizontalScene(context, time);
   } else {
     visibleNotes = 0;
   }
@@ -877,6 +532,7 @@ const renderFrame = (now: number): void => {
         renderWidth: canvas.width,
         renderHeight: canvas.height,
         scale: Math.round(renderScale * 100) / 100,
+        displayFps: displayRefreshRate,
       },
     });
     frameDurations = [];
@@ -920,12 +576,8 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       rebuildLongNoteIndex();
       requestRender();
     } else if (message.type === 'settings') {
-      visualization = message.visualization;
       const qualityChanged = settings.quality !== message.settings.quality;
-      const backgroundChanged =
-        settings.background !== message.settings.background;
       settings = message.settings;
-      if (backgroundChanged) invalidateBackdrop();
       if (qualityChanged) {
         adaptiveRatio = 1;
         slowWindows = 0;
@@ -937,17 +589,27 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       const supersamplingChanged =
         appearance.global.supersampling !==
         message.appearance.global.supersampling;
-      const backgroundOpacityChanged =
-        appearance.global.backgroundImageOpacity !==
-        message.appearance.global.backgroundImageOpacity;
       appearance = message.appearance;
-      if (backgroundOpacityChanged) invalidateBackdrop();
       if (supersamplingChanged) applySize();
       requestRender();
-    } else if (message.type === 'background-image') {
-      backgroundBitmap?.close();
-      backgroundBitmap = message.bitmap;
-      invalidateBackdrop();
+    } else if (message.type === 'display-refresh-rate') {
+      displayRefreshRate = Math.min(240, Math.max(30, message.fps));
+      slowWindows = 0;
+      fastWindows = 0;
+      if (!clock.playing) {
+        send({
+          type: 'telemetry',
+          telemetry: {
+            fps: 0,
+            frameP95: 0,
+            visibleNotes,
+            renderWidth: canvas?.width ?? 0,
+            renderHeight: canvas?.height ?? 0,
+            scale: Math.round(renderScale * 100) / 100,
+            displayFps: displayRefreshRate,
+          },
+        });
+      }
       requestRender();
     } else if (message.type === 'clock') {
       clock = message.clock;
@@ -968,7 +630,6 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       fastWindows = 0;
       frameDurations = [];
       lastFrame = performance.now();
-      lastRenderedAt = 0;
       applySize();
       requestRender();
     } else if (message.type === 'clear') {
