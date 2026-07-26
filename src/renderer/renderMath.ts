@@ -303,7 +303,7 @@ export const curveTravelOffset = ({
   enabled,
   released,
 }: CurveTravelInput): number => {
-  if (!enabled || released || offset === 0) return offset;
+  if (!enabled || released || offset <= 0) return offset;
   const maximum = canvasWidth * 0.62 + Math.max(80, canvasWidth * 0.1);
   if (Math.abs(offset) >= maximum) return offset;
   const normalized = Math.min(1, Math.abs(offset) / maximum);

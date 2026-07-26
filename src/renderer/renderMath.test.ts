@@ -243,7 +243,7 @@ describe('curveTravelOffset', () => {
     ).toBe(240);
   });
 
-  it('produce desplazamientos finitos y conserva el sentido', () => {
+  it('mantiene completamente lineal el movimiento a la izquierda de NOW', () => {
     const result = curveTravelOffset({
       offset: -240,
       canvasWidth: 1200,
@@ -253,8 +253,7 @@ describe('curveTravelOffset', () => {
       released: false,
     });
 
-    expect(Number.isFinite(result)).toBe(true);
-    expect(result).toBeLessThan(0);
+    expect(result).toBe(-240);
   });
 
   it('mantiene las notas futuras lejos de NOW durante la aproximación inicial', () => {

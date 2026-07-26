@@ -47,6 +47,7 @@ import {
 import { RendererBridge } from '../renderer/RendererBridge';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
+import { selectDroppedMedia } from './fileDrop';
 import { resolveTransportShortcut } from './transportShortcuts';
 import { SyncWorkspace } from './SyncWorkspace';
 
@@ -110,29 +111,6 @@ const createId = (): string =>
 
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
-const AUDIO_FILE_EXTENSIONS = [
-  '.wav',
-  '.mp3',
-  '.m4a',
-  '.aac',
-  '.ogg',
-  '.flac',
-  '.aif',
-  '.aiff',
-] as const;
-
-const isMidiFile = (file: File): boolean => {
-  const lowerName = file.name.toLowerCase();
-  return lowerName.endsWith('.mid') || lowerName.endsWith('.midi');
-};
-
-const isAudioFile = (file: File): boolean => {
-  const lowerName = file.name.toLowerCase();
-  return (
-    file.type.startsWith('audio/') ||
-    AUDIO_FILE_EXTENSIONS.some((extension) => lowerName.endsWith(extension))
-  );
-};
 
 type InspectorMenuId =
   | 'canvas'
@@ -811,8 +789,7 @@ export function App() {
 
   const loadDroppedFiles = useCallback(
     (files: File[]) => {
-      const midiFile = files.find(isMidiFile);
-      const audioFile = files.find(isAudioFile);
+      const { midiFile, audioFile } = selectDroppedMedia(files);
 
       if (!midiFile && !audioFile) {
         setNotice('Usa archivos MIDI o audio compatibles.');
