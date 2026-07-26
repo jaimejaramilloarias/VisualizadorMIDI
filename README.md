@@ -15,7 +15,9 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Parser MIDI formato 0/1 con mapa de tempo, running status y sustain.
 - Parsing y renderizado en Workers.
 - `OffscreenCanvas` Retina con resolución `Adaptativa`, `Alta` y `Máxima`.
-- FPS sincronizados automáticamente con la frecuencia real de la pantalla.
+- FPS `Auto`, `60` o `30`; Auto sigue la frecuencia real de la pantalla.
+- Movimiento calculado continuamente en segundos, sin cuantización musical ni
+  rejilla temporal.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - UI táctil tipo iPad con columnas laterales colapsables.

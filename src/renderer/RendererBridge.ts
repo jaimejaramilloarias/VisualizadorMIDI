@@ -24,6 +24,9 @@ export class RendererBridge {
   private appearanceFrame = 0;
   private refreshSampleFrame = 0;
   private refreshSampleTimer = 0;
+  private detectedDisplayRefreshRate = 0;
+  private lowerRefreshSamples = 0;
+  private rendererPlaying = false;
   private pendingSettings: VisualizationSettings | null = null;
   private pendingAppearance: RenderAppearance | null = null;
 
@@ -136,6 +139,7 @@ export class RendererBridge {
   }
 
   setClock(clock: RenderClock): void {
+    this.rendererPlaying = clock.playing;
     this.post({ type: 'clock', clock });
   }
 
@@ -186,10 +190,41 @@ export class RendererBridge {
       }
       this.refreshSampleFrame = 0;
       const sorted = [...intervals].sort((left, right) => left - right);
-      const median = sorted[Math.floor(sorted.length / 2)] || 1000 / 60;
+      const representative =
+        sorted[Math.floor(sorted.length * 0.2)] || 1000 / 60;
+      const measured = Math.min(
+        240,
+        Math.max(30, Math.round(1000 / representative)),
+      );
+      const commonRates = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240];
+      const nearest = commonRates.reduce((best, candidate) =>
+        Math.abs(candidate - measured) < Math.abs(best - measured)
+          ? candidate
+          : best,
+      );
+      const normalized =
+        Math.abs(nearest - measured) / nearest <= 0.1 ? nearest : measured;
+      if (
+        this.detectedDisplayRefreshRate === 0 ||
+        normalized > this.detectedDisplayRefreshRate
+      ) {
+        this.detectedDisplayRefreshRate = normalized;
+        this.lowerRefreshSamples = 0;
+      } else if (
+        normalized < this.detectedDisplayRefreshRate &&
+        !this.rendererPlaying
+      ) {
+        this.lowerRefreshSamples += 1;
+        if (this.lowerRefreshSamples >= 3) {
+          this.detectedDisplayRefreshRate = normalized;
+          this.lowerRefreshSamples = 0;
+        }
+      } else {
+        this.lowerRefreshSamples = 0;
+      }
       this.post({
         type: 'display-refresh-rate',
-        fps: Math.min(240, Math.max(30, Math.round(1000 / median))),
+        fps: this.detectedDisplayRefreshRate || normalized,
       });
       this.refreshSampleTimer = window.setTimeout(() => {
         this.refreshSampleTimer = 0;

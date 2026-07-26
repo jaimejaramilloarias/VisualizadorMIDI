@@ -22,6 +22,8 @@ export const SHAPE_IDS = [
 export type ShapeId = (typeof SHAPE_IDS)[number];
 export type OutlineMode = 'full' | 'pre' | 'post';
 export type AspectRatioMode = 'responsive' | '16:9' | '9:16';
+export const FPS_MODES = ['auto', '60', '30'] as const;
+export type FpsMode = (typeof FPS_MODES)[number];
 
 export interface OutlineStyle {
   enabled: boolean;
@@ -90,6 +92,7 @@ export interface GlobalVisualConfiguration {
   glowStrength: number;
   bumpStrength: number;
   audioOffsetMs: number;
+  fpsMode: FpsMode;
   supersampling: number;
   aspectRatio: AspectRatioMode;
   noteLabels: NoteLabelSettings;
@@ -226,6 +229,7 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
     glowStrength: 0.1,
     bumpStrength: 1.1,
     audioOffsetMs: 0,
+    fpsMode: 'auto',
     supersampling: 2.5,
     aspectRatio: 'responsive',
     noteLabels: {
@@ -370,6 +374,9 @@ export const sanitizeVisualConfiguration = (
     glowStrength: clamp(global?.glowStrength, 0, 3, 0.1),
     bumpStrength: clamp(global?.bumpStrength, 0, 3, 1.1),
     audioOffsetMs: clamp(global?.audioOffsetMs, -60_000, 60_000, 0),
+    fpsMode: FPS_MODES.includes(global?.fpsMode as FpsMode)
+      ? (global?.fpsMode as FpsMode)
+      : 'auto',
     supersampling: clamp(global?.supersampling, 1, 3, 2.5),
     aspectRatio:
       global?.aspectRatio === '16:9' || global?.aspectRatio === '9:16'

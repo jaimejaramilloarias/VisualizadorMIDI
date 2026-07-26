@@ -1,4 +1,5 @@
 import type { QualityPreset } from '../core/state/visualizationState';
+import type { FpsMode } from '../core/state/visualConfiguration';
 
 const MEGAPIXEL_BUDGETS: Record<QualityPreset, number> = {
   auto: 10_000_000,
@@ -39,6 +40,80 @@ export const computeRenderScale = ({
     MEGAPIXEL_BUDGETS[quality] / (safeWidth * safeHeight),
   );
   return Math.max(0.25, Math.min(desiredRatio, maximumRatio));
+};
+
+export const resolveTargetFps = (
+  mode: FpsMode,
+  displayRefreshRate: number,
+): number => {
+  const displayFps = Math.min(
+    240,
+    Math.max(30, Number.isFinite(displayRefreshRate) ? displayRefreshRate : 60),
+  );
+  if (mode === '30') return Math.min(30, displayFps);
+  if (mode === '60') return Math.min(60, displayFps);
+  return displayFps;
+};
+
+export interface FrameCadenceInput {
+  accumulator: number;
+  delta: number;
+  targetFps: number;
+}
+
+export interface FrameCadenceResult {
+  accumulator: number;
+  present: boolean;
+}
+
+export const advanceFrameCadence = ({
+  accumulator,
+  delta,
+  targetFps,
+}: FrameCadenceInput): FrameCadenceResult => {
+  const interval = 1000 / Math.max(1, targetFps);
+  let nextAccumulator =
+    Math.max(0, accumulator) + Math.min(250, Math.max(0, delta));
+  const tolerance = Math.min(1.5, interval * 0.08);
+  if (nextAccumulator + tolerance < interval) {
+    return { accumulator: nextAccumulator, present: false };
+  }
+  nextAccumulator = Math.max(0, nextAccumulator - interval);
+  if (nextAccumulator > interval) nextAccumulator %= interval;
+  return { accumulator: nextAccumulator, present: true };
+};
+
+export interface MidiTimeExtrapolationInput {
+  midiTime: number;
+  anchorEpochTime: number;
+  nowEpochTime: number;
+  playing: boolean;
+  playbackRate: number;
+}
+
+export const extrapolateMidiTime = ({
+  midiTime,
+  anchorEpochTime,
+  nowEpochTime,
+  playing,
+  playbackRate,
+}: MidiTimeExtrapolationInput): number =>
+  Math.max(
+    0,
+    midiTime +
+      (playing
+        ? (Math.max(0, nowEpochTime - anchorEpochTime) / 1000) * playbackRate
+        : 0),
+  );
+
+export const noteOnGlowEnvelope = (
+  time: number,
+  noteStart: number,
+  decaySeconds = 0.28,
+): number => {
+  const elapsed = time - noteStart;
+  if (elapsed < 0) return 0;
+  return Math.max(0, 1 - elapsed / Math.max(0.001, decaySeconds));
 };
 
 export interface CurveTravelInput {

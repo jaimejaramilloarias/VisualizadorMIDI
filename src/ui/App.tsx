@@ -73,6 +73,7 @@ const EMPTY_TELEMETRY: RenderTelemetry = {
   renderHeight: 0,
   scale: 1,
   displayFps: 60,
+  targetFps: 60,
 };
 
 const formatTime = (seconds: number): string => {
@@ -432,7 +433,7 @@ export function App() {
         ) {
           rendererRef.current?.setClock({
             midiTime: mapping.midiTime,
-            performanceTime: now,
+            epochTime: performance.timeOrigin + now,
             playing: rendererPlaying,
             playbackRate: mapping.playbackRate,
           });
@@ -1065,7 +1066,7 @@ export function App() {
           </div>
           <div className="telemetry" aria-label="Rendimiento del lienzo">
             <span>
-              {telemetry.fps || '—'} / {telemetry.displayFps} FPS
+              {telemetry.fps || '—'} / {telemetry.targetFps} FPS
             </span>
             <span>{telemetry.visibleNotes.toLocaleString('es-CO')} visibles</span>
             <span>{telemetry.scale.toFixed(1)}×</span>
@@ -1340,14 +1341,38 @@ export function App() {
                     <strong>{telemetry.fps || '—'} FPS</strong>
                   </span>
                   <span>
-                    <small>ESCALA</small>
-                    <strong>{telemetry.scale.toFixed(2)}×</strong>
+                    <small>OBJETIVO</small>
+                    <strong>{telemetry.targetFps} FPS</strong>
                   </span>
                 </div>
                 <p className="section-help">
-                  El motor sigue automáticamente la frecuencia real de la
-                  pantalla. No aplica un límite artificial de FPS.
+                  Auto sigue la frecuencia real de la pantalla. Los modos 60 y
+                  30 mantienen una cadencia fija cuando prefieres limitar carga.
                 </p>
+                <span className="subcontrol-label">FPS</span>
+                <div
+                  className="segmented-control"
+                  role="group"
+                  aria-label="Fotogramas por segundo"
+                >
+                  {(['auto', '60', '30'] as const).map((fpsMode) => (
+                    <button
+                      aria-pressed={
+                        visualConfiguration.global.fpsMode === fpsMode
+                      }
+                      className={
+                        visualConfiguration.global.fpsMode === fpsMode
+                          ? 'is-selected'
+                          : ''
+                      }
+                      key={fpsMode}
+                      onClick={() => updateGlobalVisual('fpsMode', fpsMode)}
+                      type="button"
+                    >
+                      {fpsMode === 'auto' ? 'Auto' : fpsMode}
+                    </button>
+                  ))}
+                </div>
                 <button
                   className="wide-action"
                   onClick={() => {
@@ -1495,6 +1520,7 @@ export function App() {
                     {telemetry.renderWidth || '—'} × {telemetry.renderHeight || '—'}
                   </strong>
                   <small>P95 de cuadro: {telemetry.frameP95 || '—'} ms</small>
+                  <small>Escala Retina: {telemetry.scale.toFixed(2)}×</small>
                 </div>
                   </>
                 )}
@@ -2451,8 +2477,7 @@ export function App() {
                 <strong>4 · Rendimiento</strong>
                 <p>
                   Los FPS siguen la frecuencia real de la pantalla. La calidad
-                  Adaptativa protege esa cadencia; Alta y Máxima priorizan
-                  definición.
+                  Adaptativa protege esa cadencia; también puedes fijar 60 o 30.
                 </p>
               </section>
             </div>

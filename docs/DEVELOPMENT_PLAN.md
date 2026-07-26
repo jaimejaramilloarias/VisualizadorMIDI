@@ -49,8 +49,10 @@ JSON ──> validación ──> escena, ajustes y anclas ───────�
 - El lienzo usa `OffscreenCanvas` en otro Worker.
 - React no recibe una actualización por fotograma; la UI se refresca a una
   frecuencia menor mientras el reloj visual conserva la precisión.
-- El render mide la frecuencia real de la pantalla y sigue su `requestAnimationFrame`
-  sin un límite fijo artificial.
+- El render mide la frecuencia real de la pantalla; Auto sigue su
+  `requestAnimationFrame` y el usuario puede limitarlo a 60 o 30 FPS.
+- El mapa de tempo convierte ticks MIDI a segundos antes del render. Toda
+  posición visual se calcula con tiempo continuo, nunca con una rejilla musical.
 - La densidad Retina se ajusta a un presupuesto de píxeles según `Adaptativa`,
   `Alta` o `Máxima`.
 - La búsqueda visible usa notas ordenadas, búsqueda binaria y un índice separado

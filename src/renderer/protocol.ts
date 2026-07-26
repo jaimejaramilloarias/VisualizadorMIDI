@@ -4,7 +4,7 @@ import type { RenderAppearance } from '../core/state/visualConfiguration';
 
 export interface RenderClock {
   midiTime: number;
-  performanceTime: number;
+  epochTime: number;
   playing: boolean;
   playbackRate: number;
 }
@@ -17,6 +17,7 @@ export interface RenderTelemetry {
   renderHeight: number;
   scale: number;
   displayFps: number;
+  targetFps: number;
 }
 
 export type RendererInboundMessage =

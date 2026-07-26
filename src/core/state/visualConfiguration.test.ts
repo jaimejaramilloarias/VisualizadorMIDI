@@ -18,6 +18,7 @@ describe('visualConfiguration', () => {
     const result = sanitizeVisualConfiguration({
       global: {
         ...cloneDefaultVisualConfiguration().global,
+        fpsMode: 'incorrecto' as 'auto',
         supersampling: 900,
       },
       families: {
@@ -31,6 +32,7 @@ describe('visualConfiguration', () => {
     });
 
     expect(result.global.supersampling).toBe(3);
+    expect(result.global.fpsMode).toBe('auto');
     expect(result.families['Mi familia'].color).toBe('#abcdef');
     expect(result.families['Mi familia'].shape).toBe('hexagonDouble');
   });

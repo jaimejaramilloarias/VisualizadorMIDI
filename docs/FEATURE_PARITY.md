@@ -15,7 +15,7 @@ Tampoco exporta video o audio; estas decisiones no afectan el JSON de estado.
 | Sincronía | Mapa de tempo MIDI | Migrada |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
-| Visual | FPS y supersampling | Rediseñada; sigue el refresco de pantalla y adapta resolución/DPR |
+| Visual | FPS y supersampling | Rediseñada; Auto sigue la pantalla, con límites de 60/30 y resolución adaptativa |
 | Visual | Color de canvas | Migrada |
 | Visual | Imagen de fondo y opacidad | Retirada por decisión de producto; solo color sólido |
 | Visual | Etiquetas de nota, fuente, color y tamaño | Migrada |
@@ -51,6 +51,6 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 21 pruebas V2 correctas.
+- `npm run test`: 25 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - Navegador: consola limpia y diseño sin overflow en 1024×768 y 768×1024.

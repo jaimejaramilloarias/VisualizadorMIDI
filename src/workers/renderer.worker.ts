@@ -16,8 +16,12 @@ import type {
   RendererOutboundMessage,
 } from '../renderer/protocol';
 import {
+  advanceFrameCadence,
   computeRenderScale,
   curveTravelOffset,
+  extrapolateMidiTime,
+  noteOnGlowEnvelope,
+  resolveTargetFps,
 } from '../renderer/renderMath';
 import { drawNoteShape, strokeNoteShape } from '../renderer/shapes';
 
@@ -37,7 +41,7 @@ let appearance: RenderAppearance = {
 };
 let clock: RenderClock = {
   midiTime: 0,
-  performanceTime: performance.now(),
+  epochTime: performance.timeOrigin + performance.now(),
   playing: false,
   playbackRate: 1,
 };
@@ -53,6 +57,8 @@ let adaptiveRatio = 1;
 let slowWindows = 0;
 let fastWindows = 0;
 let displayRefreshRate = 60;
+let previousAnimationFrame = 0;
+let frameAccumulator = 0;
 
 const fallbackTrackStyle: ResolvedTrackVisualStyle = {
   ...structuredClone(DEFAULT_VISUAL_CONFIGURATION.families.Auxiliares),
@@ -98,14 +104,46 @@ const rebuildLongNoteIndex = (): void => {
 };
 
 const currentMidiTime = (now: number): number =>
-  Math.max(
-    0,
-    clock.midiTime +
-      (clock.playing
-        ? (Math.max(0, now - clock.performanceTime) / 1000) *
-          clock.playbackRate
-        : 0),
-  );
+  extrapolateMidiTime({
+    midiTime: clock.midiTime,
+    anchorEpochTime: clock.epochTime,
+    nowEpochTime: performance.timeOrigin + now,
+    playing: clock.playing,
+    playbackRate: clock.playbackRate,
+  });
+
+const targetFps = (): number =>
+  resolveTargetFps(appearance.global.fpsMode, displayRefreshRate);
+
+const resetFrameCadence = (): void => {
+  previousAnimationFrame = 0;
+  frameAccumulator = 0;
+  lastFrame = performance.now();
+  frameDurations = [];
+};
+
+const shouldPresentFrame = (now: number): boolean => {
+  if (appearance.global.fpsMode === 'auto') {
+    previousAnimationFrame = now;
+    frameAccumulator = 0;
+    return true;
+  }
+  const target = targetFps();
+  if (previousAnimationFrame <= 0) {
+    previousAnimationFrame = now;
+    frameAccumulator = 0;
+    return true;
+  }
+  const delta = Math.min(250, Math.max(0, now - previousAnimationFrame));
+  previousAnimationFrame = now;
+  const cadence = advanceFrameCadence({
+    accumulator: frameAccumulator,
+    delta,
+    targetFps: target,
+  });
+  frameAccumulator = cadence.accumulator;
+  return cadence.present;
+};
 
 const applySize = (): void => {
   if (!canvas || !context) return;
@@ -353,17 +391,16 @@ const drawHorizontalScene = (
     const width = override?.width ?? layout.width;
     const height = override?.height ?? layout.height;
     const centerX = x + width / 2;
-    const noteOnGlow =
-      Math.max(0, 1 - Math.max(0, time - start) / 0.28);
+    const noteOnGlow = noteOnGlowEnvelope(time, start);
     const glow =
       settings.glow *
       (appearance.global.glowStrength + style.glowStrength) *
-      (0.45 + noteOnGlow * 1.8 + (active ? 0.35 : 0));
+      (noteOnGlow * 1.8 + (active ? 0.35 : 0));
 
     ctx.globalAlpha = layout.alpha * alphaScale;
     if (glow > 0.02) {
       ctx.shadowColor = style.color;
-      ctx.shadowBlur = 12 * glow * velocity;
+      ctx.shadowBlur = Math.min(48, 12 * glow * velocity);
     }
     drawNoteShape(
       ctx,
@@ -461,13 +498,17 @@ const drawHorizontalScene = (
 
 const adaptResolution = (fps: number, p95: number): void => {
   if (settings.quality !== 'auto') return;
-  const frameBudget = 1000 / displayRefreshRate;
-  if (p95 > frameBudget * 1.18 || fps < displayRefreshRate * 0.86) {
+  const expectedFps = targetFps();
+  const frameBudget = 1000 / expectedFps;
+  if (
+    fps < expectedFps * 0.9 ||
+    (p95 > frameBudget * 1.35 && fps < expectedFps * 0.98)
+  ) {
     slowWindows += 1;
     fastWindows = 0;
   } else if (
-    p95 < frameBudget * 1.02 &&
-    fps >= displayRefreshRate * 0.94
+    p95 < frameBudget * 1.2 &&
+    fps >= expectedFps * 0.97
   ) {
     fastWindows += 1;
     slowWindows = 0;
@@ -476,12 +517,12 @@ const adaptResolution = (fps: number, p95: number): void => {
     fastWindows = 0;
   }
 
-  if (slowWindows >= 2 && adaptiveRatio > 0.8) {
-    adaptiveRatio = Math.max(0.8, adaptiveRatio - 0.05);
+  if (slowWindows >= 1 && adaptiveRatio > 0.55) {
+    adaptiveRatio = Math.max(0.55, adaptiveRatio - 0.12);
     slowWindows = 0;
     applySize();
-  } else if (fastWindows >= 4 && adaptiveRatio < 1) {
-    adaptiveRatio = Math.min(1, adaptiveRatio + 0.05);
+  } else if (fastWindows >= 6 && adaptiveRatio < 1) {
+    adaptiveRatio = Math.min(1, adaptiveRatio + 0.04);
     fastWindows = 0;
     applySize();
   }
@@ -493,6 +534,8 @@ const renderFrame = (now: number): void => {
   if (clock.playing) {
     animationHandle = scope.requestAnimationFrame(renderFrame);
   }
+
+  if (clock.playing && !shouldPresentFrame(now)) return;
 
   if (clock.playing) {
     const frameDuration = Math.max(0.01, now - lastFrame);
@@ -533,6 +576,7 @@ const renderFrame = (now: number): void => {
         renderHeight: canvas.height,
         scale: Math.round(renderScale * 100) / 100,
         displayFps: displayRefreshRate,
+        targetFps: targetFps(),
       },
     });
     frameDurations = [];
@@ -543,8 +587,7 @@ const renderFrame = (now: number): void => {
 const requestRender = (): void => {
   if (!rendererVisible || animationHandle) return;
   if (!clock.playing) {
-    lastFrame = performance.now();
-    frameDurations = [];
+    resetFrameCadence();
   }
   animationHandle = scope.requestAnimationFrame(renderFrame);
 };
@@ -589,13 +632,22 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       const supersamplingChanged =
         appearance.global.supersampling !==
         message.appearance.global.supersampling;
+      const fpsModeChanged =
+        appearance.global.fpsMode !== message.appearance.global.fpsMode;
       appearance = message.appearance;
       if (supersamplingChanged) applySize();
+      if (fpsModeChanged) {
+        slowWindows = 0;
+        fastWindows = 0;
+        resetFrameCadence();
+      }
       requestRender();
     } else if (message.type === 'display-refresh-rate') {
+      const previousTarget = targetFps();
       displayRefreshRate = Math.min(240, Math.max(30, message.fps));
       slowWindows = 0;
       fastWindows = 0;
+      if (targetFps() !== previousTarget) resetFrameCadence();
       if (!clock.playing) {
         send({
           type: 'telemetry',
@@ -607,12 +659,15 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
             renderHeight: canvas?.height ?? 0,
             scale: Math.round(renderScale * 100) / 100,
             displayFps: displayRefreshRate,
+            targetFps: targetFps(),
           },
         });
       }
       requestRender();
     } else if (message.type === 'clock') {
+      const playingChanged = clock.playing !== message.clock.playing;
       clock = message.clock;
+      if (playingChanged) resetFrameCadence();
       requestRender();
     } else if (message.type === 'visibility') {
       rendererVisible = message.visible;
@@ -620,16 +675,14 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
         scope.cancelAnimationFrame(animationHandle);
         animationHandle = 0;
       } else if (rendererVisible && !animationHandle) {
-        lastFrame = performance.now();
-        frameDurations = [];
+        resetFrameCadence();
         requestRender();
       }
     } else if (message.type === 'refresh') {
       adaptiveRatio = 1;
       slowWindows = 0;
       fastWindows = 0;
-      frameDurations = [];
-      lastFrame = performance.now();
+      resetFrameCadence();
       applySize();
       requestRender();
     } else if (message.type === 'clear') {
