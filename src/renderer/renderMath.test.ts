@@ -6,10 +6,11 @@ import {
   computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
-  curveTravelOffset,
+  composeTravelStyle,
   computeRenderScale,
-    extrapolateMidiTime,
-    familyDepthPriority,
+  curveTravelOffset,
+  extrapolateMidiTime,
+  familyDepthPriority,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
@@ -230,6 +231,27 @@ describe('reloj y cadencia', () => {
 });
 
 describe('curveTravelOffset', () => {
+  it('combina el control global con la familia o instrumento', () => {
+    const composed = composeTravelStyle(
+      { enabled: true, intensity: 1.5, magnetZone: 1.4 },
+      { enabled: true, intensity: 0.8, magnetZone: 0.75 },
+    );
+
+    expect(composed.enabled).toBe(true);
+    expect(composed.intensity).toBeCloseTo(1.2);
+    expect(composed.magnetZone).toBeCloseTo(1.05);
+    expect(
+      composeTravelStyle(
+        { enabled: false, intensity: 2, magnetZone: 2 },
+        { enabled: true, intensity: 2, magnetZone: 2 },
+      ),
+    ).toEqual({
+      enabled: false,
+      intensity: 2,
+      magnetZone: 2,
+    });
+  });
+
   it('mantiene el desplazamiento lineal cuando la curva está desactivada', () => {
     expect(
       curveTravelOffset({
@@ -283,6 +305,49 @@ describe('curveTravelOffset', () => {
     const nearTravel = offsetAt(120) - offsetAt(80);
 
     expect(nearTravel).toBeGreaterThan(farTravel);
+  });
+
+  it('hace perceptible todo el rango de intensidad, incluso por encima de 1×', () => {
+    const positionAtIntensity = (intensity: number) =>
+      curveTravelOffset({
+        offset: 180,
+        canvasWidth: 1200,
+        intensity,
+        magnetZone: 1,
+        enabled: true,
+        released: false,
+      });
+
+    expect(positionAtIntensity(0)).toBeCloseTo(180);
+    expect(positionAtIntensity(1)).toBeGreaterThan(
+      positionAtIntensity(0.5),
+    );
+    expect(positionAtIntensity(2)).toBeGreaterThan(
+      positionAtIntensity(1),
+    );
+  });
+
+  it('amplía claramente la zona afectada al aumentar la zona de aceleración', () => {
+    const offset = 600;
+    const narrowZone = curveTravelOffset({
+      offset,
+      canvasWidth: 1200,
+      intensity: 1,
+      magnetZone: 0.5,
+      enabled: true,
+      released: false,
+    });
+    const wideZone = curveTravelOffset({
+      offset,
+      canvasWidth: 1200,
+      intensity: 1,
+      magnetZone: 2,
+      enabled: true,
+      released: false,
+    });
+
+    expect(narrowZone).toBe(offset);
+    expect(wideZone).toBeGreaterThan(offset);
   });
 });
 

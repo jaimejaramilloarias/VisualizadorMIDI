@@ -1,5 +1,8 @@
 import type { QualityPreset } from '../core/state/visualizationState';
-import type { FpsMode } from '../core/state/visualConfiguration';
+import type {
+  FpsMode,
+  TravelStyle,
+} from '../core/state/visualConfiguration';
 
 const MEGAPIXEL_BUDGETS: Record<QualityPreset, number> = {
   auto: 10_000_000,
@@ -253,6 +256,21 @@ export interface CurveTravelInput {
   released: boolean;
 }
 
+export const composeTravelStyle = (
+  global: TravelStyle,
+  local: TravelStyle,
+): TravelStyle => ({
+  enabled: global.enabled && local.enabled,
+  intensity: Math.max(
+    0,
+    Math.min(2, global.intensity * local.intensity),
+  ),
+  magnetZone: Math.max(
+    0.5,
+    Math.min(2, global.magnetZone * local.magnetZone),
+  ),
+});
+
 export const lockNoteOnArrivalOffset = (
   offset: number,
   linearOffset: number,
@@ -304,19 +322,16 @@ export const curveTravelOffset = ({
   released,
 }: CurveTravelInput): number => {
   if (!enabled || released || offset <= 0) return offset;
-  const maximum = canvasWidth * 0.62 + Math.max(80, canvasWidth * 0.1);
+  const safeMagnetZone = Math.max(0.5, Math.min(2, magnetZone));
+  const zoneProgress = (safeMagnetZone - 0.5) / 1.5;
+  const maximum = Math.max(
+    160,
+    canvasWidth * (0.35 + zoneProgress * 0.6),
+  );
   if (Math.abs(offset) >= maximum) return offset;
   const normalized = Math.min(1, Math.abs(offset) / maximum);
-  const safeMagnetZone = Math.max(0, Math.min(2, magnetZone));
-  const curved =
-    offset > 0
-      ? 1 - (1 - normalized) ** (1 + safeMagnetZone * 2.2)
-      : 1 - (1 - normalized) ** (1 + safeMagnetZone * 0.45);
   const safeIntensity = Math.min(2, Math.max(0, intensity));
-  let mixed =
-    normalized + (curved - normalized) * Math.min(1, safeIntensity);
-  if (safeIntensity > 1) {
-    mixed += (curved - mixed) * (safeIntensity - 1);
-  }
-  return Math.sign(offset) * Math.max(0, Math.min(1, mixed)) * maximum;
+  const exponent = 1 + safeIntensity * 2.8;
+  const curved = 1 - (1 - normalized) ** exponent;
+  return Math.max(0, Math.min(1, curved)) * maximum;
 };

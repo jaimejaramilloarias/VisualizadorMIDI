@@ -23,6 +23,7 @@ import {
   computeHorizontalViewport,
   computePastExtensionBounds,
   computeRenderScale,
+  composeTravelStyle,
   curveTravelOffset,
   extrapolateMidiTime,
   familyDepthPriority,
@@ -292,12 +293,16 @@ const drawHorizontalScene = (
 
     const secondsUntilNoteOn = start - time;
     const linearOffset = secondsUntilNoteOn * pixelsPerSecond;
+    const travel = composeTravelStyle(
+      appearance.global.travel,
+      style.travel,
+    );
     const travelOffset = curveTravelOffset({
       offset: linearOffset,
       canvasWidth: cssWidth,
-      intensity: style.travel.intensity,
-      magnetZone: style.travel.magnetZone,
-      enabled: style.travel.enabled,
+      intensity: travel.intensity,
+      magnetZone: travel.magnetZone,
+      enabled: travel.enabled,
       released: time > end,
     });
     const arrivalX =
