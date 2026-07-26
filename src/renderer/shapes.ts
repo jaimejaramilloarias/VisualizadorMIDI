@@ -50,13 +50,54 @@ const traceShape = (
     context.closePath();
   } else if (shape === 'fourPointStar') {
     context.moveTo(centerX, y);
-    context.lineTo(x + width * 0.62, y + height * 0.38);
-    context.lineTo(x + width, centerY);
-    context.lineTo(x + width * 0.62, y + height * 0.62);
-    context.lineTo(centerX, y + height);
-    context.lineTo(x + width * 0.38, y + height * 0.62);
-    context.lineTo(x, centerY);
-    context.lineTo(x + width * 0.38, y + height * 0.38);
+    context.quadraticCurveTo(
+      x + width * 0.53,
+      y + height * 0.22,
+      x + width * 0.62,
+      y + height * 0.38,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.78,
+      y + height * 0.47,
+      x + width,
+      centerY,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.78,
+      y + height * 0.53,
+      x + width * 0.62,
+      y + height * 0.62,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.53,
+      y + height * 0.78,
+      centerX,
+      y + height,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.47,
+      y + height * 0.78,
+      x + width * 0.38,
+      y + height * 0.62,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.22,
+      y + height * 0.53,
+      x,
+      centerY,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.22,
+      y + height * 0.47,
+      x + width * 0.38,
+      y + height * 0.38,
+    );
+    context.quadraticCurveTo(
+      x + width * 0.47,
+      y + height * 0.22,
+      centerX,
+      y,
+    );
     context.closePath();
   } else if (shape === 'sixPointStar') {
     for (let point = 0; point < 12; point += 1) {
