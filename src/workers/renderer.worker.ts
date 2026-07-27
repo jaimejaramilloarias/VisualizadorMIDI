@@ -7,6 +7,7 @@ import {
 } from '../core/state/visualizationState';
 import {
   DEFAULT_VISUAL_CONFIGURATION,
+  type EndCardSettings,
   type RenderAppearance,
   type ResolvedTrackVisualStyle,
 } from '../core/state/visualConfiguration';
@@ -17,6 +18,7 @@ import type {
 } from '../renderer/protocol';
 import {
   advanceFrameCadence,
+  computeEndCardLineProgress,
   computeNoteOnBumpScale,
   computeNoteOnGlowPresentation,
   computeNoteOnGlowStrength,
@@ -28,12 +30,14 @@ import {
   curveTravelOffset,
   extrapolateMidiTime,
   familyDepthPriority,
+  hasEndCardContent,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
   isTerminalNoteOff,
   shouldRenderProgressiveNoteLength,
+  woodwindInstrumentDepthPriority,
 } from '../renderer/renderMath';
 import { drawNoteShape } from '../renderer/shapes';
 
@@ -73,6 +77,7 @@ let previousAnimationFrame = 0;
 let frameAccumulator = 0;
 let renderOverrunFrames = 0;
 let sizeChangePending = false;
+let endCardStartMidiTime: number | null = null;
 const glowTextures = new Map<string, OffscreenCanvas>();
 const labelMetrics = new Map<
   string,
@@ -87,6 +92,21 @@ let hitRegions: Array<{
   width: number;
   height: number;
 }> = [];
+
+interface EndCardLineLayout {
+  text: string;
+  font: string;
+  fontSize: number;
+  x: number;
+  y: number;
+  maxWidth: number;
+  sourceIndex: number;
+}
+
+let endCardLayoutCache: {
+  key: string;
+  lines: EndCardLineLayout[];
+} | null = null;
 
 const GLOW_TEXTURE_SIZE = 128;
 const MAX_GLOW_TEXTURES = 48;
@@ -284,6 +304,155 @@ const renderBackdrop = (
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 };
 
+const END_CARD_UI_FONT =
+  'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif';
+const END_CARD_SERIF_FONT =
+  '"Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif';
+const END_CARD_ENTRANCE_OFFSET = 22;
+const END_CARD_LINE_DEFINITIONS: ReadonlyArray<{
+  key: keyof EndCardSettings;
+  fontFamily: string;
+  fontWeight: 400 | 700;
+  sizeRatio: number;
+  minimumSize: number;
+  maximumSize: number;
+}> = [
+  {
+    key: 'title',
+    fontFamily: END_CARD_SERIF_FONT,
+    fontWeight: 400,
+    sizeRatio: 0.1,
+    minimumSize: 34,
+    maximumSize: 112,
+  },
+  {
+    key: 'subtitle',
+    fontFamily: END_CARD_UI_FONT,
+    fontWeight: 700,
+    sizeRatio: 0.055,
+    minimumSize: 22,
+    maximumSize: 64,
+  },
+  {
+    key: 'composerArranger',
+    fontFamily: END_CARD_UI_FONT,
+    fontWeight: 400,
+    sizeRatio: 0.036,
+    minimumSize: 16,
+    maximumSize: 42,
+  },
+  {
+    key: 'freeText',
+    fontFamily: END_CARD_UI_FONT,
+    fontWeight: 400,
+    sizeRatio: 0.029,
+    minimumSize: 14,
+    maximumSize: 34,
+  },
+];
+
+const clamp = (value: number, minimum: number, maximum: number): number =>
+  Math.min(maximum, Math.max(minimum, value));
+
+const endCardFont = (
+  weight: 400 | 700,
+  size: number,
+  family: string,
+): string => `${weight} ${size}px ${family}`;
+
+const resolveEndCardLayout = (
+  ctx: OffscreenCanvasRenderingContext2D,
+  endCard: EndCardSettings,
+): EndCardLineLayout[] => {
+  const cacheKey = [
+    cssWidth,
+    cssHeight,
+    endCard.title,
+    endCard.subtitle,
+    endCard.composerArranger,
+    endCard.freeText,
+  ].join('\u0000');
+  if (endCardLayoutCache?.key === cacheKey) {
+    return endCardLayoutCache.lines;
+  }
+
+  const left = clamp(cssWidth * 0.075, 28, 96);
+  const right = clamp(cssWidth * 0.075, 28, 96);
+  const maximumTextWidth = Math.max(1, cssWidth - left - right);
+  const referenceSize = Math.min(cssWidth, cssHeight * 1.35);
+  const gap = clamp(cssHeight * 0.022, 10, 26);
+  let y = clamp(cssHeight * 0.12, 42, 140);
+  const lines: EndCardLineLayout[] = [];
+
+  END_CARD_LINE_DEFINITIONS.forEach((definition, sourceIndex) => {
+    const text = endCard[definition.key].trim();
+    if (!text) return;
+    const idealSize = clamp(
+      referenceSize * definition.sizeRatio,
+      definition.minimumSize,
+      definition.maximumSize,
+    );
+    ctx.font = endCardFont(
+      definition.fontWeight,
+      idealSize,
+      definition.fontFamily,
+    );
+    const measuredWidth = ctx.measureText(text).width;
+    const fittedSize =
+      measuredWidth > maximumTextWidth
+        ? Math.max(
+            definition.minimumSize,
+            idealSize * (maximumTextWidth / measuredWidth),
+          )
+        : idealSize;
+    const font = endCardFont(
+      definition.fontWeight,
+      fittedSize,
+      definition.fontFamily,
+    );
+    lines.push({
+      text,
+      font,
+      fontSize: fittedSize,
+      x: left,
+      y,
+      maxWidth: maximumTextWidth,
+      sourceIndex,
+    });
+    y += fittedSize * 1.16 + gap;
+  });
+
+  endCardLayoutCache = { key: cacheKey, lines };
+  return lines;
+};
+
+const drawEndCard = (
+  ctx: OffscreenCanvasRenderingContext2D,
+  elapsed: number,
+): void => {
+  const lines = resolveEndCardLayout(ctx, appearance.global.endCard);
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  for (const line of lines) {
+    const progress = computeEndCardLineProgress(
+      elapsed,
+      line.sourceIndex,
+    );
+    if (progress <= 0) continue;
+    ctx.globalAlpha = progress;
+    ctx.font = line.font;
+    ctx.fillText(
+      line.text,
+      line.x,
+      line.y + (1 - progress) * END_CARD_ENTRANCE_OFFSET,
+      line.maxWidth,
+    );
+  }
+  ctx.restore();
+};
+
 const forEachVisibleNote = (
   visibleStart: number,
   visibleEnd: number,
@@ -344,6 +513,7 @@ const drawHorizontalScene = (
     centerX: number;
     alpha: number;
     depthPriority: number;
+    instrumentDepthPriority: number;
     progressiveLength: boolean;
     style: ResolvedTrackVisualStyle;
   }
@@ -437,9 +607,11 @@ const drawHorizontalScene = (
     }
     const y = cssHeight - lanePadding - pitch * laneHeight - height * 0.5;
     const centerX = x + width / 2;
+    const trackIndex = project!.notes.tracks[index];
+    const track = project!.tracks[trackIndex];
     return {
       noteIndex: index,
-      trackIndex: project!.notes.tracks[index],
+      trackIndex,
       start,
       end,
       pitch,
@@ -452,6 +624,11 @@ const drawHorizontalScene = (
       alpha:
         (0.48 + velocity * 0.5) * Math.max(0, spatialOpacity(centerX)),
       depthPriority: familyDepthPriority(style.family),
+      instrumentDepthPriority: woodwindInstrumentDepthPriority(
+        style.family,
+        track?.name ?? '',
+        track?.instrument ?? '',
+      ),
       progressiveLength,
       style,
     };
@@ -466,6 +643,7 @@ const drawHorizontalScene = (
   layouts.sort(
     (left, right) =>
       left.depthPriority - right.depthPriority ||
+      left.instrumentDepthPriority - right.instrumentDepthPriority ||
       left.trackIndex - right.trackIndex ||
       left.noteIndex - right.noteIndex,
   );
@@ -674,9 +852,21 @@ const renderFrame = (now: number): void => {
   renderBackdrop(context);
 
   if (project) {
-    drawHorizontalScene(context, time);
+    const endCardElapsed =
+      endCardStartMidiTime !== null &&
+      hasEndCardContent(appearance.global.endCard)
+        ? time - endCardStartMidiTime
+        : -1;
+    if (endCardElapsed >= 0) {
+      visibleNotes = 0;
+      hitRegions.length = 0;
+      drawEndCard(context, endCardElapsed);
+    } else {
+      drawHorizontalScene(context, time);
+    }
   } else {
     visibleNotes = 0;
+    hitRegions.length = 0;
   }
   reactToRenderCost(performance.now() - renderStarted);
 
@@ -742,6 +932,7 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       requestRender();
     } else if (message.type === 'project') {
       project = message.project;
+      endCardStartMidiTime = null;
       rebuildLongNoteIndex();
       requestRender();
     } else if (message.type === 'settings') {
@@ -765,6 +956,7 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       appearance = message.appearance;
       glowTextures.clear();
       labelMetrics.clear();
+      endCardLayoutCache = null;
       if (supersamplingChanged) applySize();
       if (fpsModeChanged) {
         slowWindows = 0;
@@ -799,6 +991,13 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       const playingChanged = clock.playing !== message.clock.playing;
       clock = message.clock;
       if (playingChanged) resetFrameCadence();
+      requestRender();
+    } else if (message.type === 'end-card-timeline') {
+      endCardStartMidiTime =
+        message.startMidiTime !== null &&
+        Number.isFinite(message.startMidiTime)
+          ? Math.max(0, message.startMidiTime)
+          : null;
       requestRender();
     } else if (message.type === 'visibility') {
       rendererVisible = message.visible;
@@ -841,8 +1040,10 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       requestRender();
     } else if (message.type === 'clear') {
       project = null;
+      endCardStartMidiTime = null;
       longNotes = new Uint32Array();
       hitRegions = [];
+      endCardLayoutCache = null;
       requestRender();
     }
   } catch (error) {

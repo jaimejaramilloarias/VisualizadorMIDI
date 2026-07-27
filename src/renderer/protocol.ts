@@ -48,6 +48,7 @@ export type RendererInboundMessage =
   | { type: 'appearance'; appearance: RenderAppearance }
   | { type: 'display-refresh-rate'; fps: number }
   | { type: 'clock'; clock: RenderClock }
+  | { type: 'end-card-timeline'; startMidiTime: number | null }
   | { type: 'visibility'; visible: boolean }
   | { type: 'hit-test'; x: number; y: number }
   | { type: 'refresh' }

@@ -64,12 +64,19 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Offset inicial explícito: negativo hace esperar la animación; positivo la
   adelanta respecto al audio.
 - El primer MIDI de una sesión usa el preset visual afinado en la obra
-  `EL INTACHABLE`: ventana de 8 s, calidad Ultra, supersampling `3×`,
-  animaciones globales y paleta/formas por familia. Al sustituirlo por otro MIDI
-  se generan colores distintos por familia, conservando siempre la edición
-  manual y los valores restaurados desde JSON.
+  `EL INTACHABLE`: ventana de 8 s, tamaño de nota `1.4×`, calidad Ultra,
+  supersampling `3×`, animaciones globales y paleta/formas por familia. Al
+  sustituirlo por otro MIDI se generan colores distintos por familia,
+  conservando siempre la edición manual y los valores restaurados desde JSON.
 - Superposición determinista por familia: percusión al fondo, seguida de
-  auxiliares, maderas y cuerdas, con metales al frente.
+  auxiliares, maderas y cuerdas, con metales al frente. Dentro de las maderas,
+  el orden de fondo a frente es flauta, clarinete, fagot y oboe.
+- Pantalla completa disponible en la barra superior; conserva la relación
+  Libre, `16:9` o `9:16` elegida en Canvas y oculta el puntero durante la
+  presentación.
+- Tarjeta final editable de cuatro líneas: entra secuencialmente en la esquina
+  superior izquierda después de que la última figura abandona el canvas y su
+  fotograma completo permanece congelado como cierre.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores
   son los controles iniciales.
 - Sincronía se trabaja en un espacio visual dedicado a pantalla completa.

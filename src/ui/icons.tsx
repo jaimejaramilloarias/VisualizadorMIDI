@@ -7,6 +7,7 @@ export type IconName =
   | 'chevron-right'
   | 'download'
   | 'folder'
+  | 'fullscreen'
   | 'gauge'
   | 'info'
   | 'layers'
@@ -57,6 +58,14 @@ export function Icon({
     ),
     folder: (
       <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2H19a2 2 0 0 1 2 2v8.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z" />
+    ),
+    fullscreen: (
+      <>
+        <path d="M8 3H3v5" />
+        <path d="M16 3h5v5" />
+        <path d="M21 16v5h-5" />
+        <path d="M8 21H3v-5" />
+      </>
     ),
     gauge: (
       <>

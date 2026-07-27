@@ -550,6 +550,43 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.canvas-frame:fullscreen {
+  display: flex;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  aspect-ratio: auto;
+  background: #000;
+  cursor: none;
+}
+
+.canvas-frame:fullscreen canvas {
+  flex: none;
+  max-width: 100vw;
+  max-height: 100vh;
+  cursor: none;
+}
+
+.canvas-frame:fullscreen[data-aspect-ratio="responsive"] canvas {
+  width: 100vw;
+  height: 100vh;
+}
+
+.canvas-frame:fullscreen[data-aspect-ratio="16:9"] canvas {
+  width: min(100vw, 177.7778vh);
+  height: min(100vh, 56.25vw);
+}
+
+.canvas-frame:fullscreen[data-aspect-ratio="9:16"] canvas {
+  width: min(100vw, 56.25vh);
+  height: min(100vh, 177.7778vw);
+}
+
 .sync-canvas-panel {
   position: absolute;
   right: 0;
@@ -2266,6 +2303,50 @@ input:focus-visible {
   color: #838d92;
   font-size: 10px;
   line-height: 1.5;
+}
+
+.end-card-fields {
+  display: grid;
+  gap: 9px;
+}
+
+.text-field {
+  display: grid;
+  gap: 5px;
+  color: #788288;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.text-field input {
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 0 11px;
+  color: #edf1f2;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  outline: 0;
+  background: #202428;
+  font: 500 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  text-transform: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.text-field input::placeholder {
+  color: #667075;
+}
+
+.text-field input:focus {
+  border-color: rgba(255, 213, 0, 0.68);
+  background: #252a2e;
+  box-shadow: 0 0 0 3px rgba(255, 213, 0, 0.09);
 }
 
 .performance-status {

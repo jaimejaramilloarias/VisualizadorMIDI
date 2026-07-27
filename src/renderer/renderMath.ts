@@ -1,5 +1,6 @@
 import type { QualityPreset } from '../core/state/visualizationState';
 import type {
+  EndCardSettings,
   FpsMode,
   TravelStyle,
 } from '../core/state/visualConfiguration';
@@ -70,6 +71,73 @@ export const computeVisualPostRollDuration = (
   Math.max(0, Number.isFinite(secondsVisible) ? secondsVisible / 2 : 0) +
   POST_ROLL_EDGE_MARGIN_SECONDS;
 
+export const END_CARD_SEQUENCE_DURATION_SECONDS = 2.32;
+
+const END_CARD_LINE_TIMINGS = [
+  { start: 0, duration: 0.72 },
+  { start: 0.72, duration: 0.58 },
+  { start: 1.3, duration: 0.52 },
+  { start: 1.82, duration: 0.5 },
+] as const;
+
+const safeTimelineValue = (value: number): number =>
+  Number.isFinite(value) ? Math.max(0, value) : 0;
+
+export const computeEndCardStartMidiTime = (
+  projectDuration: number,
+  secondsVisible: number,
+  mappedContentEndMidi: number,
+): number =>
+  Math.max(
+    safeTimelineValue(projectDuration) +
+      safeTimelineValue(secondsVisible) / 2 +
+      POST_ROLL_EDGE_MARGIN_SECONDS,
+    safeTimelineValue(mappedContentEndMidi),
+  );
+
+export const computeEndCardPostRollDuration = (
+  projectDuration: number,
+  secondsVisible: number,
+  mappedContentEndMidi: number,
+  hasContent: boolean,
+): number => {
+  const safeMappedContentEnd = safeTimelineValue(mappedContentEndMidi);
+  return (
+    Math.max(
+      0,
+      computeEndCardStartMidiTime(
+        projectDuration,
+        secondsVisible,
+        safeMappedContentEnd,
+      ) - safeMappedContentEnd,
+    ) + (hasContent ? END_CARD_SEQUENCE_DURATION_SECONDS : 0)
+  );
+};
+
+export const hasEndCardContent = (endCard: EndCardSettings): boolean =>
+  [
+    endCard.title,
+    endCard.subtitle,
+    endCard.composerArranger,
+    endCard.freeText,
+  ].some((line) => line.trim().length > 0);
+
+const easeOutCubic = (progress: number): number =>
+  1 - (1 - progress) ** 3;
+
+export const computeEndCardLineProgress = (
+  elapsed: number,
+  index: number,
+): number => {
+  const timing = END_CARD_LINE_TIMINGS[index];
+  if (!timing || !Number.isFinite(elapsed)) return 0;
+  const linearProgress = Math.max(
+    0,
+    Math.min(1, (elapsed - timing.start) / timing.duration),
+  );
+  return easeOutCubic(linearProgress);
+};
+
 export interface RenderScaleInput {
   cssWidth: number;
   cssHeight: number;
@@ -136,6 +204,37 @@ export const familyDepthPriority = (family: string): number => {
   if (normalized.includes('cuerda')) return 3;
   if (normalized.includes('metal') || normalized.includes('corno')) return 4;
   return 1;
+};
+
+const normalizeDepthLabel = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+export const woodwindInstrumentDepthPriority = (
+  family: string,
+  ...labels: string[]
+): number => {
+  if (familyDepthPriority(family) !== 2) return 0;
+  const normalized = normalizeDepthLabel(labels.join(' '));
+  if (
+    normalized.includes('flaut') ||
+    normalized.includes('flute') ||
+    normalized.includes('piccolo') ||
+    normalized.includes('flautin')
+  ) {
+    return 0;
+  }
+  if (normalized.includes('clarinet')) return 1;
+  if (
+    normalized.includes('fagot') ||
+    normalized.includes('bassoon')
+  ) {
+    return 2;
+  }
+  if (normalized.includes('oboe')) return 3;
+  return 0;
 };
 
 export interface FrameCadenceInput {

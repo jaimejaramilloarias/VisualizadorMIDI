@@ -46,8 +46,8 @@ export interface VisualizationStateDocument {
 
 export const DEFAULT_SETTINGS: VisualizationSettings = {
   secondsVisible: 8,
-  glow: 1,
-  noteScale: 0.8,
+  glow: 0.6,
+  noteScale: 1.4,
   quality: 'ultra',
   background: '#000000',
 };

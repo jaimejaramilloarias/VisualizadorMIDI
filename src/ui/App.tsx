@@ -34,6 +34,7 @@ import {
   type VisualizationSettings,
 } from '../core/state/visualizationState';
 import {
+  END_CARD_TEXT_LIMITS,
   FAMILY_NAMES,
   MAX_EFFECT_STRENGTH,
   SHAPE_IDS,
@@ -53,7 +54,12 @@ import {
   type TransportSnapshot,
 } from '../core/transport/AudioTransport';
 import { RendererBridge } from '../renderer/RendererBridge';
-import { computeVisualPostRollDuration } from '../renderer/renderMath';
+import {
+  computeEndCardPostRollDuration,
+  computeEndCardStartMidiTime,
+  computeVisualPostRollDuration,
+  hasEndCardContent,
+} from '../renderer/renderMath';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import { selectDroppedMedia } from './fileDrop';
@@ -206,6 +212,29 @@ type InspectorMenuId =
 
 type AnimationScope = 'global' | 'family' | 'instrument';
 
+const END_CARD_FIELDS = [
+  {
+    key: 'title',
+    label: 'Título',
+    placeholder: 'TÍTULO',
+  },
+  {
+    key: 'subtitle',
+    label: 'Subtítulo',
+    placeholder: 'SUBTÍTULO',
+  },
+  {
+    key: 'composerArranger',
+    label: 'Compositor / arreglista',
+    placeholder: 'COMPOSITOR / ARREGLISTA',
+  },
+  {
+    key: 'freeText',
+    label: 'Texto libre',
+    placeholder: 'TEXTO LIBRE',
+  },
+] as const;
+
 const INSPECTOR_MENUS: ReadonlyArray<{
   id: InspectorMenuId;
   label: string;
@@ -283,6 +312,7 @@ function ToolButton({
   active = false,
   disabled = false,
   compact = false,
+  pressed,
 }: {
   icon: IconName;
   label: string;
@@ -290,10 +320,12 @@ function ToolButton({
   active?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  pressed?: boolean;
 }) {
   return (
     <button
       aria-label={label}
+      aria-pressed={pressed}
       className={`tool-button${active ? ' is-active' : ''}${compact ? ' is-compact' : ''}`}
       disabled={disabled}
       onClick={onClick}
@@ -485,6 +517,7 @@ export function App() {
   const [tapActive, setTapActive] = useState(false);
   const [syncWorkspaceOpen, setSyncWorkspaceOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [isCanvasFullscreen, setIsCanvasFullscreen] = useState(false);
   const [transport, setTransport] =
     useState<TransportSnapshot>(EMPTY_TRANSPORT);
   const [telemetry, setTelemetry] =
@@ -512,6 +545,18 @@ export function App() {
       window.removeEventListener('drop', clearFileDragState, true);
       window.removeEventListener('dragend', clearFileDragState, true);
     };
+  }, []);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsCanvasFullscreen(
+        document.fullscreenElement === canvasRef.current?.parentElement,
+      );
+    };
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    syncFullscreenState();
+    return () =>
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
   }, []);
 
   const markMediaLoad = useCallback(
@@ -543,6 +588,23 @@ export function App() {
           ? `No fue posible iniciar la reproducción: ${error.message}`
           : 'No fue posible iniciar la reproducción.',
       );
+    }
+  }, []);
+
+  const toggleCanvasFullscreen = useCallback(async () => {
+    const frame = canvasRef.current?.parentElement;
+    if (!document.fullscreenEnabled || !frame?.requestFullscreen) {
+      setNotice('Este navegador no ofrece pantalla completa para el canvas.');
+      return;
+    }
+    try {
+      if (document.fullscreenElement === frame) {
+        await document.exitFullscreen();
+      } else {
+        await frame.requestFullscreen();
+      }
+    } catch {
+      setNotice('El navegador no permitió cambiar el modo de pantalla completa.');
     }
   }, []);
 
@@ -884,12 +946,6 @@ export function App() {
       transportRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    transportRef.current?.setVisualPostRollDuration(
-      computeVisualPostRollDuration(settings.secondsVisible),
-    );
-  }, [settings.secondsVisible]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -1410,6 +1466,16 @@ export function App() {
     }));
   };
 
+  const updateEndCard = (
+    key: keyof VisualConfiguration['global']['endCard'],
+    value: string,
+  ) => {
+    updateGlobalVisual('endCard', {
+      ...visualConfiguration.global.endCard,
+      [key]: value,
+    });
+  };
+
   const updateInstrument = (
     trackName: string,
     updates: InstrumentVisualStyle,
@@ -1681,6 +1747,49 @@ export function App() {
       transport.visualPosition,
     ],
   );
+
+  useEffect(() => {
+    const transportInstance = transportRef.current;
+    if (!transportInstance) return;
+    const projectDuration = project?.duration ?? 0;
+    const endCardHasContent =
+      project !== null &&
+      hasEndCardContent(visualConfiguration.global.endCard);
+    const mappedContentEndMidi =
+      project === null
+        ? 0
+        : mapVisualTransportToMidiClock(
+            transport.duration,
+            transport.duration,
+            effectiveSyncOffset,
+            effectiveSyncTimeline,
+          ).midiTime;
+    const startMidiTime = endCardHasContent
+      ? computeEndCardStartMidiTime(
+          projectDuration,
+          settings.secondsVisible,
+          mappedContentEndMidi,
+        )
+      : null;
+
+    transportInstance.setVisualPostRollDuration(
+      computeEndCardPostRollDuration(
+        projectDuration,
+        settings.secondsVisible,
+        mappedContentEndMidi,
+        endCardHasContent,
+      ),
+    );
+    rendererRef.current?.setEndCardTimeline(startMidiTime);
+  }, [
+    effectiveSyncOffset,
+    effectiveSyncTimeline,
+    project,
+    settings.secondsVisible,
+    transport.duration,
+    visualConfiguration.global.endCard,
+  ]);
+
   const syncMappingIsForward = effectiveSyncTimeline.forward;
   const automaticAlignmentView = useMemo<AutomaticAlignmentView>(() => {
     if (automaticSync.status === 'analyzing') {
@@ -1860,7 +1969,18 @@ export function App() {
             <strong>MIDI STAGE V2</strong>
           </span>
         </div>
-        <nav aria-label="Archivos" className="file-actions">
+        <nav aria-label="Acciones principales" className="file-actions">
+          <ToolButton
+            active={isCanvasFullscreen}
+            icon="fullscreen"
+            label={
+              isCanvasFullscreen
+                ? 'Salir de pantalla completa'
+                : 'Pantalla completa'
+            }
+            onClick={() => void toggleCanvasFullscreen()}
+            pressed={isCanvasFullscreen}
+          />
           <ToolButton
             disabled={busy !== null}
             icon="music"
@@ -2366,15 +2486,30 @@ export function App() {
                     </button>
                   ))}
                 </div>
-                <button
-                  className="wide-action"
-                  onClick={() =>
-                    void canvasRef.current?.parentElement?.requestFullscreen()
-                  }
-                  type="button"
-                >
-                  Pantalla completa
-                </button>
+                <span className="subcontrol-label">Tarjeta final</span>
+                <p className="section-help">
+                  Aparece arriba a la izquierda después de que la última figura
+                  abandona el canvas y queda congelada como cierre.
+                </p>
+                <div className="end-card-fields">
+                  {END_CARD_FIELDS.map((field) => (
+                    <label className="text-field" key={field.key}>
+                      <span>{field.label}</span>
+                      <input
+                        autoComplete="off"
+                        maxLength={END_CARD_TEXT_LIMITS[field.key]}
+                        onChange={(event) =>
+                          updateEndCard(field.key, event.target.value)
+                        }
+                        placeholder={field.placeholder}
+                        type="text"
+                        value={
+                          visualConfiguration.global.endCard[field.key]
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
                   </>
                 )}
                 {inspectorTab === 'performance' && (

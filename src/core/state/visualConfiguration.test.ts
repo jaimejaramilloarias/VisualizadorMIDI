@@ -38,7 +38,7 @@ describe('visualConfiguration', () => {
       Platillos: '#ffffff',
       Placas: '#ffd500',
       Auxiliares: '#ffd500',
-      'Cuerdas frotadas': '#a97832',
+      'Cuerdas frotadas': '#a46813',
       'Cuerdas pulsadas': '#028317',
     });
   });
@@ -99,11 +99,11 @@ describe('visualConfiguration', () => {
     expect(result.global).toEqual({
       velocityBase: 67,
       colorToneShift: -6,
-      opacityEdge: 0.5,
-      opacityCenter: 1,
-      heightScale: 1.4,
+      opacityEdge: 0.8,
+      opacityCenter: 0.85,
+      heightScale: 1.1,
       glowStrength: 0.8,
-      bumpStrength: 4.8,
+      bumpStrength: 6,
       extension: false,
       stretch: true,
       audioOffsetMs: 0,
@@ -120,10 +120,16 @@ describe('visualConfiguration', () => {
         padding: 5,
         borderRadius: 5,
       },
+      endCard: {
+        title: '',
+        subtitle: '',
+        composerArranger: '',
+        freeText: '',
+      },
       travel: {
         enabled: true,
-        intensity: 0.3,
-        magnetZone: 0.7,
+        intensity: 0.2,
+        magnetZone: 1.25,
       },
     });
     expect(result.instruments).toEqual({
@@ -131,15 +137,27 @@ describe('visualConfiguration', () => {
         color: '#368128',
         shape: 'hexagon',
       },
+      'Pista 1': {
+        enabled: false,
+      },
+      Platillos: {
+        enabled: false,
+      },
+      TIPLE: {
+        enabled: false,
+      },
+      MARACAS: {
+        enabled: false,
+      },
     });
     expect(result.shapeExtensions).toEqual(
       Object.fromEntries(
-        SHAPE_IDS.map((shape) => [shape, shape !== 'diamond']),
+        SHAPE_IDS.map((shape) => [shape, true]),
       ),
     );
     expect(result.shapeStretch).toEqual(
       Object.fromEntries(
-        SHAPE_IDS.map((shape) => [shape, shape !== 'diamond']),
+        SHAPE_IDS.map((shape) => [shape, true]),
       ),
     );
     expect(
@@ -189,6 +207,25 @@ describe('visualConfiguration', () => {
     expect(result.global).toEqual({
       ...cloneDefaultVisualConfiguration().global,
       colorToneShift: 12,
+    });
+  });
+
+  it('sanea y limita las cuatro líneas persistibles de la tarjeta final', () => {
+    const configuration = cloneDefaultVisualConfiguration();
+    configuration.global.endCard = {
+      title: `  Título\nprincipal  `,
+      subtitle: '  Subtítulo   destacado ',
+      composerArranger: 'Compositor\u0000 / arreglista',
+      freeText: 'x'.repeat(300),
+    };
+
+    const result = sanitizeVisualConfiguration(configuration);
+
+    expect(result.global.endCard).toEqual({
+      title: 'Título principal',
+      subtitle: 'Subtítulo destacado',
+      composerArranger: 'Compositor / arreglista',
+      freeText: 'x'.repeat(240),
     });
   });
 

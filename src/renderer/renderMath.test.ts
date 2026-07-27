@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  END_CARD_SEQUENCE_DURATION_SECONDS,
   advanceFrameCadence,
+  computeEndCardLineProgress,
+  computeEndCardPostRollDuration,
+  computeEndCardStartMidiTime,
   computeNoteOnBumpScale,
   computeNoteOnGlowPresentation,
   computeNoteOnGlowStrength,
@@ -14,12 +18,14 @@ import {
   curveTravelOffset,
   extrapolateMidiTime,
   familyDepthPriority,
+  hasEndCardContent,
   isTerminalNoteOff,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
   shouldRenderProgressiveNoteLength,
+  woodwindInstrumentDepthPriority,
 } from './renderMath';
 
 describe('computeHorizontalViewport', () => {
@@ -35,6 +41,72 @@ describe('computeHorizontalViewport', () => {
   it('reserva el recorrido de NOW al borde izquierdo más un margen', () => {
     expect(computeVisualPostRollDuration(8)).toBeCloseTo(4.1);
     expect(computeVisualPostRollDuration(12)).toBeCloseTo(6.1);
+  });
+});
+
+describe('tarjeta final', () => {
+  const content = {
+    title: 'EL INTACHABLE',
+    subtitle: 'Concierto para orquesta',
+    composerArranger: 'Compositor / arreglista',
+    freeText: 'Texto libre',
+  };
+
+  it('espera a que la última figura abandone el borde izquierdo', () => {
+    expect(computeEndCardStartMidiTime(180, 8, 180)).toBeCloseTo(184.1);
+  });
+
+  it('nunca presenta la tarjeta antes del final de contenido ya mapeado', () => {
+    expect(computeEndCardStartMidiTime(180, 8, 186)).toBe(186);
+  });
+
+  it('agrega la secuencia final solo cuando existe texto de cierre', () => {
+    expect(computeEndCardPostRollDuration(180, 8, 180, false)).toBeCloseTo(
+      4.1,
+    );
+    expect(computeEndCardPostRollDuration(180, 8, 180, true)).toBeCloseTo(
+      4.1 + END_CARD_SEQUENCE_DURATION_SECONDS,
+    );
+    expect(computeEndCardPostRollDuration(180, 8, 186, true)).toBeCloseTo(
+      END_CARD_SEQUENCE_DURATION_SECONDS,
+    );
+  });
+
+  it('garantiza la salida terminal aun si el contenido termina desfasado', () => {
+    expect(computeEndCardPostRollDuration(180, 8, 170, false)).toBeCloseTo(
+      14.1,
+    );
+    expect(computeEndCardPostRollDuration(180, 8, 186, false)).toBe(0);
+  });
+
+  it('considera contenido únicamente el texto visible', () => {
+    expect(hasEndCardContent(content)).toBe(true);
+    expect(
+      hasEndCardContent({
+        title: ' ',
+        subtitle: '\n',
+        composerArranger: '\t',
+        freeText: '',
+      }),
+    ).toBe(false);
+  });
+
+  it('anima las cuatro líneas en secuencia y termina en un frame completo', () => {
+    expect(computeEndCardLineProgress(-0.1, 0)).toBe(0);
+    expect(computeEndCardLineProgress(0.36, 0)).toBeCloseTo(0.875);
+    expect(computeEndCardLineProgress(0.72, 0)).toBe(1);
+    expect(computeEndCardLineProgress(0.72, 1)).toBe(0);
+    expect(computeEndCardLineProgress(1.01, 1)).toBeCloseTo(0.875);
+    expect(computeEndCardLineProgress(1.3, 2)).toBe(0);
+    expect(computeEndCardLineProgress(1.82, 3)).toBe(0);
+    expect(
+      [0, 1, 2, 3].map((index) =>
+        computeEndCardLineProgress(
+          END_CARD_SEQUENCE_DURATION_SECONDS,
+          index,
+        ),
+      ),
+    ).toEqual([1, 1, 1, 1]);
   });
 });
 
@@ -95,6 +167,74 @@ describe('familyDepthPriority', () => {
     expect(familyDepthPriority('Platillos')).toBe(0);
     expect(familyDepthPriority('Saxofones')).toBe(2);
     expect(familyDepthPriority('Cornos')).toBe(4);
+  });
+
+  it('ordena las maderas de fondo a frente: flauta, clarinete, fagot y oboe', () => {
+    const instruments = [
+      'Oboes I - II',
+      'Fagotes I - II',
+      'Clarinetes Bb I - II',
+      'Flauta I - II',
+    ];
+
+    expect(
+      instruments.sort(
+        (left, right) =>
+          woodwindInstrumentDepthPriority(
+            'Maderas de timbre "redondo"',
+            left,
+          ) -
+          woodwindInstrumentDepthPriority(
+            'Maderas de timbre "redondo"',
+            right,
+          ),
+      ),
+    ).toEqual([
+      'Flauta I - II',
+      'Clarinetes Bb I - II',
+      'Fagotes I - II',
+      'Oboes I - II',
+    ]);
+  });
+
+  it('reconoce nombres ingleses sin alterar el orden de otras familias', () => {
+    expect(
+      woodwindInstrumentDepthPriority('Dobles cañas', 'Bassoon II'),
+    ).toBe(2);
+    expect(
+      woodwindInstrumentDepthPriority('Metales', 'Oboe'),
+    ).toBe(0);
+    expect(
+      woodwindInstrumentDepthPriority('Maderas', 'Flautín 2'),
+    ).toBe(0);
+  });
+
+  it('mantiene las capas familiares aunque cambie la prioridad instrumental', () => {
+    const figures = [
+      { family: 'Metales', instrument: 'Flauta' },
+      { family: 'Maderas', instrument: 'Oboe' },
+      { family: 'Percusión menor', instrument: 'Oboe' },
+    ];
+
+    expect(
+      figures.sort(
+        (left, right) =>
+          familyDepthPriority(left.family) -
+            familyDepthPriority(right.family) ||
+          woodwindInstrumentDepthPriority(
+            left.family,
+            left.instrument,
+          ) -
+            woodwindInstrumentDepthPriority(
+              right.family,
+              right.instrument,
+            ),
+      ),
+    ).toEqual([
+      { family: 'Percusión menor', instrument: 'Oboe' },
+      { family: 'Maderas', instrument: 'Oboe' },
+      { family: 'Metales', instrument: 'Flauta' },
+    ]);
   });
 });
 

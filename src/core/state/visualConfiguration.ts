@@ -69,6 +69,23 @@ export interface NoteLabelSettings {
   borderRadius: number;
 }
 
+export interface EndCardSettings {
+  title: string;
+  subtitle: string;
+  composerArranger: string;
+  freeText: string;
+}
+
+export const END_CARD_TEXT_LIMITS: Record<
+  keyof EndCardSettings,
+  number
+> = {
+  title: 120,
+  subtitle: 160,
+  composerArranger: 180,
+  freeText: 240,
+};
+
 export interface GlobalVisualConfiguration {
   velocityBase: number;
   colorToneShift: number;
@@ -84,6 +101,7 @@ export interface GlobalVisualConfiguration {
   supersampling: number;
   aspectRatio: AspectRatioMode;
   noteLabels: NoteLabelSettings;
+  endCard: EndCardSettings;
   travel: TravelStyle;
 }
 
@@ -247,7 +265,7 @@ export const DEFAULT_FAMILY_STYLES: Record<string, FamilyVisualStyle> = {
   Platillos: style('square', '#ffffff'),
   Placas: style('diamond', '#ffd500'),
   Auxiliares: style('roundedSquare', '#ffd500'),
-  'Cuerdas frotadas': style('diamond', '#a97832'),
+  'Cuerdas frotadas': style('diamond', '#a46813'),
   'Cuerdas pulsadas': style('sixPointStar', '#028317'),
   Voces: style('square'),
   'Custom 1': style('square'),
@@ -261,11 +279,11 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
   global: {
     velocityBase: 67,
     colorToneShift: -6,
-    opacityEdge: 0.5,
-    opacityCenter: 1,
-    heightScale: 1.4,
+    opacityEdge: 0.8,
+    opacityCenter: 0.85,
+    heightScale: 1.1,
     glowStrength: 0.8,
-    bumpStrength: 4.8,
+    bumpStrength: 6,
     extension: false,
     stretch: true,
     audioOffsetMs: 0,
@@ -282,10 +300,16 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
       padding: 5,
       borderRadius: 5,
     },
+    endCard: {
+      title: '',
+      subtitle: '',
+      composerArranger: '',
+      freeText: '',
+    },
     travel: {
       enabled: true,
-      intensity: 0.3,
-      magnetZone: 0.7,
+      intensity: 0.2,
+      magnetZone: 1.25,
     },
   },
   families: Object.fromEntries(
@@ -299,12 +323,24 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
       color: '#368128',
       shape: 'hexagon',
     },
+    'Pista 1': {
+      enabled: false,
+    },
+    Platillos: {
+      enabled: false,
+    },
+    TIPLE: {
+      enabled: false,
+    },
+    MARACAS: {
+      enabled: false,
+    },
   },
   shapeExtensions: Object.fromEntries(
-    SHAPE_IDS.map((shapeId) => [shapeId, shapeId !== 'diamond']),
+    SHAPE_IDS.map((shapeId) => [shapeId, true]),
   ) as Record<ShapeId, boolean>,
   shapeStretch: Object.fromEntries(
-    SHAPE_IDS.map((shapeId) => [shapeId, shapeId !== 'diamond']),
+    SHAPE_IDS.map((shapeId) => [shapeId, true]),
   ) as Record<ShapeId, boolean>,
 };
 
@@ -325,6 +361,20 @@ const FAMILY_FROM_ID: Record<FamilyId, string> = {
 const validColor = (value: unknown, fallback: string): string =>
   typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
     ? value.toLowerCase()
+    : fallback;
+
+const sanitizeEndCardLine = (
+  value: unknown,
+  maximumLength: number,
+  fallback: string,
+): string =>
+  typeof value === 'string'
+    ? value
+        .normalize('NFC')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, maximumLength)
     : fallback;
 
 const midpointColor = (first: string, second: string): string => {
@@ -511,6 +561,28 @@ export const sanitizeVisualConfiguration = (
         0,
         24,
         defaultLabels.borderRadius,
+      ),
+    },
+    endCard: {
+      title: sanitizeEndCardLine(
+        global?.endCard?.title,
+        END_CARD_TEXT_LIMITS.title,
+        defaultGlobal.endCard.title,
+      ),
+      subtitle: sanitizeEndCardLine(
+        global?.endCard?.subtitle,
+        END_CARD_TEXT_LIMITS.subtitle,
+        defaultGlobal.endCard.subtitle,
+      ),
+      composerArranger: sanitizeEndCardLine(
+        global?.endCard?.composerArranger,
+        END_CARD_TEXT_LIMITS.composerArranger,
+        defaultGlobal.endCard.composerArranger,
+      ),
+      freeText: sanitizeEndCardLine(
+        global?.endCard?.freeText,
+        END_CARD_TEXT_LIMITS.freeText,
+        defaultGlobal.endCard.freeText,
       ),
     },
     travel: sanitizeTravel(global?.travel, defaultGlobal.travel),

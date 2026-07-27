@@ -200,8 +200,8 @@ describe('estado JSON', () => {
   it('usa los valores actuales de escena como predeterminados', () => {
     expect(DEFAULT_SETTINGS).toEqual({
       secondsVisible: 8,
-      glow: 1,
-      noteScale: 0.8,
+      glow: 0.6,
+      noteScale: 1.4,
       quality: 'ultra',
       background: '#000000',
     });
@@ -226,6 +226,12 @@ describe('estado JSON', () => {
 
   it('conserva completo el preset visual capturado al guardar y abrir JSON', () => {
     const visualConfiguration = cloneDefaultVisualConfiguration();
+    visualConfiguration.global.endCard = {
+      title: 'EL INTACHABLE',
+      subtitle: 'Concierto para orquesta',
+      composerArranger: 'Compositor / arreglista',
+      freeText: 'Texto libre',
+    };
     const document = createStateDocument({
       midiFileName: 'obra.mid',
       audioFileName: 'mezcla.wav',

@@ -147,6 +147,10 @@ export class RendererBridge {
     this.post({ type: 'clock', clock });
   }
 
+  setEndCardTimeline(startMidiTime: number | null): void {
+    this.post({ type: 'end-card-timeline', startMidiTime });
+  }
+
   setVisibility(visible: boolean): void {
     this.post({ type: 'visibility', visible });
   }

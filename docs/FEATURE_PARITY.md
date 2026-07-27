@@ -21,6 +21,7 @@ decisiones no afectan el JSON de estado.
 | Visual | Color de canvas | Migrada |
 | Visual | Imagen de fondo y opacidad | Retirada por decisión de producto; solo color sólido |
 | Visual | Etiquetas de nota, fuente, color y tamaño | Rediseñada; activación por voz y recuadro dinámico independiente |
+| Visual | Tarjeta de cierre | Ampliación V2; cuatro líneas editables, entrada secuencial superior izquierda y fotograma final congelado después de la salida de todas las notas |
 | Instrumentos | Activar/desactivar uno, todos o ninguno | Migrada |
 | Instrumentos | Asignar instrumento a familia | Migrada |
 | Instrumentos | Color y figura por instrumento | Migrada; ambos controles están en cada fila de Voces |
@@ -33,7 +34,7 @@ decisiones no afectan el JSON de estado.
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
 | Geometría | Salida visual después del último note off | Ampliación V2; las figuras terminales crecen hasta el cierre audible compensando la latencia física y luego continúan en post-roll silencioso a 1× hasta abandonar el borde izquierdo |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
-| Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente |
+| Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente; en maderas, flauta → clarinete → fagot → oboe de fondo a frente |
 | Efectos | Opacidad extremos/centro | Migrada |
 | Efectos | Glow y bump global/familia/instrumento | Rediseñada; pulsos breves en Note On, halo independiente y rango ampliado |
 | Efectos | Contorno full/pre/post | Retirada por decisión de producto |
@@ -60,7 +61,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 116 pruebas V2 correctas.
+- `npm run test`: 126 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
   era un stub en el prototipo y no representa una función perdida.
