@@ -42,6 +42,13 @@ class FakeAudioContext {
   analyserNode = new FakeAnalyserNode();
   state: AudioContextState = 'running';
   currentTime = 0;
+  baseLatency = 0;
+  outputLatency = 0;
+  outputTimestampContextTime: number | null = null;
+  getOutputTimestamp = vi.fn(() => ({
+    contextTime: this.outputTimestampContextTime ?? this.currentTime,
+    performanceTime: performance.now(),
+  }));
   resumePromise: Promise<void> = Promise.resolve();
   resume = vi.fn(async () => {
     await this.resumePromise;
@@ -145,6 +152,7 @@ describe('AudioTransport', () => {
     expect(transport.getSnapshot()).toMatchObject({
       position: 1.25,
       playing: true,
+      clockAdvancing: true,
       starting: false,
       outputMode: 'webaudio',
       audioState: 'running',
@@ -218,6 +226,227 @@ describe('AudioTransport', () => {
     await transport.play();
     expect(context.sourceNodes).toHaveLength(2);
     expect(context.sourceNodes[1].start).toHaveBeenCalledWith(0, 0);
+    await transport.destroy();
+  });
+
+  it('espera la cola física de salida antes de llegar al note off final', async () => {
+    let performanceTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(
+      () => performanceTime,
+    );
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    transport.setVisualPostRollDuration(4);
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    context.getOutputTimestamp = undefined as never;
+    context.outputLatency = 0.1;
+    await transport.play();
+    context.currentTime = 0.05;
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 0,
+      visualPosition: 0,
+      playing: true,
+      clockAdvancing: false,
+    });
+
+    context.currentTime = 0.2;
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 0.1,
+      visualPosition: 0.1,
+      playing: true,
+      clockAdvancing: true,
+    });
+
+    context.currentTime = 10;
+    context.sourceNodes[0].onended?.();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 9.9,
+      visualPosition: 9.9,
+      playing: true,
+    });
+
+    performanceTime = 100;
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 10,
+      visualPosition: 10,
+      playing: true,
+    });
+
+    performanceTime = 200;
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 10,
+      visualPosition: 10.1,
+      playing: true,
+    });
+    await transport.destroy();
+  });
+
+  it('usa el timestamp físico cuando está disponible', async () => {
+    let performanceTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(
+      () => performanceTime,
+    );
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+    context.outputTimestampContextTime = 9.88;
+
+    await transport.play();
+    context.currentTime = 10;
+    context.sourceNodes[0].onended?.();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 9.88,
+      visualPosition: 9.88,
+      playing: true,
+    });
+    await transport.destroy();
+  });
+
+  it('reanuda desde el cursor procesado sin repetir la cola de salida', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    context.getOutputTimestamp = undefined as never;
+    context.outputLatency = 0.1;
+    await transport.play();
+    context.currentTime = 5;
+    expect(transport.getSnapshot().position).toBeCloseTo(4.9);
+    transport.pause();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 5,
+      visualPosition: 5,
+      playing: false,
+      clockAdvancing: false,
+    });
+
+    await transport.play();
+    expect(context.sourceNodes).toHaveLength(2);
+    expect(context.sourceNodes[1].start).toHaveBeenCalledWith(0, 5);
+    await transport.destroy();
+  });
+
+  it('detiene el reloj visual si el contexto se suspende durante la reproducción', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    await transport.play();
+    context.currentTime = 1;
+    expect(transport.getSnapshot()).toMatchObject({
+      visualPosition: 1,
+      clockAdvancing: true,
+    });
+
+    context.state = 'suspended';
+    expect(transport.getSnapshot()).toMatchObject({
+      visualPosition: 1,
+      playing: true,
+      clockAdvancing: false,
+    });
+    await transport.destroy();
+  });
+
+  it('incorpora una latencia alternativa tardía sin congelar el reloj', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+    context.getOutputTimestamp = undefined as never;
+
+    await transport.play();
+    context.currentTime = 0.05;
+    expect(transport.getSnapshot().visualPosition).toBeCloseTo(0.05);
+
+    context.outputLatency = 0.1;
+    context.currentTime = 0.1;
+    const corrected = transport.getSnapshot();
+    expect(corrected.visualPosition).toBeCloseTo(0.075);
+    expect(corrected.visualPosition).toBeGreaterThan(0.05);
+    expect(corrected.clockAdvancing).toBe(true);
+
+    context.currentTime = 0.3;
+    expect(transport.getSnapshot().visualPosition).toBeCloseTo(0.2);
+    await transport.destroy();
+  });
+
+  it('usa la latencia declarada si el timestamp físico aún devuelve cero', async () => {
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+    context.outputLatency = 0.1;
+    context.getOutputTimestamp = vi.fn(() => ({
+      contextTime: 0,
+      performanceTime: 0,
+    }));
+
+    await transport.play();
+    context.currentTime = 0.2;
+    expect(transport.getSnapshot()).toMatchObject({
+      visualPosition: 0.1,
+      clockAdvancing: true,
+    });
+    await transport.destroy();
+  });
+
+  it('no vuelve a crear audio al pausar durante el drenaje físico final', async () => {
+    let performanceTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(
+      () => performanceTime,
+    );
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    transport.setVisualPostRollDuration(4);
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+    context.getOutputTimestamp = undefined as never;
+    context.outputLatency = 0.1;
+
+    await transport.play();
+    context.currentTime = 10;
+    context.sourceNodes[0].onended?.();
+    transport.pause();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 9.9,
+      visualPosition: 9.9,
+      playing: false,
+    });
+
+    await transport.play();
+    performanceTime = 100;
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 10,
+      visualPosition: 10,
+      playing: true,
+    });
+    expect(context.sourceNodes).toHaveLength(1);
     await transport.destroy();
   });
 

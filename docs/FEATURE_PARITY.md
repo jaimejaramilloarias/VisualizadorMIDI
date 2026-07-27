@@ -31,7 +31,7 @@ decisiones no afectan el JSON de estado.
 | Figuras | Catálogo de figuras | Rediseñada; ocho figuras simples, sin variantes dobles |
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
-| Geometría | Salida visual después del último note off | Ampliación V2; post-roll silencioso a 1× hasta que la última figura abandona el borde izquierdo, sin modificar la duración del audio |
+| Geometría | Salida visual después del último note off | Ampliación V2; las figuras terminales crecen hasta el cierre audible compensando la latencia física y luego continúan en post-roll silencioso a 1× hasta abandonar el borde izquierdo |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente |
 | Efectos | Opacidad extremos/centro | Migrada |
@@ -60,7 +60,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 104 pruebas V2 correctas.
+- `npm run test`: 116 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
   era un stub en el prototipo y no representa una función perdida.

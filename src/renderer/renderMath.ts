@@ -37,6 +37,31 @@ export const computeHorizontalViewport = (
   };
 };
 
+const TERMINAL_NOTE_OFF_TOLERANCE_SECONDS = 0.001;
+
+export const isTerminalNoteOff = (
+  noteEnd: number,
+  projectDuration: number,
+): boolean =>
+  Number.isFinite(noteEnd) &&
+  Number.isFinite(projectDuration) &&
+  projectDuration > 0 &&
+  Math.abs(noteEnd - projectDuration) <=
+    TERMINAL_NOTE_OFF_TOLERANCE_SECONDS;
+
+export const shouldRenderProgressiveNoteLength = ({
+  noteEnd,
+  projectDuration,
+  stretch,
+  extension,
+}: {
+  noteEnd: number;
+  projectDuration: number;
+  stretch: boolean;
+  extension: boolean;
+}): boolean =>
+  isTerminalNoteOff(noteEnd, projectDuration) || (stretch && extension);
+
 const POST_ROLL_EDGE_MARGIN_SECONDS = 0.1;
 
 export const computeVisualPostRollDuration = (
@@ -320,6 +345,57 @@ export const computePastExtensionBounds = ({
     width,
   };
 };
+
+export const computeProgressiveNoteBounds = ({
+  playheadX,
+  baseWidth,
+  finalWidth,
+  noteOn,
+  noteOff,
+  midiTime,
+  pixelsPerSecond,
+}: {
+  playheadX: number;
+  baseWidth: number;
+  finalWidth: number;
+  noteOn: number;
+  noteOff: number;
+  midiTime: number;
+  pixelsPerSecond: number;
+}): HorizontalBounds => {
+  const safeNoteOn = Number.isFinite(noteOn) ? noteOn : 0;
+  const safeNoteOff = Math.max(
+    safeNoteOn + 0.001,
+    Number.isFinite(noteOff) ? noteOff : safeNoteOn,
+  );
+  const safeTime = Number.isFinite(midiTime) ? midiTime : safeNoteOn;
+  const safeBaseWidth = Math.max(0.5, baseWidth);
+  const safeFinalWidth = Math.max(safeBaseWidth, finalWidth);
+  if (safeTime <= safeNoteOff) {
+    return computePastExtensionBounds({
+      playheadX,
+      baseWidth,
+      finalWidth: safeFinalWidth,
+      progress:
+        (Math.max(safeNoteOn, safeTime) - safeNoteOn) /
+        (safeNoteOff - safeNoteOn),
+    });
+  }
+  return {
+    x:
+      playheadX -
+      safeFinalWidth -
+      (safeTime - safeNoteOff) * Math.max(0, pixelsPerSecond),
+    width: safeFinalWidth,
+  };
+};
+
+export const computeProgressiveApproachX = (
+  arrivalX: number,
+  width: number,
+): number =>
+  (Number.isFinite(arrivalX) ? arrivalX : 0) -
+  Math.max(0.5, Number.isFinite(width) ? width : 0.5);
 
 export const curveTravelOffset = ({
   offset,

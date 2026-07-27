@@ -73,12 +73,24 @@ export const validateAutomaticAlignment = ({
     };
   }
 
-  if (!createSyncTimeline(anchors).forward) {
+  const exactAnchors = normalizeAnchors([
+    ...anchors.slice(0, -1),
+    {
+      ...terminalAnchor,
+      audioTime: audioDuration,
+      midiTime: midiDuration,
+    },
+  ]);
+
+  if (
+    exactAnchors.length < 2 ||
+    !createSyncTimeline(exactAnchors).forward
+  ) {
     return {
       ok: false,
       message: 'La propuesta automática no conserva el orden del MIDI.',
     };
   }
 
-  return { ok: true, anchors };
+  return { ok: true, anchors: exactAnchors };
 };

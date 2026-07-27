@@ -115,6 +115,7 @@ const EMPTY_TRANSPORT: TransportSnapshot = {
   visualPosition: 0,
   duration: 0,
   playing: false,
+  clockAdvancing: false,
   starting: false,
   hasAudio: false,
   trimOffset: 0,
@@ -191,6 +192,7 @@ const getLastMidiNoteOff = (
 
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
+const RENDERER_CLOCK_CORRECTION_INTERVAL_MS = 50;
 
 type AutomaticAlignmentMode = 'manual-preview' | 'auto-apply';
 
@@ -1028,10 +1030,11 @@ export function App() {
           syncOffsetRef.current,
           syncTimelineRef.current,
         );
-        const rendererPlaying = snapshot.playing;
+        const rendererPlaying = snapshot.clockAdvancing;
         const previous = lastClockRef.current;
         const shouldCorrectPlayingClock =
-          rendererPlaying && now - previous.sentAt >= 200;
+          rendererPlaying &&
+          now - previous.sentAt >= RENDERER_CLOCK_CORRECTION_INTERVAL_MS;
         const shouldUpdatePausedClock =
           !rendererPlaying &&
           Math.abs(mapping.midiTime - previous.midiTime) > 0.0005;

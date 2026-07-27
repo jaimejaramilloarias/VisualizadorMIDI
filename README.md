@@ -29,6 +29,10 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   con rango amplio, respectivamente.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
   reproduce/pausa y las flechas saltan ±3 segundos.
+- Las figuras que comparten el último `note off` siempre crecen progresivamente
+  desde su ataque hasta ese cierre, incluso si su forma tiene extensión o
+  alargamiento desactivados. El reloj compensa la latencia física de salida del
+  dispositivo para que no terminen antes de lo que se oye.
 - Al terminar el contenido, el audio queda en silencio y el reloj visual
   continúa a `1×` durante media ventana temporal: el último `note off` cruza
   todo PAST y desaparece por el borde izquierdo sin ampliar la duración del

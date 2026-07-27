@@ -6,6 +6,7 @@ export interface TransportSnapshot {
   visualPosition: number;
   duration: number;
   playing: boolean;
+  clockAdvancing: boolean;
   starting: boolean;
   hasAudio: boolean;
   trimOffset: number;
@@ -17,6 +18,9 @@ export interface TransportSnapshot {
 }
 
 export type TransportListener = (snapshot: TransportSnapshot) => void;
+
+const MAX_OUTPUT_LATENCY_SECONDS = 1;
+const OUTPUT_LATENCY_SLEW_RATIO = 0.5;
 
 export class AudioTransport {
   private context: AudioContext | null = null;
@@ -37,20 +41,32 @@ export class AudioTransport {
   private muted = false;
   private generation = 0;
   private audioLoadGeneration = 0;
+  private lastReportedVisualPosition = 0;
+  private audioExhausted = false;
+  private useOutputTimestamp = false;
+  private sourceOutputLatency = 0;
+  private lastLatencyContextTime = 0;
+  private lastOutputContextTime = 0;
   private listeners = new Set<TransportListener>();
 
   getSnapshot(now = performance.now()): TransportSnapshot {
     const duration = this.getDuration();
     const playbackDuration = this.getPlaybackDuration();
+    const audibleContextElapsed =
+      this.playing && this.source && this.context
+        ? this.getAudibleContextElapsed()
+        : null;
     const rawVisualPosition = this.playing
       ? this.source && this.context
-        ? this.position +
-          Math.max(0, this.context.currentTime - this.startedAtAudioContext)
+        ? this.position + (audibleContextElapsed ?? 0)
         : this.position + Math.max(0, now - this.startedAtPerformance) / 1000
       : this.position;
-    const nextVisualPosition = Math.min(
-      playbackDuration,
-      Math.max(0, rawVisualPosition),
+    const nextVisualPosition = Math.max(
+      this.playing ? this.lastReportedVisualPosition : 0,
+      Math.min(
+        playbackDuration,
+        Math.max(0, rawVisualPosition),
+      ),
     );
     const nextPosition = Math.min(duration, nextVisualPosition);
 
@@ -64,12 +80,19 @@ export class AudioTransport {
       this.stopSource();
       queueMicrotask(() => this.emit());
     }
+    this.lastReportedVisualPosition = nextVisualPosition;
 
     return {
       position: nextPosition,
       visualPosition: nextVisualPosition,
       duration,
       playing: this.playing,
+      clockAdvancing:
+        this.playing &&
+        (!this.source ||
+          !this.context ||
+          this.context.state === 'running') &&
+        (audibleContextElapsed === null || audibleContextElapsed > 0),
       starting: this.starting,
       hasAudio: this.buffer !== null,
       trimOffset: this.buffer ? this.trimOffset : 0,
@@ -90,6 +113,10 @@ export class AudioTransport {
   setMidiDuration(duration: number): void {
     this.midiDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0;
     this.position = Math.min(this.position, this.getPlaybackDuration());
+    this.lastReportedVisualPosition = Math.min(
+      this.lastReportedVisualPosition,
+      this.getPlaybackDuration(),
+    );
     this.emit();
   }
 
@@ -105,6 +132,7 @@ export class AudioTransport {
     this.position = wasComplete
       ? this.getPlaybackDuration()
       : Math.min(this.position, this.getPlaybackDuration());
+    this.lastReportedVisualPosition = this.position;
     this.emit();
   }
 
@@ -114,6 +142,8 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
+    this.lastReportedVisualPosition = 0;
+    this.audioExhausted = false;
     this.emit();
 
     const context = this.getContext();
@@ -133,6 +163,7 @@ export class AudioTransport {
       );
       this.trimOffset = detectInitialSilence(channels, decoded.sampleRate);
       this.buffer = decoded;
+      this.audioExhausted = false;
       this.applyOutputLevel();
       this.emit();
       return this.getDuration();
@@ -151,6 +182,8 @@ export class AudioTransport {
     this.buffer = null;
     this.trimOffset = 0;
     this.position = 0;
+    this.lastReportedVisualPosition = 0;
+    this.audioExhausted = false;
     this.emit();
   }
 
@@ -319,13 +352,21 @@ export class AudioTransport {
   async play(): Promise<void> {
     const duration = this.getDuration();
     if (this.playing || this.starting || duration <= 0) return;
-    if (this.position >= this.getPlaybackDuration()) this.position = 0;
+    if (this.position >= this.getPlaybackDuration()) {
+      this.position = 0;
+      this.audioExhausted = false;
+    }
+    this.lastReportedVisualPosition = this.position;
 
     const generation = ++this.generation;
     this.starting = true;
     this.emit();
 
-    if (this.buffer && this.position < duration) {
+    if (
+      this.buffer &&
+      this.position < duration &&
+      !this.audioExhausted
+    ) {
       const context = this.getContext();
       this.applyOutputLevel();
       try {
@@ -358,7 +399,20 @@ export class AudioTransport {
 
   pause(): void {
     if (!this.playing && !this.starting) return;
-    if (this.playing) this.position = this.getSnapshot().visualPosition;
+    if (this.playing) {
+      this.position =
+        this.source && this.context
+          ? Math.min(
+              this.getDuration(),
+              this.position +
+                Math.max(
+                  0,
+                  this.context.currentTime - this.startedAtAudioContext,
+                ),
+            )
+          : this.getSnapshot().visualPosition;
+      this.lastReportedVisualPosition = this.position;
+    }
     this.starting = false;
     this.playing = false;
     this.generation += 1;
@@ -380,6 +434,8 @@ export class AudioTransport {
       duration,
       Math.max(0, Number.isFinite(nextPosition) ? nextPosition : 0),
     );
+    this.audioExhausted = this.position >= duration;
+    this.lastReportedVisualPosition = this.position;
     if (this.playing && this.position >= duration) {
       this.playing = false;
       this.starting = false;
@@ -475,6 +531,14 @@ export class AudioTransport {
 
   private startBufferSource(generation: number): void {
     if (!this.context || !this.buffer) return;
+    this.audioExhausted = false;
+    this.sourceOutputLatency = this.getDeclaredOutputLatencySeconds();
+    this.lastLatencyContextTime = this.context.currentTime;
+    const initialOutputContextTime = this.readOutputContextTime();
+    this.useOutputTimestamp = initialOutputContextTime !== null;
+    this.lastOutputContextTime =
+      initialOutputContextTime ??
+      Math.max(0, this.context.currentTime - this.sourceOutputLatency);
     const source = this.context.createBufferSource();
     source.buffer = this.buffer;
     source.connect(this.outputGain ?? this.context.destination);
@@ -486,19 +550,21 @@ export class AudioTransport {
       ) {
         return;
       }
-      const visualPositionAtEnd = this.context
-        ? this.position +
-          Math.max(
-            0,
-            this.context.currentTime - this.startedAtAudioContext,
-          )
+      const audiblePositionAtEnd = this.context
+        ? this.position + this.getAudibleContextElapsed()
         : this.getDuration();
       source.disconnect();
       this.source = null;
+      this.audioExhausted = true;
       this.position = Math.min(
-        this.getPlaybackDuration(),
-        Math.max(this.getDuration(), visualPositionAtEnd),
+        this.getDuration(),
+        Math.max(
+          this.position,
+          audiblePositionAtEnd,
+          this.lastReportedVisualPosition,
+        ),
       );
+      this.lastReportedVisualPosition = this.position;
       this.startedAtPerformance = performance.now();
       this.starting = false;
       this.emit();
@@ -509,6 +575,100 @@ export class AudioTransport {
       Math.min(
         this.trimOffset + this.position,
         Math.max(0, this.buffer.duration - 0.001),
+      ),
+    );
+  }
+
+  private getAudibleContextElapsed(): number {
+    if (!this.context) return 0;
+    return Math.max(
+      0,
+      this.getOutputContextTime() - this.startedAtAudioContext,
+    );
+  }
+
+  private getOutputContextTime(): number {
+    const context = this.context;
+    if (!context) return 0;
+    const timestampContextTime = this.useOutputTimestamp
+      ? this.readOutputContextTime()
+      : null;
+    if (timestampContextTime === null) {
+      const elapsed = Math.max(
+        0,
+        context.currentTime - this.lastLatencyContextTime,
+      );
+      const targetLatency = this.getDeclaredOutputLatencySeconds();
+      const maximumCorrection =
+        elapsed * OUTPUT_LATENCY_SLEW_RATIO;
+      if (targetLatency > this.sourceOutputLatency) {
+        this.sourceOutputLatency = Math.min(
+          targetLatency,
+          this.sourceOutputLatency + maximumCorrection,
+        );
+      } else {
+        this.sourceOutputLatency = Math.max(
+          targetLatency,
+          this.sourceOutputLatency - maximumCorrection,
+        );
+      }
+      this.lastLatencyContextTime = context.currentTime;
+    }
+    const nextOutputContextTime =
+      timestampContextTime ??
+      Math.max(0, context.currentTime - this.sourceOutputLatency);
+    this.lastOutputContextTime = Math.min(
+      context.currentTime,
+      Math.max(this.lastOutputContextTime, nextOutputContextTime),
+    );
+    return this.lastOutputContextTime;
+  }
+
+  private readOutputContextTime(): number | null {
+    const context = this.context;
+    if (!context || typeof context.getOutputTimestamp !== 'function') {
+      return null;
+    }
+    try {
+      const timestamp = context.getOutputTimestamp();
+      const timestampContextTime = timestamp.contextTime;
+      const timestampPerformanceTime = timestamp.performanceTime;
+      if (
+        typeof timestampContextTime !== 'number' ||
+        !Number.isFinite(timestampContextTime) ||
+        timestampContextTime < 0 ||
+        (timestampContextTime === 0 &&
+          (!Number.isFinite(timestampPerformanceTime) ||
+            (timestampPerformanceTime ?? 0) <= 0))
+      ) {
+        return null;
+      }
+      const timestampAge =
+        context.state === 'running' &&
+        typeof timestampPerformanceTime === 'number' &&
+        Number.isFinite(timestampPerformanceTime) &&
+        timestampPerformanceTime > 0
+          ? Math.max(0, performance.now() - timestampPerformanceTime) /
+            1000
+          : 0;
+      return Math.min(
+        context.currentTime,
+        timestampContextTime + timestampAge,
+      );
+    } catch {
+      // Algunos navegadores exponen el método antes de tener una salida activa.
+      return null;
+    }
+  }
+
+  private getDeclaredOutputLatencySeconds(): number {
+    const context = this.context;
+    if (!context) return 0;
+    return Math.min(
+      MAX_OUTPUT_LATENCY_SECONDS,
+      Math.max(
+        Number.isFinite(context.outputLatency) ? context.outputLatency : 0,
+        Number.isFinite(context.baseLatency) ? context.baseLatency : 0,
       ),
     );
   }
@@ -539,6 +699,10 @@ export class AudioTransport {
   private stopSource(): void {
     const source = this.source;
     this.source = null;
+    this.useOutputTimestamp = false;
+    this.sourceOutputLatency = 0;
+    this.lastLatencyContextTime = 0;
+    this.lastOutputContextTime = 0;
     if (!source) return;
     source.onended = null;
     try {

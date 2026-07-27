@@ -6,16 +6,20 @@ import {
   computeNoteOnGlowStrength,
   computeHorizontalViewport,
   computePastExtensionBounds,
+  computeProgressiveApproachX,
+  computeProgressiveNoteBounds,
   composeTravelStyle,
   computeRenderScale,
   computeVisualPostRollDuration,
   curveTravelOffset,
   extrapolateMidiTime,
   familyDepthPriority,
+  isTerminalNoteOff,
   lockNoteOnArrivalOffset,
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
+  shouldRenderProgressiveNoteLength,
 } from './renderMath';
 
 describe('computeHorizontalViewport', () => {
@@ -417,5 +421,73 @@ describe('computePastExtensionBounds', () => {
     expect(end.x + end.width).toBe(400);
     expect(middle.x).toBeLessThan(start.x);
     expect(end.x).toBeLessThan(middle.x);
+  });
+});
+
+describe('longitud progresiva de la nota terminal', () => {
+  it('reconoce como terminales las liberaciones del mismo cuadro final', () => {
+    expect(isTerminalNoteOff(180.459, 180.459)).toBe(true);
+    expect(isTerminalNoteOff(180.4585, 180.459)).toBe(true);
+    expect(isTerminalNoteOff(180.452, 180.459)).toBe(false);
+  });
+
+  it('fuerza crecimiento progresivo al final aunque la figura lo tenga desactivado', () => {
+    expect(
+      shouldRenderProgressiveNoteLength({
+        noteEnd: 12,
+        projectDuration: 12,
+        stretch: false,
+        extension: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('conserva los controles de forma para cualquier nota no terminal', () => {
+    expect(
+      shouldRenderProgressiveNoteLength({
+        noteEnd: 8,
+        projectDuration: 12,
+        stretch: false,
+        extension: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRenderProgressiveNoteLength({
+        noteEnd: 8,
+        projectDuration: 12,
+        stretch: true,
+        extension: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('crece de forma monotónica hasta note off y sale sin salto', () => {
+    const boundsAt = (midiTime: number) =>
+      computeProgressiveNoteBounds({
+        playheadX: 400,
+        baseWidth: 20,
+        finalWidth: 200,
+        noteOn: 10,
+        noteOff: 12,
+        midiTime,
+        pixelsPerSecond: 100,
+      });
+    const noteOn = boundsAt(10);
+    const middle = boundsAt(11);
+    const noteOff = boundsAt(12);
+    const released = boundsAt(12.1);
+    const approachingX = computeProgressiveApproachX(430, 20);
+
+    expect(approachingX + 20).toBe(430);
+    expect([noteOn.width, middle.width, noteOff.width]).toEqual([
+      20,
+      110,
+      200,
+    ]);
+    expect(noteOn.x + noteOn.width).toBe(400);
+    expect(middle.x + middle.width).toBe(400);
+    expect(noteOff.x + noteOff.width).toBe(400);
+    expect(released.width).toBe(noteOff.width);
+    expect(released.x).toBeCloseTo(noteOff.x - 10);
   });
 });

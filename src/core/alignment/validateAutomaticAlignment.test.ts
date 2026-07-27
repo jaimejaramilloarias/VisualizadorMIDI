@@ -34,6 +34,28 @@ describe('validación antes de aplicar una alineación automática', () => {
     }
   });
 
+  it('corrige al extremo exacto una diferencia subcuadro del análisis', () => {
+    const validation = validateAutomaticAlignment({
+      result: result([
+        { audioTime: 0, midiTime: 0, confidence: 0.8 },
+        { audioTime: 5, midiTime: 4.5, confidence: 0.8 },
+        { audioTime: 9.996, midiTime: 8.996, confidence: 0.8 },
+      ]),
+      audioDuration: 10,
+      midiDuration: 9,
+      idPrefix: 'auto',
+    });
+
+    expect(validation.ok).toBe(true);
+    if (validation.ok) {
+      expect(validation.anchors.at(-1)).toEqual({
+        id: 'auto-2',
+        audioTime: 10,
+        midiTime: 9,
+      });
+    }
+  });
+
   it('rechaza un cierre que no coincide con el último note off', () => {
     const validation = validateAutomaticAlignment({
       result: result([

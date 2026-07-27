@@ -21,7 +21,8 @@ import {
   computeNoteOnGlowPresentation,
   computeNoteOnGlowStrength,
   computeHorizontalViewport,
-  computePastExtensionBounds,
+  computeProgressiveApproachX,
+  computeProgressiveNoteBounds,
   computeRenderScale,
   composeTravelStyle,
   curveTravelOffset,
@@ -31,6 +32,8 @@ import {
   noteOnBumpEnvelope,
   noteOnGlowEnvelope,
   resolveTargetFps,
+  isTerminalNoteOff,
+  shouldRenderProgressiveNoteLength,
 } from '../renderer/renderMath';
 import { drawNoteShape } from '../renderer/shapes';
 
@@ -341,6 +344,7 @@ const drawHorizontalScene = (
     centerX: number;
     alpha: number;
     depthPriority: number;
+    progressiveLength: boolean;
     style: ResolvedTrackVisualStyle;
   }
 
@@ -374,37 +378,62 @@ const drawHorizontalScene = (
       Math.min(2.4, rawVelocity / Math.max(1, appearance.global.velocityBase)),
     );
     const duration = Math.max(0.001, end - start);
+    const terminalLength = isTerminalNoteOff(
+      end,
+      project!.duration,
+    );
+    const progressiveLength = shouldRenderProgressiveNoteLength({
+      noteEnd: end,
+      projectDuration: project!.duration,
+      stretch: style.stretch,
+      extension: style.extension,
+    });
     const bumpEnvelope = noteOnBumpEnvelope(time, start);
     const bump = computeNoteOnBumpScale({
       pulse: bumpEnvelope,
       globalBump: appearance.global.bumpStrength,
       familyBump: style.bumpStrength,
     });
-    const height =
+    const stableHeight =
       noteHeight *
       appearance.global.heightScale *
       style.heightScale *
-      velocityScale *
-      bump;
-    const durationWidth = Math.max(height, duration * pixelsPerSecond);
+      velocityScale;
+    const height = stableHeight * bump;
+    const progressiveBaseWidth = terminalLength
+      ? stableHeight
+      : height;
+    const progressiveDurationWidth = Math.max(
+      progressiveBaseWidth,
+      duration * pixelsPerSecond,
+    );
+    const staticDurationWidth = Math.max(
+      height,
+      duration * pixelsPerSecond,
+    );
     let x = arrivalX;
     let width = height;
-    if (style.stretch && !style.extension) {
-      width = durationWidth;
-    } else if (style.stretch && style.extension && start <= time) {
-      const progress = Math.max(0, Math.min(1, (time - start) / duration));
-      if (time <= end) {
-        const bounds = computePastExtensionBounds({
-          playheadX,
-          baseWidth: height,
-          finalWidth: durationWidth,
-          progress,
-        });
-        x = bounds.x;
-        width = bounds.width;
-      } else {
-        width = durationWidth;
-      }
+    if (progressiveLength && start <= time) {
+      const bounds = computeProgressiveNoteBounds({
+        playheadX,
+        baseWidth: progressiveBaseWidth,
+        finalWidth: progressiveDurationWidth,
+        noteOn: start,
+        noteOff: end,
+        midiTime: time,
+        pixelsPerSecond,
+      });
+      x = bounds.x;
+      width = bounds.width;
+    } else if (terminalLength) {
+      width = stableHeight;
+      x = computeProgressiveApproachX(arrivalX, width);
+    } else if (
+      !progressiveLength &&
+      style.stretch &&
+      !style.extension
+    ) {
+      width = staticDurationWidth;
     }
     const y = cssHeight - lanePadding - pitch * laneHeight - height * 0.5;
     const centerX = x + width / 2;
@@ -423,6 +452,7 @@ const drawHorizontalScene = (
       alpha:
         (0.48 + velocity * 0.5) * Math.max(0, spatialOpacity(centerX)),
       depthPriority: familyDepthPriority(style.family),
+      progressiveLength,
       style,
     };
   };
@@ -454,7 +484,16 @@ const drawHorizontalScene = (
   }
 
   const drawLayout = (layout: NoteLayout): void => {
-    const { start, velocity, style, x, y, width, height } = layout;
+    const {
+      start,
+      velocity,
+      style,
+      x,
+      y,
+      width,
+      height,
+      progressiveLength,
+    } = layout;
     const centerX = x + width / 2;
     const noteOnGlow = noteOnGlowEnvelope(time, start);
     const glow = computeNoteOnGlowStrength({
@@ -471,7 +510,7 @@ const drawHorizontalScene = (
         noteHeight: height,
       });
       const haloCenterX =
-        style.extension && start <= time
+        progressiveLength && start <= time
           ? x + width - height * 0.5
           : centerX;
       const haloCenterY = y + height * 0.5;
