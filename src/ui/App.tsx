@@ -163,8 +163,22 @@ const alignmentResultToAnchors = (
     midiTime: anchor.midiTime,
   }));
 
+const getLastMidiNoteOff = (
+  reference: MidiAlignmentReference | null,
+): number => {
+  if (!reference) return 0;
+  const noteCount = Math.min(reference.noteCount, reference.ends.length);
+  let lastNoteOff = 0;
+  for (let note = 0; note < noteCount; note += 1) {
+    const end = reference.ends[note];
+    if (Number.isFinite(end)) lastNoteOff = Math.max(lastNoteOff, end);
+  }
+  return lastNoteOff;
+};
+
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
+const ALIGNMENT_ENDPOINT_TOLERANCE_SECONDS = 0.01;
 
 type InspectorMenuId =
   | 'canvas'
@@ -609,6 +623,22 @@ export function App() {
             setNotice(message);
             return;
           }
+          const terminalAnchor = response.result.anchors.at(-1);
+          const audioDuration = instance.getSnapshot().duration;
+          const lastMidiNoteOff = getLastMidiNoteOff(midi);
+          if (
+            !terminalAnchor ||
+            Math.abs(terminalAnchor.audioTime - audioDuration) >
+              ALIGNMENT_ENDPOINT_TOLERANCE_SECONDS ||
+            Math.abs(terminalAnchor.midiTime - lastMidiNoteOff) >
+              ALIGNMENT_ENDPOINT_TOLERANCE_SECONDS
+          ) {
+            const message =
+              'La propuesta no pudo cerrar el audio en el último note off del MIDI.';
+            setAutomaticSync({ status: 'error', message });
+            setNotice(message);
+            return;
+          }
           const proposed = alignmentResultToAnchors(
             response.result,
             `auto-validation-${requestId}`,
@@ -688,17 +718,31 @@ export function App() {
     const timeline = createSyncTimeline(anchors);
     const audioDuration =
       transportRef.current?.getSnapshot().duration ?? 0;
-    const midiDuration = projectRef.current?.duration ?? 0;
+    const midiDuration = getLastMidiNoteOff(
+      midiAlignmentReferenceRef.current,
+    );
     const withinSources = anchors.every(
       (anchor) =>
         anchor.audioTime <= audioDuration + 0.05 &&
         anchor.midiTime <= midiDuration + 0.05,
     );
-    if (anchors.length < 2 || !timeline.forward || !withinSources) {
+    const terminalAnchor = anchors.at(-1);
+    const terminalMatchesSources =
+      terminalAnchor !== undefined &&
+      Math.abs(terminalAnchor.audioTime - audioDuration) <=
+        ALIGNMENT_ENDPOINT_TOLERANCE_SECONDS &&
+      Math.abs(terminalAnchor.midiTime - midiDuration) <=
+        ALIGNMENT_ENDPOINT_TOLERANCE_SECONDS;
+    if (
+      anchors.length < 2 ||
+      !timeline.forward ||
+      !withinSources ||
+      !terminalMatchesSources
+    ) {
       setAutomaticSync({
         status: 'error',
         message:
-          'La propuesta dejó de ser una curva de tiempo ascendente y válida.',
+          'La propuesta dejó de ser una curva ascendente con cierre exacto.',
       });
       return;
     }
@@ -1558,6 +1602,7 @@ export function App() {
         confidence,
         message:
           `Propuesta DTW de confianza ${confidenceLabel}. ` +
+          'El ancla final une el fin del audio con el último note off. ' +
           'Las líneas discontinuas aún no modifican tu estado; puedes revisarlas y aplicar o descartar.',
         progress: 1,
         status: 'preview',

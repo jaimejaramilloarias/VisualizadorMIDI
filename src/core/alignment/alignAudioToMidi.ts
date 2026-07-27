@@ -14,6 +14,9 @@ const COARSE_FACTOR = 4;
 const CHROMA_WEIGHT = 0.74;
 const ONSET_WEIGHT = 1 - CHROMA_WEIGHT;
 const MAXIMUM_ANCHORS = 32;
+const MINIMUM_SEGMENT_RATE = 0.35;
+const MAXIMUM_SEGMENT_RATE = 3;
+const MINIMUM_ANCHOR_DELTA_SECONDS = 0.001;
 const PERCUSSION_FAMILY_INDEX = FAMILY_IDS.indexOf('percussion');
 
 export interface AlignmentFeatureSequence {
@@ -863,7 +866,8 @@ const simplifyMapping = (
   }
 
   const toleranceFrames = 0.055 / midi.hopSeconds;
-  while (selected.size < MAXIMUM_ANCHORS) {
+  // Reserve one slot for the exact, user-required terminal anchor.
+  while (selected.size < MAXIMUM_ANCHORS - 1) {
     const ordered = [...selected].sort((left, right) => left - right);
     let bestFrame = -1;
     let bestError = toleranceFrames;
@@ -986,6 +990,66 @@ export const alignmentPathToAnchors = (
     );
   }
   return anchors;
+};
+
+const isUsableAnchorSegment = (
+  previous: AlignmentAnchorCandidate,
+  next: AlignmentAnchorCandidate,
+): boolean => {
+  const audioDelta = next.audioTime - previous.audioTime;
+  const midiDelta = next.midiTime - previous.midiTime;
+  if (
+    audioDelta <= MINIMUM_ANCHOR_DELTA_SECONDS ||
+    midiDelta <= MINIMUM_ANCHOR_DELTA_SECONDS
+  ) {
+    return false;
+  }
+  const rate = midiDelta / audioDelta;
+  return rate >= MINIMUM_SEGMENT_RATE && rate <= MAXIMUM_SEGMENT_RATE;
+};
+
+const appendRequiredTerminalAnchor = (
+  anchors: readonly AlignmentAnchorCandidate[],
+  audioDuration: number,
+  midiDuration: number,
+): AlignmentAnchorCandidate[] => {
+  const completed = anchors.slice();
+  while (completed.length > 0) {
+    const previous = completed.at(-1)!;
+    const terminal = {
+      audioTime: audioDuration,
+      midiTime: midiDuration,
+      confidence: previous.confidence,
+    };
+    if (isUsableAnchorSegment(previous, terminal)) {
+      completed.push(terminal);
+      return completed;
+    }
+    completed.pop();
+  }
+  throw new Error(
+    'La coincidencia exigiría cambios de velocidad demasiado extremos para hacer coincidir los finales.',
+  );
+};
+
+const hasUnreasonableSegmentRate = (
+  anchors: readonly AlignmentAnchorCandidate[],
+): boolean =>
+  anchors.some(
+    (anchor, index) =>
+      index > 0 && !isUsableAnchorSegment(anchors[index - 1], anchor),
+  );
+
+const findLastMidiNoteOff = (
+  midi: MidiAlignmentReference,
+): number => {
+  const noteCount = Math.min(midi.noteCount, midi.ends.length);
+  let lastNoteOff = 0;
+  for (let note = 0; note < noteCount; note += 1) {
+    const end = midi.ends[note];
+    if (Number.isFinite(end)) lastNoteOff = Math.max(lastNoteOff, end);
+  }
+  return lastNoteOff;
 };
 
 const hasAlignmentEvidence = (
@@ -1128,7 +1192,8 @@ export const runAutomaticAlignment = (
   midiReference: MidiAlignmentReference,
   report: ProgressReporter = () => undefined,
 ): AutomaticAlignmentResult => {
-  if (midiReference.noteCount < 3 || midiReference.duration < 1) {
+  const lastMidiNoteOff = findLastMidiNoteOff(midiReference);
+  if (midiReference.noteCount < 3 || lastMidiNoteOff < 1) {
     throw new Error('El MIDI no contiene suficientes notas para alinearlo.');
   }
   report({ phase: 'preparing-audio', progress: 0.1 });
@@ -1140,7 +1205,12 @@ export const runAutomaticAlignment = (
   );
   report({ phase: 'midi-features', progress: 0.52 });
   const midi = extractMidiAlignmentFeatures(
-    midiReference,
+    {
+      ...midiReference,
+      // The musical timeline ends at the last note-off, independently of
+      // container metadata or trailing file duration.
+      duration: lastMidiNoteOff,
+    },
     audio.hopSeconds,
   );
 
@@ -1207,16 +1277,12 @@ export const runAutomaticAlignment = (
     report({ phase: 'fine-dtw', progress: 0.7 + progress * 0.25 }),
   );
   report({ phase: 'anchors', progress: 0.97 });
-  const anchors = alignmentPathToAnchors(fine.path, audio, midi);
-  const unreasonableRate = anchors.some((anchor, index) => {
-    if (index === 0) return false;
-    const previous = anchors[index - 1];
-    const rate =
-      (anchor.midiTime - previous.midiTime) /
-      Math.max(0.001, anchor.audioTime - previous.audioTime);
-    return rate < 0.35 || rate > 3;
-  });
-  if (unreasonableRate) {
+  const anchors = appendRequiredTerminalAnchor(
+    alignmentPathToAnchors(fine.path, audio, midi),
+    audioSource.duration,
+    lastMidiNoteOff,
+  );
+  if (hasUnreasonableSegmentRate(anchors)) {
     throw new Error(
       'La coincidencia exigiría cambios de velocidad demasiado extremos.',
     );

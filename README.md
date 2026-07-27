@@ -36,7 +36,8 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Prototipo de sincronización automática completamente local: extrae chroma y
   ataques del audio, genera las mismas características desde el MIDI y calcula
   una ruta coarse-to-fine con DTW. La propuesta aparece como anclas
-  discontinuas y solo reemplaza el estado cuando el usuario la aplica.
+  discontinuas y solo reemplaza el estado cuando el usuario la aplica. Su ancla
+  terminal hace coincidir el final del audio con el último `note off` del MIDI.
 - Detección automática del primer contenido audible: el silencio inicial se
   omite en reproducción, forma de onda y reloj sin modificar el archivo local.
 - Navegación, ancla seleccionada, tap tempo y offset reunidos en una franja

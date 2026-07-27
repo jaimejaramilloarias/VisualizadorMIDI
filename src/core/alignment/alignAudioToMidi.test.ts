@@ -109,7 +109,7 @@ describe('alineación chroma + ataques + DTW', () => {
       end: audioTimeForMidi(note.end),
       pitch: note.pitch,
     }));
-    const midiDuration = 6.4;
+    const midiDuration = midiNotes.at(-1)!.end;
     const audioDuration = audioTimeForMidi(midiDuration);
     const source: AlignmentAudioSource = {
       channels: [synthesizeNotes(audioDuration, audioNotes)],
@@ -160,7 +160,7 @@ describe('alineación chroma + ataques + DTW', () => {
         pitch: note.pitch,
       })),
     ];
-    const midiDuration = 5.3;
+    const midiDuration = midiNotes.at(-1)!.end;
     const audioDuration = midiDuration + introSeconds;
     const result = runAutomaticAlignment(
       {
@@ -173,7 +173,78 @@ describe('alineación chroma + ataques + DTW', () => {
 
     expect(result.anchors[0].audioTime).toBeGreaterThan(0.6);
     expect(result.anchors[0].midiTime).toBeLessThan(0.35);
+    expect(result.anchors.at(-1)?.audioTime).toBe(audioDuration);
+    expect(result.anchors.at(-1)?.midiTime).toBe(midiDuration);
     expect(result.diagnostics.estimatedOffsetSeconds).toBeGreaterThan(0.5);
+  });
+
+  it('fija el final del audio al último note-off sin romper tasas ni monotonía', () => {
+    const midiNotes = Array.from({ length: 14 }, (_, index) => ({
+      start: index * 0.4,
+      end: index * 0.4 + 0.3,
+      pitch: 55 + ((index * 7) % 18),
+    }));
+    const midiDuration = midiNotes.at(-1)!.end;
+    const audioDuration = midiDuration + 2.2;
+    const result = runAutomaticAlignment(
+      {
+        channels: [synthesizeNotes(audioDuration, midiNotes)],
+        duration: audioDuration,
+        sampleRate: SAMPLE_RATE,
+      },
+      // Deliberately inconsistent container duration: the musical end must
+      // still come from the maximum note-off.
+      makeMidiReference(midiDuration + 3, midiNotes),
+    );
+    const terminal = result.anchors.at(-1)!;
+    const timeline = createSyncTimeline(
+      result.anchors.map((anchor, index) => ({
+        id: String(index),
+        audioTime: anchor.audioTime,
+        midiTime: anchor.midiTime,
+      })),
+    );
+
+    expect(terminal.audioTime).toBe(audioDuration);
+    expect(terminal.midiTime).toBe(midiDuration);
+    expect(timeline.map(audioDuration).midiTime).toBe(midiDuration);
+    expect(result.anchors.length).toBeLessThanOrEqual(32);
+    expect(
+      result.anchors.every((anchor, index) => {
+        if (index === 0) return true;
+        const previous = result.anchors[index - 1];
+        const audioDelta = anchor.audioTime - previous.audioTime;
+        const midiDelta = anchor.midiTime - previous.midiTime;
+        const rate = midiDelta / audioDelta;
+        return (
+          audioDelta > 0.001 &&
+          midiDelta > 0.001 &&
+          rate >= 0.35 &&
+          rate <= 3
+        );
+      }),
+    ).toBe(true);
+  });
+
+  it('rechaza un final obligatorio que requeriría una tasa inválida', () => {
+    const midiNotes = Array.from({ length: 12 }, (_, index) => ({
+      start: index * 0.4,
+      end: index * 0.4 + 0.3,
+      pitch: 55 + ((index * 5) % 18),
+    }));
+    const midiDuration = midiNotes.at(-1)!.end;
+    const audioDuration = midiDuration * 4;
+
+    expect(() =>
+      runAutomaticAlignment(
+        {
+          channels: [synthesizeNotes(audioDuration, midiNotes)],
+          duration: audioDuration,
+          sampleRate: SAMPLE_RATE,
+        },
+        makeMidiReference(midiDuration, midiNotes),
+      ),
+    ).toThrow('cambios de velocidad demasiado extremos');
   });
 
   it('no presenta como fiable una pieza tonal distinta', () => {
@@ -211,9 +282,10 @@ describe('alineación chroma + ataques + DTW', () => {
     'mantiene acotada la ruta en una obra de tres minutos',
     () => {
       const duration = 180;
+      const noteStep = (duration - 0.26) / 299;
       const notes = Array.from({ length: 300 }, (_, index) => ({
-        start: index * 0.59,
-        end: index * 0.59 + 0.26,
+        start: index * noteStep,
+        end: index * noteStep + 0.26,
         pitch: 48 + ((index * 7) % 24),
       }));
       const result = runAutomaticAlignment(
