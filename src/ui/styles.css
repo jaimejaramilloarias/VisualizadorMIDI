@@ -1916,15 +1916,48 @@ input:focus-visible {
   font-size: 8px;
 }
 
-.sync-workspace-warning {
+.sync-workspace-messages {
   grid-area: warning;
+  display: grid;
+}
+
+.sync-workspace-warning,
+.sync-auto-message {
   margin: 0;
   padding: 7px 18px;
-  color: #ffd500;
   border-bottom: 1px solid rgba(255, 213, 0, 0.12);
-  background: rgba(255, 213, 0, 0.055);
   font-size: 9px;
   text-align: center;
+}
+
+.sync-workspace-warning {
+  color: #ffd500;
+  background: rgba(255, 213, 0, 0.055);
+}
+
+.sync-auto-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aeb7bb;
+  background: rgba(255, 255, 255, 0.025);
+  gap: 10px;
+}
+
+.sync-auto-message.is-preview {
+  color: #f1df87;
+  background: rgba(255, 213, 0, 0.045);
+}
+
+.sync-auto-message.is-error {
+  color: #e09b9b;
+  border-color: rgba(239, 92, 92, 0.14);
+  background: rgba(239, 92, 92, 0.045);
+}
+
+.sync-auto-message small {
+  color: #8d979c;
+  font-size: 8px;
 }
 
 .sync-editor-stage {
@@ -1952,6 +1985,10 @@ input:focus-visible {
 
 .waveform-editor.is-pan:active {
   cursor: grabbing;
+}
+
+.waveform-editor.is-locked:not(.is-pan) {
+  cursor: default;
 }
 
 .sync-editor-legend {
@@ -1985,6 +2022,15 @@ input:focus-visible {
 
 .sync-editor-legend i.is-midi {
   transform: rotate(45deg);
+}
+
+.sync-editor-legend i.is-automatic {
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0 3px,
+    transparent 3px 5px
+  );
 }
 
 .sync-toolbar-group {
@@ -2073,6 +2119,55 @@ input:focus-visible {
 
 .sync-tap-group {
   min-width: 214px;
+}
+
+.sync-auto-group {
+  min-width: 170px;
+}
+
+.sync-toolbar-group .sync-auto-button {
+  display: grid;
+  width: 100%;
+  min-width: 160px;
+  grid-template-columns: 15px auto;
+  color: #efe5a9;
+  border: 1px solid rgba(255, 213, 0, 0.18);
+  background: rgba(255, 213, 0, 0.07);
+  gap: 6px;
+}
+
+.sync-auto-progress {
+  width: 76px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sync-auto-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 140ms linear;
+}
+
+.sync-auto-result {
+  display: flex;
+  min-width: 78px;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.sync-auto-result strong {
+  color: #ebeef0;
+  font-size: 9px;
+}
+
+.sync-auto-result small {
+  margin-top: 2px;
+  color: #8b959a;
+  font-size: 7px;
 }
 
 .sync-toolbar-group button.is-active,

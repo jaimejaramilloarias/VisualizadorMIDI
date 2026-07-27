@@ -33,6 +33,10 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
 - Editor de sincronía a pantalla completa con zoom, desplazamiento, anclas
   verticales y magnetismo opcional a ataques. Cada ancla conserva su pulso MIDI:
   moverla sobre el audio recalcula la velocidad MIDI entre pulsos vecinos.
+- Prototipo de sincronización automática completamente local: extrae chroma y
+  ataques del audio, genera las mismas características desde el MIDI y calcula
+  una ruta coarse-to-fine con DTW. La propuesta aparece como anclas
+  discontinuas y solo reemplaza el estado cuando el usuario la aplica.
 - Detección automática del primer contenido audible: el silencio inicial se
   omite en reproducción, forma de onda y reloj sin modificar el archivo local.
 - Navegación, ancla seleccionada, tap tempo y offset reunidos en una franja
@@ -75,7 +79,7 @@ npm run build
 ```text
 .
 ├── src/
-│   ├── core/                   MIDI, transporte y estado persistible
+│   ├── core/                   MIDI, audio, alineación y estado persistible
 │   ├── renderer/               Protocolo y puente del motor gráfico
 │   ├── workers/                Parser y render fuera del hilo principal
 │   └── ui/                     Interfaz React iPad-first

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { AlignmentAnchorCandidate } from '../core/alignment/types';
 import type { SyncAnchor } from '../core/state/visualizationState';
 import type { TransportSnapshot } from '../core/transport/AudioTransport';
 import { Icon } from './icons';
@@ -12,9 +13,18 @@ import { WaveformEditor } from './WaveformEditor';
 
 type InteractionMode = 'anchors' | 'pan';
 
+export interface AutomaticAlignmentView {
+  anchors: readonly AlignmentAnchorCandidate[];
+  confidence: number | null;
+  message: string;
+  progress: number;
+  status: 'idle' | 'analyzing' | 'preview' | 'error';
+}
+
 interface SyncWorkspaceProps {
   activeMidiTime: number;
   anchors: SyncAnchor[];
+  automaticAlignment: AutomaticAlignmentView;
   audioFileName: string | null;
   forward: boolean;
   landmarks: readonly AudioLandmark[];
@@ -23,6 +33,8 @@ interface SyncWorkspaceProps {
   midiFileName: string | null;
   offsetMs: number;
   onAddAnchor: (audioTime: number) => void;
+  onApplyAutomaticAlignment: () => void;
+  onCancelAutomaticAlignment: () => void;
   onClearAnchors: () => void;
   onClose: () => void;
   onDeleteAnchor: (id: string) => void;
@@ -34,6 +46,7 @@ interface SyncWorkspaceProps {
   onSeek: (time: number) => void;
   onTapToggle: () => void;
   onTogglePlayback: () => void;
+  onRunAutomaticAlignment: () => void;
   peaks: Float32Array | null;
   tapActive: boolean;
   transport: TransportSnapshot;
@@ -52,6 +65,7 @@ const clamp = (value: number, minimum: number, maximum: number): number =>
 export function SyncWorkspace({
   activeMidiTime,
   anchors,
+  automaticAlignment,
   audioFileName,
   forward,
   landmarks,
@@ -60,6 +74,8 @@ export function SyncWorkspace({
   midiFileName,
   offsetMs,
   onAddAnchor,
+  onApplyAutomaticAlignment,
+  onCancelAutomaticAlignment,
   onClearAnchors,
   onClose,
   onDeleteAnchor,
@@ -71,10 +87,12 @@ export function SyncWorkspace({
   onSeek,
   onTapToggle,
   onTogglePlayback,
+  onRunAutomaticAlignment,
   peaks,
   tapActive,
   transport,
 }: SyncWorkspaceProps) {
+  const automaticActionRef = useRef<HTMLButtonElement>(null);
   const [zoom, setZoom] = useState(1);
   const [viewStart, setViewStart] = useState(0);
   const [interactionMode, setInteractionMode] =
@@ -85,6 +103,11 @@ export function SyncWorkspace({
   const viewport = resolveSyncViewport(timelineDuration, zoom, viewStart);
   const selectedAnchor =
     anchors.find((anchor) => anchor.id === selectedAnchorId) ?? null;
+  const alignmentLocked =
+    automaticAlignment.status === 'analyzing' ||
+    automaticAlignment.status === 'preview';
+  const canRunAutomaticAlignment =
+    transport.hasAudio && midiDuration > 0;
   const selectedIndex = selectedAnchor
     ? anchors.findIndex((anchor) => anchor.id === selectedAnchor.id)
     : -1;
@@ -121,12 +144,27 @@ export function SyncWorkspace({
   }, [onRefreshWaveform, peaks, transport.hasAudio]);
 
   useEffect(() => {
+    if (
+      automaticAlignment.status !== 'analyzing' &&
+      automaticAlignment.status !== 'preview' &&
+      automaticAlignment.status !== 'error'
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      automaticActionRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [automaticAlignment.status]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
       } else if (
         (event.key === 'Delete' || event.key === 'Backspace') &&
         selectedAnchorId &&
+        !alignmentLocked &&
         !(event.target instanceof HTMLInputElement)
       ) {
         event.preventDefault();
@@ -136,7 +174,7 @@ export function SyncWorkspace({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, onDeleteAnchor, selectedAnchorId]);
+  }, [alignmentLocked, onClose, onDeleteAnchor, selectedAnchorId]);
 
   const changeZoom = (factor: number, focusTime = transport.position) => {
     const nextZoom = clamp(zoom * factor, 1, MAX_SYNC_ZOOM);
@@ -207,21 +245,30 @@ export function SyncWorkspace({
           <button
             aria-label={transport.playing ? 'Pausar' : 'Reproducir'}
             className="sync-play"
-            disabled={transport.duration <= 0}
+            disabled={
+              transport.duration <= 0 ||
+              automaticAlignment.status === 'analyzing'
+            }
             onClick={onTogglePlayback}
             type="button"
           >
             <Icon name={transport.playing ? 'pause' : 'play'} />
           </button>
           <button
-            disabled={transport.duration <= 0}
+            disabled={
+              transport.duration <= 0 ||
+              automaticAlignment.status === 'analyzing'
+            }
             onClick={() => onSeek(Math.max(0, transport.position - 1))}
             type="button"
           >
             −1 s
           </button>
           <button
-            disabled={transport.duration <= 0}
+            disabled={
+              transport.duration <= 0 ||
+              automaticAlignment.status === 'analyzing'
+            }
             onClick={() =>
               onSeek(Math.min(transport.duration, transport.position + 1))
             }
@@ -243,6 +290,7 @@ export function SyncWorkspace({
           <button
             aria-pressed={interactionMode === 'anchors'}
             className={interactionMode === 'anchors' ? 'is-active' : ''}
+            disabled={alignmentLocked}
             onClick={() => setInteractionMode('anchors')}
             type="button"
           >
@@ -307,15 +355,24 @@ export function SyncWorkspace({
               >
                 {selectedIndex + 1}
               </span>
-              <button onClick={() => moveSelectedAnchor(-0.01)} type="button">
+              <button
+                disabled={alignmentLocked}
+                onClick={() => moveSelectedAnchor(-0.01)}
+                type="button"
+              >
                 −10 ms
               </button>
-              <button onClick={() => moveSelectedAnchor(0.01)} type="button">
+              <button
+                disabled={alignmentLocked}
+                onClick={() => moveSelectedAnchor(0.01)}
+                type="button"
+              >
                 +10 ms
               </button>
               <button
                 aria-label={`Eliminar ancla ${selectedIndex + 1}`}
                 className="sync-danger-button"
+                disabled={alignmentLocked}
                 onClick={() => {
                   onDeleteAnchor(selectedAnchor.id);
                   setSelectedAnchorId(null);
@@ -334,7 +391,11 @@ export function SyncWorkspace({
           <span className="sync-toolbar-label">Tap</span>
           <button
             className={tapActive ? 'is-active' : ''}
-            disabled={!transport.hasAudio || midiDuration <= 0}
+            disabled={
+              !transport.hasAudio ||
+              midiDuration <= 0 ||
+              alignmentLocked
+            }
             onClick={onTapToggle}
             type="button"
           >
@@ -342,7 +403,7 @@ export function SyncWorkspace({
           </button>
           <button
             className="sync-primary-button"
-            disabled={!tapActive}
+            disabled={!tapActive || alignmentLocked}
             onClick={onRegisterTap}
             type="button"
           >
@@ -350,7 +411,7 @@ export function SyncWorkspace({
           </button>
           <button
             className={`sync-danger-button${clearArmed ? ' is-armed' : ''}`}
-            disabled={anchors.length === 0}
+            disabled={anchors.length === 0 || alignmentLocked}
             onClick={() => {
               if (!clearArmed) {
                 setClearArmed(true);
@@ -366,6 +427,84 @@ export function SyncWorkspace({
           </button>
         </div>
 
+        <div className="sync-toolbar-group sync-auto-group">
+          {automaticAlignment.status === 'analyzing' ? (
+            <>
+              <span
+                aria-label={`${Math.round(automaticAlignment.progress * 100)} por ciento`}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={Math.round(automaticAlignment.progress * 100)}
+                className="sync-auto-progress"
+                role="progressbar"
+              >
+                <i
+                  style={{
+                    width: `${Math.round(automaticAlignment.progress * 100)}%`,
+                  }}
+                />
+              </span>
+              <span className="sync-toolbar-label">
+                {Math.round(automaticAlignment.progress * 100)}%
+              </span>
+              <button
+                className="sync-danger-button"
+                onClick={onCancelAutomaticAlignment}
+                ref={automaticActionRef}
+                type="button"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : automaticAlignment.status === 'preview' ? (
+            <>
+              <span className="sync-auto-result">
+                <strong>{automaticAlignment.anchors.length} anclas</strong>
+                <small>
+                  {Math.round((automaticAlignment.confidence ?? 0) * 100)}%
+                  {' '}confianza
+                </small>
+              </span>
+              <button
+                className="sync-primary-button"
+                onClick={onApplyAutomaticAlignment}
+                ref={automaticActionRef}
+                type="button"
+              >
+                Aplicar
+              </button>
+              <button
+                onClick={onCancelAutomaticAlignment}
+                type="button"
+              >
+                Descartar
+              </button>
+            </>
+          ) : (
+            <button
+              className="sync-auto-button"
+              disabled={!canRunAutomaticAlignment}
+              onClick={onRunAutomaticAlignment}
+              ref={
+                automaticAlignment.status === 'error'
+                  ? automaticActionRef
+                  : undefined
+              }
+              title={
+                canRunAutomaticAlignment
+                  ? 'Analiza chroma y ataques; después alinea con DTW'
+                  : 'Carga MIDI y audio para usar la sincronización automática'
+              }
+              type="button"
+            >
+              <Icon name="sparkles" />
+              {automaticAlignment.status === 'error'
+                ? 'Reintentar alineación'
+                : 'Alinear automáticamente'}
+            </button>
+          )}
+        </div>
+
         <div
           className="sync-toolbar-group sync-offset-group"
           title={offsetDescription}
@@ -376,6 +515,7 @@ export function SyncWorkspace({
           </span>
           <button
             aria-label="Reducir offset 10 milisegundos"
+            disabled={alignmentLocked}
             onClick={() =>
               onOffsetChange(clamp(offsetMs - 10, -10_000, 10_000))
             }
@@ -385,6 +525,7 @@ export function SyncWorkspace({
           </button>
           <KnobControl
             compact
+            disabled={alignmentLocked}
             label="Offset de animación"
             max={10_000}
             min={-10_000}
@@ -395,6 +536,7 @@ export function SyncWorkspace({
           />
           <button
             aria-label="Aumentar offset 10 milisegundos"
+            disabled={alignmentLocked}
             onClick={() =>
               onOffsetChange(clamp(offsetMs + 10, -10_000, 10_000))
             }
@@ -404,6 +546,7 @@ export function SyncWorkspace({
           </button>
           <button
             aria-label="Restablecer offset a cero"
+            disabled={alignmentLocked}
             onClick={() => onOffsetChange(0)}
             type="button"
           >
@@ -414,6 +557,7 @@ export function SyncWorkspace({
         <label className="sync-magnet">
           <input
             checked={magnetEnabled}
+            disabled={alignmentLocked}
             onChange={(event) => onMagnetChange(event.target.checked)}
             type="checkbox"
           />
@@ -426,16 +570,42 @@ export function SyncWorkspace({
         </label>
       </div>
 
-      {!forward && (
-        <p className="sync-workspace-warning">
-          El orden de algunos pulsos MIDI se invirtió. Reubica sus anclas sobre
-          el audio hasta recuperar un recorrido ascendente.
-        </p>
+      {(!forward || automaticAlignment.status !== 'idle') && (
+        <div
+          aria-live="polite"
+          className="sync-workspace-messages"
+        >
+          {!forward && (
+            <p className="sync-workspace-warning">
+              El orden de algunos pulsos MIDI se invirtió. Reubica sus anclas
+              sobre el audio hasta recuperar un recorrido ascendente.
+            </p>
+          )}
+          {automaticAlignment.status !== 'idle' && (
+            <p
+              className={`sync-auto-message is-${automaticAlignment.status}`}
+            >
+              {automaticAlignment.message}
+              {automaticAlignment.status === 'preview' &&
+                anchors.length > 0 && (
+                  <small>
+                    Aplicar reemplazará {anchors.length} anclas actuales.
+                  </small>
+                )}
+            </p>
+          )}
+        </div>
       )}
 
       <section className="sync-editor-stage">
         <WaveformEditor
           audioDuration={transport.duration}
+          editingLocked={alignmentLocked}
+          ghostMarkers={
+            automaticAlignment.status === 'preview'
+              ? automaticAlignment.anchors
+              : []
+          }
           interactionMode={interactionMode}
           markers={anchors}
           onAdd={(audioTime) => {
@@ -456,8 +626,17 @@ export function SyncWorkspace({
         <div className="sync-editor-legend">
           <span><i className="is-audio" />Ancla vertical: posición en el audio</span>
           <span><i className="is-midi" />Pulso MIDI asociado</span>
-          <span>Arrastra cualquier extremo para reubicar la ancla completa</span>
-          <span>Doble clic para eliminar</span>
+          {automaticAlignment.status === 'preview' && (
+            <span><i className="is-automatic" />Línea discontinua: propuesta automática</span>
+          )}
+          {alignmentLocked ? (
+            <span>Edición manual pausada mientras revisas la propuesta</span>
+          ) : (
+            <>
+              <span>Arrastra cualquier extremo para reubicar la ancla completa</span>
+              <span>Doble clic para eliminar</span>
+            </>
+          )}
         </div>
       </section>
     </div>

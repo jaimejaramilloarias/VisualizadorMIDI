@@ -5,12 +5,15 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
+import type { AlignmentAnchorCandidate } from '../core/alignment/types';
 import type { SyncAnchor } from '../core/state/visualizationState';
 
 type InteractionMode = 'anchors' | 'pan';
 
 interface WaveformEditorProps {
   audioDuration: number;
+  editingLocked?: boolean;
+  ghostMarkers?: readonly AlignmentAnchorCandidate[];
   interactionMode: InteractionMode;
   markers: SyncAnchor[];
   onAdd: (audioTime: number) => void;
@@ -39,6 +42,9 @@ interface DragState {
   type: 'anchor' | 'pan';
 }
 
+const clamp = (value: number, minimum: number, maximum: number): number =>
+  Math.min(maximum, Math.max(minimum, value));
+
 const formatTime = (seconds: number): string => {
   const safe = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
   const minutes = Math.floor(safe / 60);
@@ -56,6 +62,8 @@ const niceGridStep = (duration: number): number => {
 
 export function WaveformEditor({
   audioDuration,
+  editingLocked = false,
+  ghostMarkers = [],
   interactionMode,
   markers,
   onAdd,
@@ -212,6 +220,35 @@ export function WaveformEditor({
       context.globalAlpha = 1;
     }
 
+    ghostMarkers.forEach((marker) => {
+      const anchorX = timeToX(marker.audioTime);
+      if (
+        anchorX < plotLeft - 20 ||
+        anchorX > plotLeft + plotWidth + 20
+      ) {
+        return;
+      }
+      const opacity = 0.28 + clamp(marker.confidence, 0, 1) * 0.52;
+      context.save();
+      context.globalAlpha = opacity;
+      context.strokeStyle = '#ffd500';
+      context.lineWidth = 1.5;
+      context.setLineDash([5, 5]);
+      context.beginPath();
+      context.moveTo(anchorX, audioTop);
+      context.lineTo(anchorX, audioBottom);
+      context.stroke();
+      context.setLineDash([]);
+      context.fillStyle = '#ffd500';
+      context.beginPath();
+      context.moveTo(anchorX, audioTop - 1);
+      context.lineTo(anchorX + 5, audioTop + 7);
+      context.lineTo(anchorX - 5, audioTop + 7);
+      context.closePath();
+      context.fill();
+      context.restore();
+    });
+
     const handles: AnchorHandle[] = [];
     markers.forEach((marker, index) => {
       const anchorX = timeToX(marker.audioTime);
@@ -269,7 +306,7 @@ export function WaveformEditor({
       context.fill();
     }
 
-    if (markers.length === 0) {
+    if (markers.length === 0 && ghostMarkers.length === 0) {
       context.fillStyle = 'rgba(225,232,234,.42)';
       context.font = '600 13px system-ui';
       context.textAlign = 'center';
@@ -288,6 +325,7 @@ export function WaveformEditor({
     canvas.dataset.xToTimeOrigin = String(xToTime(plotLeft));
   }, [
     audioDuration,
+    ghostMarkers,
     markers,
     peaks,
     playhead,
@@ -328,6 +366,7 @@ export function WaveformEditor({
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
+    if (editingLocked) return;
     const nearest = handlesRef.current
       .map((handle) => ({
         ...handle,
@@ -378,6 +417,7 @@ export function WaveformEditor({
   };
 
   const onDoubleClick = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (editingLocked) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
@@ -405,7 +445,7 @@ export function WaveformEditor({
   return (
     <canvas
       aria-label="Editor visual de sincronía. Cada ancla vertical une un tiempo de audio con su tiempo MIDI."
-      className={`waveform-editor is-${interactionMode}`}
+      className={`waveform-editor is-${interactionMode}${editingLocked ? ' is-locked' : ''}`}
       onDoubleClick={onDoubleClick}
       onPointerCancel={endDrag}
       onPointerDown={onPointerDown}

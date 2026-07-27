@@ -225,6 +225,29 @@ describe('AudioTransport', () => {
     await transport.destroy();
   });
 
+  it('crea para el alineador una copia recortada sin desprender el audio', async () => {
+    FakeAudioContext.decodedChannel.fill(0.25, 2_400);
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+
+    await transport.loadAudio(file);
+    const source = await transport.createAlignmentAudioSource();
+
+    expect(source).not.toBeNull();
+    expect(source?.sampleRate).toBe(4_800);
+    expect(source?.duration).toBeCloseTo(9.5, 3);
+    expect(source?.channels[0]).toHaveLength(45_600);
+    expect(source?.channels[0][0]).toBeCloseTo(0.25);
+    source!.channels[0][0] = 0.9;
+    expect(FakeAudioContext.decodedChannel[2_400]).toBeCloseTo(0.25);
+
+    await transport.play();
+    expect(FakeAudioContext.instance?.sourceNodes[0].buffer).not.toBeNull();
+    await transport.destroy();
+  });
+
   it('conecta una sola cadena de salida al destino y la libera al cerrar', async () => {
     const transport = new AudioTransport();
     const file = {

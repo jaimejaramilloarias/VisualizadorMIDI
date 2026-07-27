@@ -1,3 +1,4 @@
+import type { AlignmentAudioSource } from '../alignment/types';
 import { detectInitialSilence } from './audioAnalysis';
 
 export interface TransportSnapshot {
@@ -206,6 +207,86 @@ export class AudioTransport {
     }
 
     return result;
+  }
+
+  async createAlignmentAudioSource(
+    signal?: AbortSignal,
+    onProgress?: (progress: number) => void,
+  ): Promise<AlignmentAudioSource | null> {
+    const buffer = this.buffer;
+    if (!buffer) return null;
+    const loadGeneration = this.audioLoadGeneration;
+    const firstFrame = Math.min(
+      buffer.length,
+      Math.max(0, Math.floor(this.trimOffset * buffer.sampleRate)),
+    );
+    const frameCount = Math.max(0, buffer.length - firstFrame);
+    if (frameCount === 0) return null;
+    const targetSampleRate = Math.min(11_025, buffer.sampleRate);
+    const sourceFramesPerOutput = buffer.sampleRate / targetSampleRate;
+    const outputLength = Math.max(
+      1,
+      Math.floor(frameCount / sourceFramesPerOutput),
+    );
+    const mono = new Float32Array(outputLength);
+    const channelCount = Math.max(1, buffer.numberOfChannels);
+    const channels = Array.from(
+      { length: channelCount },
+      (_, channelIndex) => buffer.getChannelData(channelIndex),
+    );
+    const chunkSize = 65_536;
+
+    for (
+      let chunkStart = 0;
+      chunkStart < outputLength;
+      chunkStart += chunkSize
+    ) {
+      if (
+        signal?.aborted ||
+        loadGeneration !== this.audioLoadGeneration ||
+        buffer !== this.buffer
+      ) {
+        throw new DOMException(
+          'El análisis de audio fue cancelado.',
+          'AbortError',
+        );
+      }
+      const chunkEnd = Math.min(outputLength, chunkStart + chunkSize);
+      for (let outputFrame = chunkStart; outputFrame < chunkEnd; outputFrame += 1) {
+        const sourceStart =
+          firstFrame + Math.floor(outputFrame * sourceFramesPerOutput);
+        const sourceEnd = Math.min(
+          buffer.length,
+          Math.max(
+            sourceStart + 1,
+            firstFrame +
+              Math.floor((outputFrame + 1) * sourceFramesPerOutput),
+          ),
+        );
+        let sum = 0;
+        let measured = 0;
+        for (
+          let sourceFrame = sourceStart;
+          sourceFrame < sourceEnd;
+          sourceFrame += 1
+        ) {
+          for (let channelIndex = 0; channelIndex < channelCount; channelIndex += 1) {
+            sum += channels[channelIndex][sourceFrame] ?? 0;
+            measured += 1;
+          }
+        }
+        mono[outputFrame] = measured > 0 ? sum / measured : 0;
+      }
+      onProgress?.(chunkEnd / outputLength);
+      if (chunkEnd < outputLength) {
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0));
+      }
+    }
+    return {
+      channels: [mono],
+      sampleRate: targetSampleRate,
+      duration: outputLength / targetSampleRate,
+    };
   }
 
   async play(): Promise<void> {

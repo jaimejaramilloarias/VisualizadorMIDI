@@ -9,6 +9,12 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type {
+  AlignmentPhase,
+  AlignmentWorkerResponse,
+  AutomaticAlignmentResult,
+  MidiAlignmentReference,
+} from '../core/alignment/types';
+import type {
   MidiTrackInfo,
   PackedMidiProject,
   TempoPoint,
@@ -54,7 +60,10 @@ import {
   resolveTapAnchorTime,
 } from './syncEditorMath';
 import { resolveTransportShortcut } from './transportShortcuts';
-import { SyncWorkspace } from './SyncWorkspace';
+import {
+  SyncWorkspace,
+  type AutomaticAlignmentView,
+} from './SyncWorkspace';
 
 interface ProjectSummary {
   fileName: string;
@@ -63,6 +72,24 @@ interface ProjectSummary {
   tracks: MidiTrackInfo[];
   tempoMap: TempoPoint[];
 }
+
+type AutomaticSyncState =
+  | { status: 'idle' }
+  | {
+      status: 'analyzing';
+      requestId: number;
+      phase: AlignmentPhase;
+      progress: number;
+    }
+  | {
+      status: 'preview';
+      requestId: number;
+      result: AutomaticAlignmentResult;
+    }
+  | {
+      status: 'error';
+      message: string;
+    };
 
 interface MidiWorkerResponse {
   type: 'parsed' | 'error';
@@ -96,6 +123,15 @@ const EMPTY_TELEMETRY: RenderTelemetry = {
   targetFps: 60,
 };
 
+const ALIGNMENT_PHASE_LABELS: Record<AlignmentPhase, string> = {
+  'preparing-audio': 'Preparando el audio local',
+  'audio-features': 'Extrayendo chroma y ataques',
+  'midi-features': 'Construyendo la referencia MIDI',
+  'coarse-dtw': 'Buscando la ruta musical',
+  'fine-dtw': 'Afinando la sincronía con DTW',
+  anchors: 'Simplificando la curva en anclas',
+};
+
 const formatTime = (seconds: number): string => {
   const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
   const minutes = Math.floor(safe / 60);
@@ -103,6 +139,9 @@ const formatTime = (seconds: number): string => {
   const decimals = Math.floor((safe % 1) * 10);
   return `${minutes}:${String(remainder).padStart(2, '0')}.${decimals}`;
 };
+
+const clamp = (value: number, minimum: number, maximum: number): number =>
+  Math.min(maximum, Math.max(minimum, value));
 
 const isEditableTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement ||
@@ -113,6 +152,16 @@ const isEditableTarget = (target: EventTarget | null): boolean =>
 const createId = (): string =>
   globalThis.crypto?.randomUUID?.() ??
   `anchor-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+const alignmentResultToAnchors = (
+  result: AutomaticAlignmentResult,
+  idPrefix: string,
+): SyncAnchor[] =>
+  result.anchors.map((anchor, index) => ({
+    id: `${idPrefix}-${index}`,
+    audioTime: anchor.audioTime,
+    midiTime: anchor.midiTime,
+  }));
 
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
@@ -339,10 +388,17 @@ export function App() {
   const audioInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const syncTimelineRef = useRef(createSyncTimeline([]));
+  const syncOffsetRef = useRef(0);
   const visualConfigurationRef = useRef<VisualConfiguration>(
     cloneDefaultVisualConfiguration(),
   );
   const projectRef = useRef<ProjectSummary | null>(null);
+  const midiAlignmentReferenceRef =
+    useRef<MidiAlignmentReference | null>(null);
+  const alignmentWorkerRef = useRef<Worker | null>(null);
+  const alignmentPreparationAbortRef =
+    useRef<AbortController | null>(null);
+  const alignmentRequestRef = useRef(0);
   const selectionAnchorRef = useRef<string | null>(null);
   const lastTapRef = useRef<{
     audioTime: number;
@@ -367,6 +423,8 @@ export function App() {
   const [settings, setSettings] =
     useState<VisualizationSettings>(DEFAULT_SETTINGS);
   const [syncAnchors, setSyncAnchors] = useState<SyncAnchor[]>([]);
+  const [automaticSync, setAutomaticSync] =
+    useState<AutomaticSyncState>({ status: 'idle' });
   const [visualConfiguration, setVisualConfiguration] =
     useState<VisualConfiguration>(() => cloneDefaultVisualConfiguration());
   const [inspectorTab, setInspectorTab] =
@@ -432,9 +490,263 @@ export function App() {
     }
   }, []);
 
+  const invalidateAutomaticAlignment = useCallback(() => {
+    alignmentRequestRef.current += 1;
+    alignmentPreparationAbortRef.current?.abort();
+    alignmentPreparationAbortRef.current = null;
+    alignmentWorkerRef.current?.terminate();
+    alignmentWorkerRef.current = null;
+    setAutomaticSync({ status: 'idle' });
+  }, []);
+
+  const cancelAutomaticAlignment = useCallback(() => {
+    const wasAnalyzing = automaticSync.status === 'analyzing';
+    const hadPreview = automaticSync.status === 'preview';
+    invalidateAutomaticAlignment();
+    if (wasAnalyzing) {
+      setNotice('Análisis automático cancelado. Las anclas no cambiaron.');
+    } else if (hadPreview) {
+      setNotice('Propuesta descartada. Las anclas anteriores siguen intactas.');
+    }
+  }, [automaticSync.status, invalidateAutomaticAlignment]);
+
+  const runAutomaticAlignment = useCallback(() => {
+    const instance = transportRef.current;
+    const midi = midiAlignmentReferenceRef.current;
+    if (!instance?.getSnapshot().hasAudio || !midi) {
+      setAutomaticSync({
+        status: 'error',
+        message: 'Carga un MIDI y un audio antes de iniciar el análisis.',
+      });
+      return;
+    }
+
+    instance.pause();
+    setTapActive(false);
+    lastTapRef.current = null;
+    alignmentPreparationAbortRef.current?.abort();
+    alignmentWorkerRef.current?.terminate();
+    const preparationAbort = new AbortController();
+    alignmentPreparationAbortRef.current = preparationAbort;
+    const requestId = ++alignmentRequestRef.current;
+    setAutomaticSync({
+      status: 'analyzing',
+      requestId,
+      phase: 'preparing-audio',
+      progress: 0.01,
+    });
+    setNotice('Analizando chroma y ataques localmente…');
+
+    window.setTimeout(async () => {
+      if (requestId !== alignmentRequestRef.current) return;
+      try {
+        const audio = await instance.createAlignmentAudioSource(
+          preparationAbort.signal,
+          (progress) => {
+            if (requestId !== alignmentRequestRef.current) return;
+            setAutomaticSync({
+              status: 'analyzing',
+              requestId,
+              phase: 'preparing-audio',
+              progress: 0.01 + clamp(progress, 0, 1) * 0.08,
+            });
+          },
+        );
+        if (requestId !== alignmentRequestRef.current) return;
+        if (
+          alignmentPreparationAbortRef.current === preparationAbort
+        ) {
+          alignmentPreparationAbortRef.current = null;
+        }
+        if (!audio) {
+          throw new Error(
+            'No fue posible preparar las muestras del audio.',
+          );
+        }
+        const worker = new Worker(
+          new URL(
+            '../workers/audio-midi-alignment.worker.ts',
+            import.meta.url,
+          ),
+          { type: 'module' },
+        );
+        alignmentWorkerRef.current = worker;
+        worker.onmessage = (
+          event: MessageEvent<AlignmentWorkerResponse>,
+        ) => {
+          const response = event.data;
+          if (
+            response.requestId !== requestId ||
+            requestId !== alignmentRequestRef.current
+          ) {
+            return;
+          }
+          if (response.type === 'progress') {
+            setAutomaticSync({
+              status: 'analyzing',
+              requestId,
+              phase: response.progress.phase,
+              progress: clamp(response.progress.progress, 0, 1),
+            });
+            return;
+          }
+          worker.terminate();
+          if (alignmentWorkerRef.current === worker) {
+            alignmentWorkerRef.current = null;
+          }
+          if (response.type === 'error') {
+            setAutomaticSync({
+              status: 'error',
+              message: response.message,
+            });
+            setNotice(`Alineación automática: ${response.message}`);
+            return;
+          }
+          if (response.result.anchors.length < 2) {
+            const message =
+              'El análisis no encontró suficientes puntos de sincronía fiables.';
+            setAutomaticSync({ status: 'error', message });
+            setNotice(message);
+            return;
+          }
+          const proposed = alignmentResultToAnchors(
+            response.result,
+            `auto-validation-${requestId}`,
+          );
+          if (!createSyncTimeline(proposed).forward) {
+            const message =
+              'La propuesta automática no conserva el orden del MIDI.';
+            setAutomaticSync({ status: 'error', message });
+            setNotice(message);
+            return;
+          }
+          setAutomaticSync({
+            status: 'preview',
+            requestId,
+            result: response.result,
+          });
+          setNotice(
+            `Propuesta lista: ${response.result.anchors.length} anclas, ${Math.round(response.result.confidence * 100)}% de confianza estimada.`,
+          );
+        };
+        worker.onerror = (event) => {
+          if (requestId !== alignmentRequestRef.current) return;
+          worker.terminate();
+          if (alignmentWorkerRef.current === worker) {
+            alignmentWorkerRef.current = null;
+          }
+          const message =
+            event.message ||
+            'El motor de alineación se detuvo de forma inesperada.';
+          setAutomaticSync({ status: 'error', message });
+          setNotice(`Alineación automática: ${message}`);
+        };
+        worker.postMessage(
+          {
+            type: 'align',
+            requestId,
+            audio,
+            midi,
+          },
+          audio.channels.map(
+            (channel) => channel.buffer as ArrayBuffer,
+          ),
+        );
+      } catch (error) {
+        if (
+          requestId !== alignmentRequestRef.current ||
+          (error instanceof DOMException && error.name === 'AbortError')
+        ) {
+          return;
+        }
+        if (
+          alignmentPreparationAbortRef.current === preparationAbort
+        ) {
+          alignmentPreparationAbortRef.current = null;
+        }
+        alignmentWorkerRef.current?.terminate();
+        alignmentWorkerRef.current = null;
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'No fue posible iniciar el análisis.';
+        setAutomaticSync({ status: 'error', message });
+        setNotice(`Alineación automática: ${message}`);
+      }
+    }, 0);
+  }, []);
+
+  const applyAutomaticAlignment = useCallback(() => {
+    if (automaticSync.status !== 'preview') return;
+    const anchors = normalizeAnchors(
+      automaticSync.result.anchors.map((anchor) => ({
+        id: createId(),
+        audioTime: anchor.audioTime,
+        midiTime: anchor.midiTime,
+      })),
+    );
+    const timeline = createSyncTimeline(anchors);
+    const audioDuration =
+      transportRef.current?.getSnapshot().duration ?? 0;
+    const midiDuration = projectRef.current?.duration ?? 0;
+    const withinSources = anchors.every(
+      (anchor) =>
+        anchor.audioTime <= audioDuration + 0.05 &&
+        anchor.midiTime <= midiDuration + 0.05,
+    );
+    if (anchors.length < 2 || !timeline.forward || !withinSources) {
+      setAutomaticSync({
+        status: 'error',
+        message:
+          'La propuesta dejó de ser una curva de tiempo ascendente y válida.',
+      });
+      return;
+    }
+    setSyncAnchors(anchors);
+    setVisualConfiguration((current) => ({
+      ...current,
+      global: {
+        ...current.global,
+        audioOffsetMs: 0,
+      },
+    }));
+    setAutomaticSync({ status: 'idle' });
+    setNotice(
+      `Sincronización aplicada: ${anchors.length} anclas y offset restablecido a 0 ms.`,
+    );
+  }, [automaticSync]);
+
+  useEffect(
+    () => () => {
+      alignmentPreparationAbortRef.current?.abort();
+      alignmentPreparationAbortRef.current = null;
+      alignmentWorkerRef.current?.terminate();
+      alignmentWorkerRef.current = null;
+      alignmentRequestRef.current += 1;
+    },
+    [],
+  );
+
   useEffect(() => {
-    syncTimelineRef.current = createSyncTimeline(syncAnchors);
-  }, [syncAnchors]);
+    const previewAnchors =
+      automaticSync.status === 'preview'
+        ? alignmentResultToAnchors(
+            automaticSync.result,
+            `auto-preview-${automaticSync.requestId}`,
+          )
+        : null;
+    syncTimelineRef.current = createSyncTimeline(
+      previewAnchors ?? syncAnchors,
+    );
+    syncOffsetRef.current =
+      previewAnchors === null
+        ? visualConfiguration.global.audioOffsetMs
+        : 0;
+  }, [
+    automaticSync,
+    syncAnchors,
+    visualConfiguration.global.audioOffsetMs,
+  ]);
 
   useEffect(() => {
     visualConfigurationRef.current = visualConfiguration;
@@ -547,6 +859,7 @@ export function App() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (automaticSync.status === 'analyzing') return;
       const shortcut = resolveTransportShortcut({
         code: event.code,
         key: event.key,
@@ -570,7 +883,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tapActive, togglePlayback]);
+  }, [automaticSync.status, tapActive, togglePlayback]);
 
   useEffect(() => {
     if (!helpOpen) return;
@@ -589,7 +902,7 @@ export function App() {
         const snapshot = instance.getSnapshot(now);
         const mapping = mapAudioToMidiClockWithOffset(
           snapshot.position,
-          visualConfigurationRef.current.global.audioOffsetMs,
+          syncOffsetRef.current,
           syncTimelineRef.current,
         );
         const rendererPlaying = snapshot.playing;
@@ -646,6 +959,7 @@ export function App() {
       setNotice('El MIDI supera el límite seguro de 64 MB para este dispositivo.');
       return;
     }
+    invalidateAutomaticAlignment();
     const loadGeneration = ++midiLoadGenerationRef.current;
     const busyGeneration = ++busyGenerationRef.current;
     setBusy('midi');
@@ -659,6 +973,16 @@ export function App() {
         noteCount: parsed.noteCount,
         tracks: parsed.tracks,
         tempoMap: parsed.tempoMap,
+      };
+      midiAlignmentReferenceRef.current = {
+        duration: parsed.duration,
+        noteCount: parsed.noteCount,
+        starts: parsed.notes.starts.slice(),
+        ends: parsed.notes.ends.slice(),
+        pitches: parsed.notes.pitches.slice(),
+        velocities: parsed.notes.velocities.slice(),
+        channels: parsed.notes.channels.slice(),
+        families: parsed.notes.families.slice(),
       };
       rendererRef.current?.setProject(parsed);
       projectRef.current = summary;
@@ -700,7 +1024,7 @@ export function App() {
     } finally {
       if (busyGeneration === busyGenerationRef.current) setBusy(null);
     }
-  }, []);
+  }, [invalidateAutomaticAlignment]);
 
   const refreshWaveformPeaks = useCallback(() => {
     const instance = transportRef.current;
@@ -720,6 +1044,7 @@ export function App() {
       setNotice('El audio supera el límite seguro de 400 MB para este dispositivo.');
       return;
     }
+    invalidateAutomaticAlignment();
     const loadGeneration = ++audioLoadGenerationRef.current;
     const busyGeneration = ++busyGenerationRef.current;
     setBusy('audio');
@@ -749,7 +1074,7 @@ export function App() {
     } finally {
       if (busyGeneration === busyGenerationRef.current) setBusy(null);
     }
-  }, [refreshWaveformPeaks]);
+  }, [invalidateAutomaticAlignment, refreshWaveformPeaks]);
 
   const openSyncWorkspace = useCallback(() => {
     refreshWaveformPeaks();
@@ -824,6 +1149,7 @@ export function App() {
   };
 
   const importState = async (file: File) => {
+    invalidateAutomaticAlignment();
     try {
       const document = parseStateDocument(await file.text());
       setSettings(document.settings);
@@ -1177,24 +1503,83 @@ export function App() {
     );
   };
 
-  const syncTimeline = useMemo(
-    () => createSyncTimeline(syncAnchors),
-    [syncAnchors],
+  const previewSyncAnchors = useMemo(
+    () =>
+      automaticSync.status === 'preview'
+        ? alignmentResultToAnchors(
+            automaticSync.result,
+            `auto-preview-${automaticSync.requestId}`,
+          )
+        : null,
+    [automaticSync],
   );
+  const effectiveSyncTimeline = useMemo(
+    () => createSyncTimeline(previewSyncAnchors ?? syncAnchors),
+    [previewSyncAnchors, syncAnchors],
+  );
+  const effectiveSyncOffset =
+    previewSyncAnchors === null
+      ? visualConfiguration.global.audioOffsetMs
+      : 0;
   const activeMidiTime = useMemo(
     () =>
       mapAudioToMidiClockWithOffset(
         transport.position,
-        visualConfiguration.global.audioOffsetMs,
-        syncTimeline,
+        effectiveSyncOffset,
+        effectiveSyncTimeline,
       ).midiTime,
     [
-      syncTimeline,
+      effectiveSyncOffset,
+      effectiveSyncTimeline,
       transport.position,
-      visualConfiguration.global.audioOffsetMs,
     ],
   );
-  const syncMappingIsForward = syncTimeline.forward;
+  const syncMappingIsForward = effectiveSyncTimeline.forward;
+  const automaticAlignmentView = useMemo<AutomaticAlignmentView>(() => {
+    if (automaticSync.status === 'analyzing') {
+      return {
+        anchors: [],
+        confidence: null,
+        message: `${ALIGNMENT_PHASE_LABELS[automaticSync.phase]}…`,
+        progress: automaticSync.progress,
+        status: 'analyzing',
+      };
+    }
+    if (automaticSync.status === 'preview') {
+      const confidence = automaticSync.result.confidence;
+      const confidenceLabel =
+        confidence >= 0.72
+          ? 'alta'
+          : confidence >= 0.5
+            ? 'media'
+            : 'baja';
+      return {
+        anchors: automaticSync.result.anchors,
+        confidence,
+        message:
+          `Propuesta DTW de confianza ${confidenceLabel}. ` +
+          'Las líneas discontinuas aún no modifican tu estado; puedes revisarlas y aplicar o descartar.',
+        progress: 1,
+        status: 'preview',
+      };
+    }
+    if (automaticSync.status === 'error') {
+      return {
+        anchors: [],
+        confidence: null,
+        message: automaticSync.message,
+        progress: 0,
+        status: 'error',
+      };
+    }
+    return {
+      anchors: [],
+      confidence: null,
+      message: '',
+      progress: 0,
+      status: 'idle',
+    };
+  }, [automaticSync]);
   const selectedTrack =
     project?.tracks.find((track) => track.name === selectedTrackName) ?? null;
   const selectedResolvedStyle = selectedTrack
@@ -2603,21 +2988,27 @@ export function App() {
         <SyncWorkspace
           activeMidiTime={activeMidiTime}
           anchors={syncAnchors}
+          automaticAlignment={automaticAlignmentView}
           audioFileName={audioFileName}
           forward={syncMappingIsForward}
           midiDuration={project?.duration ?? 0}
           midiFileName={project?.fileName ?? null}
           landmarks={audioLandmarks}
           magnetEnabled={syncMagnetEnabled}
-          offsetMs={visualConfiguration.global.audioOffsetMs}
+          offsetMs={effectiveSyncOffset}
           onAddAnchor={(audioTime) => addAnchorAtAudio(audioTime)}
+          onApplyAutomaticAlignment={applyAutomaticAlignment}
+          onCancelAutomaticAlignment={cancelAutomaticAlignment}
           onClearAnchors={() => {
             setSyncAnchors([]);
             lastTapRef.current = null;
             setTapActive(false);
             setNotice('Todas las anclas fueron eliminadas.');
           }}
-          onClose={() => setSyncWorkspaceOpen(false)}
+          onClose={() => {
+            cancelAutomaticAlignment();
+            setSyncWorkspaceOpen(false);
+          }}
           onDeleteAnchor={(id) =>
             setSyncAnchors((current) =>
               current.filter((anchor) => anchor.id !== id),
@@ -2635,6 +3026,7 @@ export function App() {
           }}
           onTapToggle={tapActive ? stopTapTempo : startTapTempo}
           onTogglePlayback={() => void togglePlayback()}
+          onRunAutomaticAlignment={runAutomaticAlignment}
           peaks={waveformPeaks}
           tapActive={tapActive}
           transport={transport}
