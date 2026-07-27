@@ -2016,14 +2016,6 @@ export function App() {
                 Suelta los dos archivos de una sola vez en el canvas. También
                 puedes cargarlos por separado con los botones superiores.
               </p>
-              <button
-                className="primary-button"
-                onClick={() => midiInputRef.current?.click()}
-                type="button"
-              >
-                <Icon name="folder" />
-                Elegir MIDI
-              </button>
             </div>
           )}
           {dragging && (
