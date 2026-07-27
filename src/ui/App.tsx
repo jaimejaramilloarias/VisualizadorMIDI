@@ -129,7 +129,7 @@ const ALIGNMENT_PHASE_LABELS: Record<AlignmentPhase, string> = {
   'midi-features': 'Construyendo la referencia MIDI',
   'coarse-dtw': 'Buscando la ruta musical',
   'fine-dtw': 'Afinando la sincronía con DTW',
-  anchors: 'Simplificando la curva en anclas',
+  anchors: 'Afinando anclas y evaluando el tramo final',
 };
 
 const formatTime = (seconds: number): string => {
@@ -549,7 +549,7 @@ export function App() {
       phase: 'preparing-audio',
       progress: 0.01,
     });
-    setNotice('Analizando chroma y ataques localmente…');
+    setNotice('Analizando chroma, ataques y picos RMS localmente…');
 
     window.setTimeout(async () => {
       if (requestId !== alignmentRequestRef.current) return;
@@ -1597,12 +1597,17 @@ export function App() {
           : confidence >= 0.5
             ? 'media'
             : 'baja';
+      const tailRefinementMessage =
+        automaticSync.result.diagnostics.tailRefinementApplied
+          ? `El tramo final se afinó con ${automaticSync.result.diagnostics.tailPeakMatchCount} coincidencias entre ataques MIDI y picos RMS. `
+          : '';
       return {
         anchors: automaticSync.result.anchors,
         confidence,
         message:
           `Propuesta DTW de confianza ${confidenceLabel}. ` +
           'El ancla final une el fin del audio con el último note off. ' +
+          tailRefinementMessage +
           'Las líneas discontinuas aún no modifican tu estado; puedes revisarlas y aplicar o descartar.',
         progress: 1,
         status: 'preview',

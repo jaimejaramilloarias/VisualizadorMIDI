@@ -6,6 +6,11 @@ import type {
   AutomaticAlignmentResult,
   MidiAlignmentReference,
 } from './types';
+import {
+  MINIMUM_FINAL_RELEASE_SEGMENT_RATE,
+  MINIMUM_RITARDANDO_SEGMENT_RATE,
+  refineRitardandoTail,
+} from './refineRitardandoTail';
 
 const TARGET_SAMPLE_RATE = 11_025;
 const FFT_SIZE = 2_048;
@@ -25,6 +30,8 @@ export interface AlignmentFeatureSequence {
   frameCount: number;
   hopSeconds: number;
   onsets: Float32Array;
+  rms: Float32Array;
+  rmsHopSeconds: number;
   tonalActivity: Float32Array;
 }
 
@@ -219,6 +226,53 @@ const resampleAndDownmix = (
   return output;
 };
 
+const extractNormalizedRmsEnvelope = (
+  samples: Float32Array,
+): { rms: Float32Array; hopSeconds: number } => {
+  const hopSize = Math.max(
+    1,
+    Math.round(TARGET_SAMPLE_RATE * 0.01),
+  );
+  const windowSize = Math.max(
+    3,
+    Math.round(TARGET_SAMPLE_RATE * 0.04),
+  );
+  const halfWindow = Math.floor(windowSize / 2);
+  const frameCount = Math.max(
+    1,
+    Math.floor(samples.length / hopSize) + 1,
+  );
+  const rms = new Float32Array(frameCount);
+  let activeStart = 0;
+  let activeEnd = 0;
+  let squared = 0;
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    const center = frame * hopSize;
+    const start = Math.max(0, center - halfWindow);
+    const end = Math.min(samples.length, center + halfWindow + 1);
+    while (activeEnd < end) {
+      squared += samples[activeEnd] ** 2;
+      activeEnd += 1;
+    }
+    while (activeStart < start) {
+      squared -= samples[activeStart] ** 2;
+      activeStart += 1;
+    }
+    const raw = Math.sqrt(
+      Math.max(0, squared) / Math.max(1, end - start),
+    );
+    rms[frame] = Math.log1p(raw * 120);
+  }
+  const scale = Math.max(1e-8, percentile(rms, 0.95));
+  for (let frame = 0; frame < rms.length; frame += 1) {
+    rms[frame] = clamp(rms[frame] / scale, 0, 1.5);
+  }
+  return {
+    rms,
+    hopSeconds: hopSize / TARGET_SAMPLE_RATE,
+  };
+};
+
 export const extractAudioAlignmentFeatures = (
   source: AlignmentAudioSource,
   report?: (progress: number) => void,
@@ -229,6 +283,7 @@ export const extractAudioAlignmentFeatures = (
   const samples = resampleAndDownmix(source, (progress) =>
     report?.(progress * 0.22),
   );
+  const rmsEnvelope = extractNormalizedRmsEnvelope(samples);
   const hopSize = Math.max(1, Math.round(TARGET_SAMPLE_RATE * HOP_SECONDS));
   const frameCount = Math.max(1, Math.floor(samples.length / hopSize) + 1);
   const chroma = new Float32Array(frameCount * 12);
@@ -320,6 +375,8 @@ export const extractAudioAlignmentFeatures = (
     frameCount,
     hopSeconds: hopSize / TARGET_SAMPLE_RATE,
     onsets: normalizeOnsets(rawOnsets),
+    rms: rmsEnvelope.rms,
+    rmsHopSeconds: rmsEnvelope.hopSeconds,
     tonalActivity,
   };
 };
@@ -395,6 +452,8 @@ export const extractMidiAlignmentFeatures = (
     frameCount,
     hopSeconds,
     onsets: normalizeOnsets(spreadOnsets),
+    rms: new Float32Array(0),
+    rmsHopSeconds: hopSeconds,
     tonalActivity,
   };
 };
@@ -434,6 +493,8 @@ const aggregateFeatures = (
     frameCount,
     hopSeconds: sequence.hopSeconds * factor,
     onsets,
+    rms: sequence.rms,
+    rmsHopSeconds: sequence.rmsHopSeconds,
     tonalActivity,
   };
 };
@@ -995,6 +1056,7 @@ export const alignmentPathToAnchors = (
 const isUsableAnchorSegment = (
   previous: AlignmentAnchorCandidate,
   next: AlignmentAnchorCandidate,
+  minimumRate = MINIMUM_SEGMENT_RATE,
 ): boolean => {
   const audioDelta = next.audioTime - previous.audioTime;
   const midiDelta = next.midiTime - previous.midiTime;
@@ -1005,7 +1067,7 @@ const isUsableAnchorSegment = (
     return false;
   }
   const rate = midiDelta / audioDelta;
-  return rate >= MINIMUM_SEGMENT_RATE && rate <= MAXIMUM_SEGMENT_RATE;
+  return rate >= minimumRate && rate <= MAXIMUM_SEGMENT_RATE;
 };
 
 const appendRequiredTerminalAnchor = (
@@ -1034,10 +1096,18 @@ const appendRequiredTerminalAnchor = (
 
 const hasUnreasonableSegmentRate = (
   anchors: readonly AlignmentAnchorCandidate[],
+  terminalMinimumRate = MINIMUM_SEGMENT_RATE,
 ): boolean =>
   anchors.some(
     (anchor, index) =>
-      index > 0 && !isUsableAnchorSegment(anchors[index - 1], anchor),
+      index > 0 &&
+      !isUsableAnchorSegment(
+        anchors[index - 1],
+        anchor,
+        index === anchors.length - 1
+          ? terminalMinimumRate
+          : MINIMUM_SEGMENT_RATE,
+      ),
   );
 
 const findLastMidiNoteOff = (
@@ -1277,12 +1347,37 @@ export const runAutomaticAlignment = (
     report({ phase: 'fine-dtw', progress: 0.7 + progress * 0.25 }),
   );
   report({ phase: 'anchors', progress: 0.97 });
-  const anchors = appendRequiredTerminalAnchor(
+  const baseAnchors = appendRequiredTerminalAnchor(
     alignmentPathToAnchors(fine.path, audio, midi),
     audioSource.duration,
     lastMidiNoteOff,
   );
-  if (hasUnreasonableSegmentRate(anchors)) {
+  const tailRefinement = refineRitardandoTail({
+    audioDuration: audioSource.duration,
+    audioFeatureHopSeconds: audio.hopSeconds,
+    audioOnsets: audio.onsets,
+    audioRms: audio.rms,
+    audioRmsHopSeconds: audio.rmsHopSeconds,
+    baseAnchors,
+    denseMidiFramesByAudioFrame: createDenseMapping(
+      fine.path,
+      audio.frameCount,
+    ),
+    midiDuration: lastMidiNoteOff,
+    midiFeatureHopSeconds: midi.hopSeconds,
+    midiReference,
+  });
+  const anchors = tailRefinement.anchors;
+  if (
+    hasUnreasonableSegmentRate(
+      anchors,
+      tailRefinement.diagnostics.tailFinalReleaseStretchApplied
+        ? MINIMUM_FINAL_RELEASE_SEGMENT_RATE
+        : tailRefinement.diagnostics.tailRefinementApplied
+          ? MINIMUM_RITARDANDO_SEGMENT_RATE
+          : MINIMUM_SEGMENT_RATE,
+    )
+  ) {
     throw new Error(
       'La coincidencia exigiría cambios de velocidad demasiado extremos.',
     );
@@ -1346,6 +1441,7 @@ export const runAutomaticAlignment = (
         midiSpan / Math.max(0.001, audioSpan),
       maximumAnchorErrorSeconds,
       temporalEvidenceCoverage: quality.temporalCoverage,
+      ...tailRefinement.diagnostics,
       tonalCoverage,
       onsetCount,
     },

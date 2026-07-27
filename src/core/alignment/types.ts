@@ -42,6 +42,20 @@ export interface AutomaticAlignmentDiagnostics {
   estimatedTempoRatio: number;
   maximumAnchorErrorSeconds: number;
   temporalEvidenceCoverage: number;
+  tailBaselineMedianErrorSeconds: number;
+  tailDenseImprovementSeconds: number;
+  tailDenseMedianErrorSeconds: number;
+  tailDtwTempoDropRatio: number;
+  tailFinalReleaseStretchApplied: boolean;
+  tailImprovementSeconds: number;
+  tailMeanErrorSeconds: number;
+  tailPeakMatchCount: number;
+  tailRefinedAnchorCount: number;
+  tailRefinementApplied: boolean;
+  tailRmsPeakCount: number;
+  tailTempoDropRatio: number;
+  tailTerminalSegmentRate: number;
+  tailWindowSeconds: number;
   tonalCoverage: number;
   onsetCount: number;
 }

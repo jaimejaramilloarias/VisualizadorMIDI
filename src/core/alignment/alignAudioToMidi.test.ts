@@ -247,6 +247,62 @@ describe('alineación chroma + ataques + DTW', () => {
     ).toThrow('cambios de velocidad demasiado extremos');
   });
 
+  it('afina una coda con ritardando sin apartarse del DTW', () => {
+    const midiNotes = Array.from({ length: 36 }, (_, index) => ({
+      start: index * 0.65,
+      end: index * 0.65 + 0.35,
+      pitch: 48 + ((index * 7) % 24),
+    }));
+    const midiDuration = midiNotes.at(-1)!.end;
+    const ritardandoStart = 14;
+    const audioTimeForMidi = (midiTime: number): number =>
+      midiTime <= ritardandoStart
+        ? midiTime
+        : ritardandoStart +
+          (midiTime - ritardandoStart) +
+          (midiTime - ritardandoStart) ** 2 / 28;
+    const audioNotes = midiNotes.map((note) => ({
+      start: audioTimeForMidi(note.start),
+      end: audioTimeForMidi(note.end),
+      pitch: note.pitch,
+    }));
+    const audioDuration = audioTimeForMidi(midiDuration);
+    const source = {
+      channels: [synthesizeNotes(audioDuration, audioNotes)],
+      duration: audioDuration,
+      sampleRate: SAMPLE_RATE,
+    };
+    const result = runAutomaticAlignment(
+      source,
+      makeMidiReference(midiDuration, midiNotes),
+    );
+    const timeline = createSyncTimeline(
+      result.anchors.map((anchor, index) => ({
+        id: String(index),
+        audioTime: anchor.audioTime,
+        midiTime: anchor.midiTime,
+      })),
+    );
+    const tailErrors = midiNotes
+      .slice(-10)
+      .map((note) =>
+        Math.abs(
+          timeline.map(audioTimeForMidi(note.start)).midiTime -
+            note.start,
+        ),
+      );
+
+    expect(result.diagnostics.tailRefinementApplied).toBe(true);
+    expect(result.diagnostics.tailRefinedAnchorCount).toBeGreaterThanOrEqual(4);
+    expect(result.diagnostics.tailPeakMatchCount).toBeGreaterThanOrEqual(10);
+    expect(result.diagnostics.tailTempoDropRatio).toBeGreaterThan(0.08);
+    expect(result.diagnostics.tailImprovementSeconds).toBeGreaterThan(0.012);
+    expect(result.diagnostics.tailDenseMedianErrorSeconds).toBeLessThan(0.06);
+    expect(Math.max(...tailErrors)).toBeLessThan(0.17);
+    expect(result.anchors.at(-1)?.audioTime).toBe(audioDuration);
+    expect(result.anchors.at(-1)?.midiTime).toBe(midiDuration);
+  });
+
   it('no presenta como fiable una pieza tonal distinta', () => {
     const audioNotes = [
       { start: 2, end: 2.4, pitch: 61 },

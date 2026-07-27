@@ -38,6 +38,12 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   una ruta coarse-to-fine con DTW. La propuesta aparece como anclas
   discontinuas y solo reemplaza el estado cuando el usuario la aplica. Su ancla
   terminal hace coincidir el final del audio con el último `note off` del MIDI.
+- Los finales con ritardando reciben un segundo refinamiento automático: una
+  envolvente RMS local confirma los ataques, reserva anclas de mayor densidad
+  para la coda y conserva el DTW original cuando no demuestra una mejora real.
+  Las coincidencias usadas para validar nunca son las mismas que crean las
+  anclas. Si el último ataque está confirmado, la cola final puede sostener solo
+  ese `release` hasta el cierre exacto, sin ralentizar ningún ataque anterior.
 - Detección automática del primer contenido audible: el silencio inicial se
   omite en reproducción, forma de onda y reloj sin modificar el archivo local.
 - Navegación, ancla seleccionada, tap tempo y offset reunidos en una franja

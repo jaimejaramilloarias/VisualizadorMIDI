@@ -431,7 +431,7 @@ export function SyncWorkspace({
           {automaticAlignment.status === 'analyzing' ? (
             <>
               <span
-                aria-label={`${Math.round(automaticAlignment.progress * 100)} por ciento`}
+                aria-label={`${automaticAlignment.message}: ${Math.round(automaticAlignment.progress * 100)} por ciento`}
                 aria-valuemax={100}
                 aria-valuemin={0}
                 aria-valuenow={Math.round(automaticAlignment.progress * 100)}
@@ -492,7 +492,7 @@ export function SyncWorkspace({
               }
               title={
                 canRunAutomaticAlignment
-                  ? 'Analiza chroma y ataques; después alinea con DTW'
+                  ? 'Analiza chroma, ataques y picos RMS; después alinea con DTW'
                   : 'Carga MIDI y audio para usar la sincronización automática'
               }
               type="button"
@@ -571,10 +571,7 @@ export function SyncWorkspace({
       </div>
 
       {(!forward || automaticAlignment.status !== 'idle') && (
-        <div
-          aria-live="polite"
-          className="sync-workspace-messages"
-        >
+        <div className="sync-workspace-messages">
           {!forward && (
             <p className="sync-workspace-warning">
               El orden de algunos pulsos MIDI se invirtió. Reubica sus anclas
@@ -584,6 +581,8 @@ export function SyncWorkspace({
           {automaticAlignment.status !== 'idle' && (
             <p
               className={`sync-auto-message is-${automaticAlignment.status}`}
+              role="status"
+              aria-atomic="true"
             >
               {automaticAlignment.message}
               {automaticAlignment.status === 'preview' &&

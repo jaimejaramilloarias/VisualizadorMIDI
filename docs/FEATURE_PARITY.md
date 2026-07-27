@@ -13,7 +13,7 @@ decisiones no afectan el JSON de estado.
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
 | Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |
 | Sincronía | Tap tempo, waveform y marcadores editables | Editor visual a pantalla completa con anclas verticales, zoom, desplazamiento, magnetismo y controles compactos |
-| Sincronía | Alineación automática audio–MIDI | Ampliación V2: análisis local de chroma y ataques, DTW coarse-to-fine, propuesta reversible y cierre exacto audio → último note off |
+| Sincronía | Alineación automática audio–MIDI | Ampliación V2: chroma + ataques + DTW, refinamiento RMS automático de ritardandos, propuesta reversible y cierre exacto audio → último note off |
 | Sincronía | Mapa de tempo MIDI | Migrada; mover una ancla conserva su pulso y cambia la velocidad MIDI del tramo |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
@@ -59,7 +59,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 84 pruebas V2 correctas.
+- `npm run test`: 90 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
   era un stub en el prototipo y no representa una función perdida.
