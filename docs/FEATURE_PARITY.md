@@ -9,6 +9,7 @@ decisiones no afectan el JSON de estado.
 |---|---|---|
 | Archivos | MIDI local | Migrada; admite carga conjunta por arrastre con el audio |
 | Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio; admite carga conjunta y conserva la detección y omisión del silencio inicial |
+| Archivos | Demo integrada | Ampliación V2; carga desde la web MIDI, audio, preset y tarjeta final de El Intachable sin reproducción automática |
 | Archivos | Importar/exportar configuración JSON | Migrada; contrato V2 versionado |
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
 | Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |
@@ -61,7 +62,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 126 pruebas V2 correctas.
+- `npm run test`: 130 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
   era un stub en el prototipo y no representa una función perdida.

@@ -62,6 +62,10 @@ import {
 } from '../renderer/renderMath';
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
+import {
+  createDemoPresentationState,
+  fetchDemoMedia,
+} from './demoMedia';
 import { selectDroppedMedia } from './fileDrop';
 import { KnobControl } from './KnobControl';
 import {
@@ -310,6 +314,7 @@ function ToolButton({
   label,
   onClick,
   active = false,
+  accent = false,
   disabled = false,
   compact = false,
   pressed,
@@ -318,6 +323,7 @@ function ToolButton({
   label: string;
   onClick: () => void;
   active?: boolean;
+  accent?: boolean;
   disabled?: boolean;
   compact?: boolean;
   pressed?: boolean;
@@ -326,7 +332,7 @@ function ToolButton({
     <button
       aria-label={label}
       aria-pressed={pressed}
-      className={`tool-button${active ? ' is-active' : ''}${compact ? ' is-compact' : ''}`}
+      className={`tool-button${active ? ' is-active' : ''}${accent ? ' is-accent' : ''}${compact ? ' is-compact' : ''}`}
       disabled={disabled}
       onClick={onClick}
       title={label}
@@ -478,6 +484,7 @@ export function App() {
   const preserveNextMidiPaletteRef = useRef(true);
   const busyGenerationRef = useRef(0);
   const fileDragDepthRef = useRef(0);
+  const demoLoadInFlightRef = useRef(false);
   const lastClockRef = useRef({
     sentAt: 0,
     midiTime: -1,
@@ -529,6 +536,7 @@ export function App() {
     () => window.matchMedia('(max-width: 800px)').matches,
   );
   const [busy, setBusy] = useState<'midi' | 'audio' | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [notice, setNotice] = useState(
     'Arrastra MIDI y audio juntos para cargarlos de una sola vez.',
   );
@@ -1270,6 +1278,53 @@ export function App() {
     refreshWaveformPeaks,
   ]);
 
+  const loadDemo = useCallback(async () => {
+    if (demoLoadInFlightRef.current) return;
+    demoLoadInFlightRef.current = true;
+    setDemoLoading(true);
+    transportRef.current?.pause();
+    setNotice('Descargando la demo de El Intachable…');
+    try {
+      const { midiFile, audioFile } = await fetchDemoMedia();
+      const demoState = createDemoPresentationState();
+
+      preserveImportedSyncRef.current = false;
+      preserveNextMidiPaletteRef.current = true;
+      lastAutoAttemptedPairRef.current = null;
+      setSettings(demoState.settings);
+      setVisualConfiguration(demoState.visualConfiguration);
+      setSyncAnchors([]);
+
+      await Promise.all([
+        loadMidi(midiFile),
+        loadAudio(audioFile),
+      ]);
+
+      const readiness = mediaReadinessRef.current;
+      const missingMedia = [
+        readiness.midi.status === 'ready' ? null : 'MIDI',
+        readiness.audio.status === 'ready' ? null : 'audio',
+      ].filter(Boolean);
+      if (missingMedia.length > 0) {
+        throw new Error(
+          `La demo no pudo completarse: ${missingMedia.join(' y ')} no quedó listo.`,
+        );
+      }
+      setNotice(
+        'Demo lista. La sincronización automática de MIDI y audio está comenzando…',
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible cargar la demo.',
+      );
+    } finally {
+      demoLoadInFlightRef.current = false;
+      setDemoLoading(false);
+    }
+  }, [loadAudio, loadMidi]);
+
   const openSyncWorkspace = useCallback(() => {
     refreshWaveformPeaks();
     setSyncWorkspaceOpen(true);
@@ -1277,6 +1332,10 @@ export function App() {
 
   const loadDroppedFiles = useCallback(
     (files: File[]) => {
+      if (demoLoadInFlightRef.current) {
+        setNotice('Espera a que termine la carga de la demo.');
+        return;
+      }
       const { midiFile, audioFile } = selectDroppedMedia(files);
 
       if (!midiFile && !audioFile) {
@@ -1914,6 +1973,7 @@ export function App() {
         }
         if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
+        if (demoLoadInFlightRef.current) return;
         fileDragDepthRef.current += 1;
         setDragging(true);
       }}
@@ -1928,7 +1988,9 @@ export function App() {
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes('Files')) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = 'copy';
+        event.dataTransfer.dropEffect = demoLoadInFlightRef.current
+          ? 'none'
+          : 'copy';
       }}
       onDrop={onDrop}
     >
@@ -1971,6 +2033,14 @@ export function App() {
         </div>
         <nav aria-label="Acciones principales" className="file-actions">
           <ToolButton
+            accent
+            disabled={demoLoading || busy !== null}
+            icon="sparkles"
+            label={demoLoading ? 'Cargando demo…' : 'Demo'}
+            onClick={() => void loadDemo()}
+          />
+          <span className="toolbar-divider" />
+          <ToolButton
             active={isCanvasFullscreen}
             icon="fullscreen"
             label={
@@ -1982,13 +2052,13 @@ export function App() {
             pressed={isCanvasFullscreen}
           />
           <ToolButton
-            disabled={busy !== null}
+            disabled={demoLoading || busy !== null}
             icon="music"
             label={busy === 'midi' ? 'Cargando MIDI…' : 'Abrir MIDI'}
             onClick={() => midiInputRef.current?.click()}
           />
           <ToolButton
-            disabled={busy !== null}
+            disabled={demoLoading || busy !== null}
             icon="audio"
             label={busy === 'audio' ? 'Cargando audio…' : 'Añadir audio'}
             onClick={() => audioInputRef.current?.click()}
@@ -3339,9 +3409,10 @@ export function App() {
             </div>
             <div className="help-grid">
               <section>
-                <strong>1 · Archivos</strong>
+                <strong>1 · Archivos y demo</strong>
                 <p>
-                  Carga el MIDI y, si quieres, un audio. Todo se procesa
+                  Pulsa Demo para cargar El Intachable con audio, MIDI y cierre
+                  configurado, o abre tus propios archivos. Todo se procesa
                   localmente; el JSON sólo guarda ajustes y anclas.
                 </p>
               </section>

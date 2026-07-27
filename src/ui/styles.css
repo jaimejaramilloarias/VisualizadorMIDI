@@ -194,6 +194,19 @@ input:focus-visible {
   background: rgba(255, 255, 255, 0.075);
 }
 
+.tool-button.is-accent {
+  color: #17100b;
+  background: var(--accent);
+  box-shadow: 0 8px 22px rgba(255, 213, 0, 0.18);
+  font-weight: 850;
+}
+
+.tool-button.is-accent:hover,
+.tool-button.is-accent.is-active {
+  color: #17100b;
+  background: #ffe033;
+}
+
 .tool-button:active {
   transform: scale(0.96);
 }
