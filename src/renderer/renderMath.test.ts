@@ -8,6 +8,7 @@ import {
   computePastExtensionBounds,
   composeTravelStyle,
   computeRenderScale,
+  computeVisualPostRollDuration,
   curveTravelOffset,
   extrapolateMidiTime,
   familyDepthPriority,
@@ -25,6 +26,11 @@ describe('computeHorizontalViewport', () => {
       futureSeconds: 4,
       pixelsPerSecond: 150,
     });
+  });
+
+  it('reserva el recorrido de NOW al borde izquierdo más un margen', () => {
+    expect(computeVisualPostRollDuration(8)).toBeCloseTo(4.1);
+    expect(computeVisualPostRollDuration(12)).toBeCloseTo(6.1);
   });
 });
 

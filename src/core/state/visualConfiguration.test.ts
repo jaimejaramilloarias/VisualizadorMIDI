@@ -17,14 +17,30 @@ describe('visualConfiguration', () => {
     expect(SHAPE_IDS.every((shape) => !shape.endsWith('Double'))).toBe(true);
   });
 
-  it('usa RGB 255, 213, 0 como color inicial de todas las familias', () => {
+  it('conserva el amarillo de acento y la paleta familiar capturada', () => {
     const configuration = cloneDefaultVisualConfiguration();
-    expect(
-      Object.values(configuration.families).every(
-        (family) => family.color === DEFAULT_FIGURE_COLOR,
-      ),
-    ).toBe(true);
     expect(DEFAULT_FIGURE_COLOR).toBe('#ffd500');
+    expect(
+      Object.fromEntries(
+        Object.entries(configuration.families).map(([name, family]) => [
+          name,
+          family.color,
+        ]),
+      ),
+    ).toMatchObject({
+      'Maderas de timbre "redondo"': '#0394fc',
+      'Dobles cañas': '#ba1af4',
+      Saxofones: '#ffd500',
+      Metales: '#fff700',
+      Cornos: '#ffce1f',
+      'Percusión menor': '#a3a3a3',
+      Tambores: '#d9d9d9',
+      Platillos: '#ffffff',
+      Placas: '#ffd500',
+      Auxiliares: '#ffd500',
+      'Cuerdas frotadas': '#a97832',
+      'Cuerdas pulsadas': '#028317',
+    });
   });
 
   it('genera colores distintos por familia con un origen aleatorio', () => {
@@ -70,22 +86,29 @@ describe('visualConfiguration', () => {
     expect(result.families['Mi familia'].shape).toBe('hexagon');
   });
 
+  it('respeta un mapa de instrumentos explícitamente vacío al importar', () => {
+    const incoming = cloneDefaultVisualConfiguration();
+    incoming.instruments = {};
+
+    expect(sanitizeVisualConfiguration(incoming).instruments).toEqual({});
+  });
+
   it('fija de forma exhaustiva los valores leídos en la aplicación como preset inicial', () => {
     const result = cloneDefaultVisualConfiguration();
 
     expect(result.global).toEqual({
       velocityBase: 67,
-      colorToneShift: 0,
-      opacityEdge: 0,
+      colorToneShift: -6,
+      opacityEdge: 0.5,
       opacityCenter: 1,
-      heightScale: 1.8,
-      glowStrength: 0.1,
-      bumpStrength: 1.1,
-      extension: true,
+      heightScale: 1.4,
+      glowStrength: 0.8,
+      bumpStrength: 4.8,
+      extension: false,
       stretch: true,
       audioOffsetMs: 0,
       fpsMode: 'auto',
-      supersampling: 2.5,
+      supersampling: 3,
       aspectRatio: 'responsive',
       noteLabels: {
         enabled: false,
@@ -99,21 +122,29 @@ describe('visualConfiguration', () => {
       },
       travel: {
         enabled: true,
-        intensity: 1,
-        magnetZone: 1,
+        intensity: 0.3,
+        magnetZone: 0.7,
       },
     });
-    expect(result.instruments).toEqual({});
+    expect(result.instruments).toEqual({
+      BANDOLA: {
+        color: '#368128',
+        shape: 'hexagon',
+      },
+    });
     expect(result.shapeExtensions).toEqual(
-      Object.fromEntries(SHAPE_IDS.map((shape) => [shape, true])),
+      Object.fromEntries(
+        SHAPE_IDS.map((shape) => [shape, shape !== 'diamond']),
+      ),
     );
     expect(result.shapeStretch).toEqual(
-      Object.fromEntries(SHAPE_IDS.map((shape) => [shape, true])),
+      Object.fromEntries(
+        SHAPE_IDS.map((shape) => [shape, shape !== 'diamond']),
+      ),
     );
     expect(
       Object.values(result.families).every(
         (family) =>
-          family.color === '#ffd500' &&
           family.secondaryColor === '#ffffff' &&
           family.heightScale === 1 &&
           family.glowStrength === 0.1 &&
@@ -125,6 +156,27 @@ describe('visualConfiguration', () => {
           family.travel.magnetZone === 1,
       ),
     ).toBe(true);
+    expect(
+      Object.fromEntries(
+        Object.entries(result.families).map(([name, family]) => [
+          name,
+          family.shape,
+        ]),
+      ),
+    ).toMatchObject({
+      'Maderas de timbre "redondo"': 'circle',
+      'Dobles cañas': 'fourPointStar',
+      Saxofones: 'fourPointStar',
+      Metales: 'square',
+      Cornos: 'roundedSquare',
+      'Percusión menor': 'square',
+      Tambores: 'square',
+      Platillos: 'square',
+      Placas: 'diamond',
+      Auxiliares: 'roundedSquare',
+      'Cuerdas frotadas': 'diamond',
+      'Cuerdas pulsadas': 'sixPointStar',
+    });
   });
 
   it('completa configuraciones parciales con el preset inicial capturado', () => {

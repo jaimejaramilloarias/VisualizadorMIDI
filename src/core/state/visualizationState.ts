@@ -46,9 +46,9 @@ export interface VisualizationStateDocument {
 
 export const DEFAULT_SETTINGS: VisualizationSettings = {
   secondsVisible: 8,
-  glow: 0.8,
-  noteScale: 1,
-  quality: 'auto',
+  glow: 1,
+  noteScale: 0.8,
+  quality: 'ultra',
   background: '#000000',
 };
 
@@ -76,6 +76,35 @@ export const mapAudioToMidi = (
   audioTime: number,
   anchors: SyncAnchor[],
 ): number => mapAudioToMidiClock(audioTime, anchors).midiTime;
+
+export const mapVisualTransportToMidiClock = (
+  visualPosition: number,
+  contentDuration: number,
+  offsetMs: number,
+  timeline: SyncTimeline,
+): MidiClockMapping => {
+  const safeDuration = Number.isFinite(contentDuration)
+    ? Math.max(0, contentDuration)
+    : 0;
+  const safeVisualPosition = Number.isFinite(visualPosition)
+    ? Math.max(0, visualPosition)
+    : 0;
+  const contentPosition = Math.min(safeDuration, safeVisualPosition);
+  const mapping = mapAudioToMidiClockWithOffset(
+    contentPosition,
+    offsetMs,
+    timeline,
+  );
+  const postRollElapsed = Math.max(
+    0,
+    safeVisualPosition - safeDuration,
+  );
+  if (postRollElapsed <= 0) return mapping;
+  return {
+    midiTime: mapping.midiTime + postRollElapsed,
+    playbackRate: 1,
+  };
+};
 
 const mapNormalizedAnchors = (
   audioTime: number,

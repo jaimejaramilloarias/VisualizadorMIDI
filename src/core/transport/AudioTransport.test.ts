@@ -90,6 +90,7 @@ describe('AudioTransport', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -160,6 +161,101 @@ describe('AudioTransport', () => {
       muted: false,
     });
     expect(context.gainNode.gain.value).toBe(0.35);
+    await transport.destroy();
+  });
+
+  it('mantiene un post-roll visual silencioso sin ampliar la duración del audio', async () => {
+    let performanceTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(
+      () => performanceTime,
+    );
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    transport.setVisualPostRollDuration(4.1);
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    await transport.play();
+    const source = context.sourceNodes[0];
+    context.currentTime = 10;
+    source.onended?.();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 10,
+      visualPosition: 10,
+      playing: true,
+      signalLevel: 0,
+    });
+    expect(context.sourceNodes).toHaveLength(1);
+
+    performanceTime = 2_000;
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 10,
+      visualPosition: 12,
+      playing: true,
+    });
+    expect(context.sourceNodes).toHaveLength(1);
+
+    performanceTime = 4_100;
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      position: 10,
+      visualPosition: 14.1,
+      playing: false,
+    });
+    expect(context.sourceNodes).toHaveLength(1);
+
+    transport.setVisualPostRollDuration(6);
+    expect(transport.getSnapshot()).toMatchObject({
+      duration: 10,
+      visualPosition: 16,
+      playing: false,
+    });
+    await transport.play();
+    expect(context.sourceNodes).toHaveLength(2);
+    expect(context.sourceNodes[1].start).toHaveBeenCalledWith(0, 0);
+    await transport.destroy();
+  });
+
+  it('pausa y reanuda el post-roll sin crear otro nodo de audio', async () => {
+    let performanceTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(
+      () => performanceTime,
+    );
+    const transport = new AudioTransport();
+    const file = {
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+    } as File;
+    transport.setVisualPostRollDuration(4);
+    await transport.loadAudio(file);
+    const context = FakeAudioContext.instance!;
+
+    await transport.play();
+    context.currentTime = 10;
+    context.sourceNodes[0].onended?.();
+    performanceTime = 1_000;
+    transport.pause();
+
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 10,
+      visualPosition: 11,
+      playing: false,
+    });
+
+    context.state = 'suspended';
+    await transport.play();
+    performanceTime = 2_000;
+    expect(transport.getSnapshot()).toMatchObject({
+      position: 10,
+      visualPosition: 12,
+      playing: true,
+    });
+    expect(context.sourceNodes).toHaveLength(1);
+    expect(context.resume).not.toHaveBeenCalled();
     await transport.destroy();
   });
 

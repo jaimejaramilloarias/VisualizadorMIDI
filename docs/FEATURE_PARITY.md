@@ -7,13 +7,13 @@ decisiones no afectan el JSON de estado.
 
 | Área | Función existente en V1 | Estado V2 |
 |---|---|---|
-| Archivos | MIDI local | Migrada |
-| Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio; conserva la detección y omisión del silencio inicial |
+| Archivos | MIDI local | Migrada; admite carga conjunta por arrastre con el audio |
+| Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio; admite carga conjunta y conserva la detección y omisión del silencio inicial |
 | Archivos | Importar/exportar configuración JSON | Migrada; contrato V2 versionado |
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
 | Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |
 | Sincronía | Tap tempo, waveform y marcadores editables | Editor visual a pantalla completa con anclas verticales, zoom, desplazamiento, magnetismo y controles compactos |
-| Sincronía | Alineación automática audio–MIDI | Ampliación V2: chroma + ataques + DTW, refinamiento RMS automático de ritardandos, propuesta reversible y cierre exacto audio → último note off |
+| Sincronía | Alineación automática audio–MIDI | Ampliación V2: chroma + ataques + DTW, refinamiento RMS de ritardandos y cierre exacto audio → último note off; se aplica una vez al cargar una pareja nueva y conserva preview reversible al recalcular manualmente |
 | Sincronía | Mapa de tempo MIDI | Migrada; mover una ancla conserva su pulso y cambia la velocidad MIDI del tramo |
 | Visual | Ventana de segundos visibles | Migrada |
 | Visual | 16:9, 9:16, fullscreen | Migrada |
@@ -31,6 +31,7 @@ decisiones no afectan el JSON de estado.
 | Figuras | Catálogo de figuras | Rediseñada; ocho figuras simples, sin variantes dobles |
 | Figuras | Extensión dinámica y alargamiento | Migrada por figura, familia e instrumento |
 | Geometría | Posición de NOW y dirección de extensión | Rediseñada; NOW centrado y extensión exclusivamente hacia PAST |
+| Geometría | Salida visual después del último note off | Ampliación V2; post-roll silencioso a 1× hasta que la última figura abandona el borde izquierdo, sin modificar la duración del audio |
 | Geometría | Altura global/familia e influencia de velocidad | Migrada |
 | Geometría | Orden de superposición entre familias | Rediseñada; percusión al fondo y metales al frente |
 | Efectos | Opacidad extremos/centro | Migrada |
@@ -59,7 +60,7 @@ Cada fila que pase a “Migrada” debe:
 ## Evidencia de esta etapa
 
 - `npm run build`: compilación TypeScript y bundle de producción correctos.
-- `npm run test`: 90 pruebas V2 correctas.
+- `npm run test`: 104 pruebas V2 correctas.
 - `npm run test:legacy`: 51 archivos de regresión V1 correctos.
 - El único test V1 sin implementación real continúa siendo `MIDI Learn`, que ya
   era un stub en el prototipo y no representa una función perdida.

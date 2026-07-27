@@ -3,6 +3,7 @@ import { detectInitialSilence } from './audioAnalysis';
 
 export interface TransportSnapshot {
   position: number;
+  visualPosition: number;
   duration: number;
   playing: boolean;
   starting: boolean;
@@ -26,6 +27,7 @@ export class AudioTransport {
   private signalSamples: Uint8Array<ArrayBuffer> | null = null;
   private position = 0;
   private midiDuration = 0;
+  private visualPostRollDuration = 0;
   private trimOffset = 0;
   private startedAtPerformance = 0;
   private startedAtAudioContext = 0;
@@ -39,16 +41,25 @@ export class AudioTransport {
 
   getSnapshot(now = performance.now()): TransportSnapshot {
     const duration = this.getDuration();
-    const rawPosition = this.playing
-      ? this.buffer && this.context
+    const playbackDuration = this.getPlaybackDuration();
+    const rawVisualPosition = this.playing
+      ? this.source && this.context
         ? this.position +
           Math.max(0, this.context.currentTime - this.startedAtAudioContext)
         : this.position + Math.max(0, now - this.startedAtPerformance) / 1000
       : this.position;
-    const nextPosition = Math.min(duration, Math.max(0, rawPosition));
+    const nextVisualPosition = Math.min(
+      playbackDuration,
+      Math.max(0, rawVisualPosition),
+    );
+    const nextPosition = Math.min(duration, nextVisualPosition);
 
-    if (this.playing && duration > 0 && nextPosition >= duration) {
-      this.position = duration;
+    if (
+      this.playing &&
+      duration > 0 &&
+      nextVisualPosition >= playbackDuration
+    ) {
+      this.position = playbackDuration;
       this.playing = false;
       this.stopSource();
       queueMicrotask(() => this.emit());
@@ -56,6 +67,7 @@ export class AudioTransport {
 
     return {
       position: nextPosition,
+      visualPosition: nextVisualPosition,
       duration,
       playing: this.playing,
       starting: this.starting,
@@ -77,7 +89,22 @@ export class AudioTransport {
 
   setMidiDuration(duration: number): void {
     this.midiDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0;
-    this.position = Math.min(this.position, this.getDuration());
+    this.position = Math.min(this.position, this.getPlaybackDuration());
+    this.emit();
+  }
+
+  setVisualPostRollDuration(duration: number): void {
+    const previousPlaybackDuration = this.getPlaybackDuration();
+    const wasComplete =
+      !this.playing &&
+      previousPlaybackDuration > 0 &&
+      this.position >= previousPlaybackDuration - 0.001;
+    this.visualPostRollDuration = Number.isFinite(duration)
+      ? Math.max(0, duration)
+      : 0;
+    this.position = wasComplete
+      ? this.getPlaybackDuration()
+      : Math.min(this.position, this.getPlaybackDuration());
     this.emit();
   }
 
@@ -292,13 +319,13 @@ export class AudioTransport {
   async play(): Promise<void> {
     const duration = this.getDuration();
     if (this.playing || this.starting || duration <= 0) return;
-    if (this.position >= duration) this.position = 0;
+    if (this.position >= this.getPlaybackDuration()) this.position = 0;
 
     const generation = ++this.generation;
     this.starting = true;
     this.emit();
 
-    if (this.buffer) {
+    if (this.buffer && this.position < duration) {
       const context = this.getContext();
       this.applyOutputLevel();
       try {
@@ -331,7 +358,7 @@ export class AudioTransport {
 
   pause(): void {
     if (!this.playing && !this.starting) return;
-    if (this.playing) this.position = this.getSnapshot().position;
+    if (this.playing) this.position = this.getSnapshot().visualPosition;
     this.starting = false;
     this.playing = false;
     this.generation += 1;
@@ -348,19 +375,21 @@ export class AudioTransport {
   }
 
   seek(nextPosition: number): void {
+    const duration = this.getDuration();
     this.position = Math.min(
-      this.getDuration(),
+      duration,
       Math.max(0, Number.isFinite(nextPosition) ? nextPosition : 0),
     );
-    if (this.buffer && this.playing && this.context) {
+    if (this.playing && this.position >= duration) {
+      this.playing = false;
+      this.starting = false;
+      this.generation += 1;
+      this.stopSource();
+    } else if (this.buffer && this.playing && this.context) {
       const generation = ++this.generation;
       this.stopSource();
-      if (this.position >= this.getDuration()) {
-        this.playing = false;
-      } else {
-        this.startedAtAudioContext = this.context.currentTime;
-        this.startBufferSource(generation);
-      }
+      this.startedAtAudioContext = this.context.currentTime;
+      this.startBufferSource(generation);
     } else if (this.playing) {
       this.startedAtPerformance = performance.now();
     }
@@ -411,6 +440,11 @@ export class AudioTransport {
       : this.midiDuration;
   }
 
+  private getPlaybackDuration(): number {
+    const duration = this.getDuration();
+    return duration > 0 ? duration + this.visualPostRollDuration : 0;
+  }
+
   private getContext(): AudioContext {
     if (!this.context) {
       const AudioContextConstructor =
@@ -452,10 +486,20 @@ export class AudioTransport {
       ) {
         return;
       }
+      const visualPositionAtEnd = this.context
+        ? this.position +
+          Math.max(
+            0,
+            this.context.currentTime - this.startedAtAudioContext,
+          )
+        : this.getDuration();
       source.disconnect();
       this.source = null;
-      this.position = this.getDuration();
-      this.playing = false;
+      this.position = Math.min(
+        this.getPlaybackDuration(),
+        Math.max(this.getDuration(), visualPositionAtEnd),
+      );
+      this.startedAtPerformance = performance.now();
       this.starting = false;
       this.emit();
     };
@@ -477,6 +521,7 @@ export class AudioTransport {
   private getSignalLevel(): number {
     if (
       !this.playing ||
+      !this.source ||
       !this.outputAnalyser ||
       !this.signalSamples ||
       this.muted

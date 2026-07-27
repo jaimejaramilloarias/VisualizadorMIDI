@@ -25,6 +25,7 @@ interface SyncWorkspaceProps {
   activeMidiTime: number;
   anchors: SyncAnchor[];
   automaticAlignment: AutomaticAlignmentView;
+  automaticAlignmentReady: boolean;
   audioFileName: string | null;
   forward: boolean;
   landmarks: readonly AudioLandmark[];
@@ -66,6 +67,7 @@ export function SyncWorkspace({
   activeMidiTime,
   anchors,
   automaticAlignment,
+  automaticAlignmentReady,
   audioFileName,
   forward,
   landmarks,
@@ -107,7 +109,7 @@ export function SyncWorkspace({
     automaticAlignment.status === 'analyzing' ||
     automaticAlignment.status === 'preview';
   const canRunAutomaticAlignment =
-    transport.hasAudio && midiDuration > 0;
+    automaticAlignmentReady && transport.hasAudio && midiDuration > 0;
   const selectedIndex = selectedAnchor
     ? anchors.findIndex((anchor) => anchor.id === selectedAnchor.id)
     : -1;

@@ -29,15 +29,24 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   con rango amplio, respectivamente.
 - Transporte sincronizado con Web Audio o reloj MIDI independiente; espacio
   reproduce/pausa y las flechas saltan ±3 segundos.
+- Al terminar el contenido, el audio queda en silencio y el reloj visual
+  continúa a `1×` durante media ventana temporal: el último `note off` cruza
+  todo PAST y desaparece por el borde izquierdo sin ampliar la duración del
+  audio ni las anclas.
 - Interpolación por tramos de anclas `audioTime → midiTime`.
 - Editor de sincronía a pantalla completa con zoom, desplazamiento, anclas
   verticales y magnetismo opcional a ataques. Cada ancla conserva su pulso MIDI:
   moverla sobre el audio recalcula la velocidad MIDI entre pulsos vecinos.
-- Prototipo de sincronización automática completamente local: extrae chroma y
-  ataques del audio, genera las mismas características desde el MIDI y calcula
-  una ruta coarse-to-fine con DTW. La propuesta aparece como anclas
-  discontinuas y solo reemplaza el estado cuando el usuario la aplica. Su ancla
-  terminal hace coincidir el final del audio con el último `note off` del MIDI.
+- MIDI y audio pueden arrastrarse juntos en una sola operación. Cuando ambos
+  medios nuevos quedan listos, la sincronización automática se ejecuta y aplica
+  una vez por pareja, sin reproducir el audio. Las anclas restauradas desde un
+  JSON se conservan.
+- El alineador completamente local extrae chroma y ataques del audio, genera
+  las mismas características desde el MIDI y calcula una ruta coarse-to-fine
+  con DTW. La carga inicial aplica el resultado validado; las ejecuciones
+  manuales posteriores conservan la propuesta reversible de anclas
+  discontinuas. Su ancla terminal hace coincidir el final del audio con el
+  último `note off` del MIDI.
 - Los finales con ritardando reciben un segundo refinamiento automático: una
   envolvente RMS local confirma los ataques, reserva anclas de mayor densidad
   para la coda y conserva el DTW original cuando no demuestra una mejora real.
@@ -50,8 +59,11 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   inferior compacta para maximizar el área de la forma de onda.
 - Offset inicial explícito: negativo hace esperar la animación; positivo la
   adelanta respecto al audio.
-- Colores distintos generados por familia al cargar un MIDI, conservando la
-  edición manual y los colores restaurados desde JSON.
+- El primer MIDI de una sesión usa el preset visual afinado en la obra
+  `EL INTACHABLE`: ventana de 8 s, calidad Ultra, supersampling `3×`,
+  animaciones globales y paleta/formas por familia. Al sustituirlo por otro MIDI
+  se generan colores distintos por familia, conservando siempre la edición
+  manual y los valores restaurados desde JSON.
 - Superposición determinista por familia: percusión al fondo, seguida de
   auxiliares, maderas y cuerdas, con metales al frente.
 - UI táctil tipo iPad con columnas laterales colapsables; voz, figura y colores

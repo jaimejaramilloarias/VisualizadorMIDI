@@ -237,18 +237,18 @@ const style = (
 });
 
 export const DEFAULT_FAMILY_STYLES: Record<string, FamilyVisualStyle> = {
-  'Maderas de timbre "redondo"': style('roundedSquare'),
-  'Dobles cañas': style('sixPointStar'),
-  Saxofones: style('fourPointStar'),
-  Metales: style('roundedSquare'),
-  Cornos: style('roundedSquare'),
-  'Percusión menor': style('square'),
-  Tambores: style('circle'),
-  Platillos: style('circle'),
-  Placas: style('diamond'),
-  Auxiliares: style('roundedSquare'),
-  'Cuerdas frotadas': style('diamond'),
-  'Cuerdas pulsadas': style('triangle'),
+  'Maderas de timbre "redondo"': style('circle', '#0394fc'),
+  'Dobles cañas': style('fourPointStar', '#ba1af4'),
+  Saxofones: style('fourPointStar', '#ffd500'),
+  Metales: style('square', '#fff700'),
+  Cornos: style('roundedSquare', '#ffce1f'),
+  'Percusión menor': style('square', '#a3a3a3'),
+  Tambores: style('square', '#d9d9d9'),
+  Platillos: style('square', '#ffffff'),
+  Placas: style('diamond', '#ffd500'),
+  Auxiliares: style('roundedSquare', '#ffd500'),
+  'Cuerdas frotadas': style('diamond', '#a97832'),
+  'Cuerdas pulsadas': style('sixPointStar', '#028317'),
   Voces: style('square'),
   'Custom 1': style('square'),
   'Custom 2': style('circle'),
@@ -260,17 +260,17 @@ export const DEFAULT_FAMILY_STYLES: Record<string, FamilyVisualStyle> = {
 export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
   global: {
     velocityBase: 67,
-    colorToneShift: 0,
-    opacityEdge: 0,
+    colorToneShift: -6,
+    opacityEdge: 0.5,
     opacityCenter: 1,
-    heightScale: 1.8,
-    glowStrength: 0.1,
-    bumpStrength: 1.1,
-    extension: true,
+    heightScale: 1.4,
+    glowStrength: 0.8,
+    bumpStrength: 4.8,
+    extension: false,
     stretch: true,
     audioOffsetMs: 0,
     fpsMode: 'auto',
-    supersampling: 2.5,
+    supersampling: 3,
     aspectRatio: 'responsive',
     noteLabels: {
       enabled: false,
@@ -282,7 +282,11 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
       padding: 5,
       borderRadius: 5,
     },
-    travel: { ...DEFAULT_TRAVEL },
+    travel: {
+      enabled: true,
+      intensity: 0.3,
+      magnetZone: 0.7,
+    },
   },
   families: Object.fromEntries(
     Object.entries(DEFAULT_FAMILY_STYLES).map(([name, value]) => [
@@ -290,12 +294,17 @@ export const DEFAULT_VISUAL_CONFIGURATION: VisualConfiguration = {
       structuredClone(value),
     ]),
   ),
-  instruments: {},
+  instruments: {
+    BANDOLA: {
+      color: '#368128',
+      shape: 'hexagon',
+    },
+  },
   shapeExtensions: Object.fromEntries(
-    SHAPE_IDS.map((shapeId) => [shapeId, true]),
+    SHAPE_IDS.map((shapeId) => [shapeId, shapeId !== 'diamond']),
   ) as Record<ShapeId, boolean>,
   shapeStretch: Object.fromEntries(
-    SHAPE_IDS.map((shapeId) => [shapeId, true]),
+    SHAPE_IDS.map((shapeId) => [shapeId, shapeId !== 'diamond']),
   ) as Record<ShapeId, boolean>,
 };
 
@@ -517,6 +526,7 @@ export const sanitizeVisualConfiguration = (
   }
 
   if (incoming.instruments && typeof incoming.instruments === 'object') {
+    defaults.instruments = {};
     Object.entries(incoming.instruments).forEach(([name, value]) => {
       if (!name || !value || typeof value !== 'object') return;
       const item = value as InstrumentVisualStyle;

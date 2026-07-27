@@ -37,6 +37,14 @@ export const computeHorizontalViewport = (
   };
 };
 
+const POST_ROLL_EDGE_MARGIN_SECONDS = 0.1;
+
+export const computeVisualPostRollDuration = (
+  secondsVisible: number,
+): number =>
+  Math.max(0, Number.isFinite(secondsVisible) ? secondsVisible / 2 : 0) +
+  POST_ROLL_EDGE_MARGIN_SECONDS;
+
 export interface RenderScaleInput {
   cssWidth: number;
   cssHeight: number;

@@ -3,13 +3,15 @@ import {
   DEFAULT_SETTINGS,
   createSyncTimeline,
   createStateDocument,
-    hasForwardSyncMapping,
-    mapAudioToMidi,
-    mapAudioToMidiClock,
-    mapAudioToMidiClockWithOffset,
-    moveSyncAnchorOnAudio,
-    parseStateDocument,
+  hasForwardSyncMapping,
+  mapAudioToMidi,
+  mapAudioToMidiClock,
+  mapAudioToMidiClockWithOffset,
+  mapVisualTransportToMidiClock,
+  moveSyncAnchorOnAudio,
+  parseStateDocument,
 } from './visualizationState';
+import { cloneDefaultVisualConfiguration } from './visualConfiguration';
 
 describe('mapAudioToMidi', () => {
   it('mantiene una relación identidad sin anclas', () => {
@@ -79,6 +81,60 @@ describe('mapAudioToMidi', () => {
     expect(result.playbackRate).toBe(0.5);
   });
 
+  it('continúa el reloj visual a 1× después del final sin alterar el mapa', () => {
+    const timeline = createSyncTimeline([
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'end', audioTime: 10, midiTime: 8 },
+    ]);
+
+    expect(
+      mapVisualTransportToMidiClock(9, 10, 0, timeline),
+    ).toEqual({
+      midiTime: 7.2,
+      playbackRate: 0.8,
+    });
+    expect(
+      mapVisualTransportToMidiClock(12.5, 10, 0, timeline),
+    ).toEqual({
+      midiTime: 10.5,
+      playbackRate: 1,
+    });
+    expect(timeline.map(10)).toEqual({
+      midiTime: 8,
+      playbackRate: 0.8,
+    });
+  });
+
+  it('mantiene continuidad en el post-roll cuando existe un offset manual', () => {
+    const timeline = createSyncTimeline([
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'end', audioTime: 10, midiTime: 8 },
+    ]);
+
+    const immediatelyBefore = mapVisualTransportToMidiClock(
+      9.999,
+      10,
+      -2_000,
+      timeline,
+    );
+    const atEnd = mapVisualTransportToMidiClock(
+      10,
+      10,
+      -2_000,
+      timeline,
+    );
+    const afterEnd = mapVisualTransportToMidiClock(
+      12,
+      10,
+      -2_000,
+      timeline,
+    );
+
+    expect(atEnd.midiTime - immediatelyBefore.midiTime).toBeLessThan(0.002);
+    expect(atEnd).toEqual({ midiTime: 6.4, playbackRate: 0.8 });
+    expect(afterEnd).toEqual({ midiTime: 8.4, playbackRate: 1 });
+  });
+
   it('mueve solo la posición de audio y conserva el pulso MIDI de la ancla', () => {
     const moved = moveSyncAnchorOnAudio(
       [
@@ -144,9 +200,9 @@ describe('estado JSON', () => {
   it('usa los valores actuales de escena como predeterminados', () => {
     expect(DEFAULT_SETTINGS).toEqual({
       secondsVisible: 8,
-      glow: 0.8,
-      noteScale: 1,
-      quality: 'auto',
+      glow: 1,
+      noteScale: 0.8,
+      quality: 'ultra',
       background: '#000000',
     });
   });
@@ -166,6 +222,22 @@ describe('estado JSON', () => {
     expect(serialized).not.toContain('data:audio');
     expect(serialized).not.toContain('ArrayBuffer');
     expect(document.version).toBe(2);
+  });
+
+  it('conserva completo el preset visual capturado al guardar y abrir JSON', () => {
+    const visualConfiguration = cloneDefaultVisualConfiguration();
+    const document = createStateDocument({
+      midiFileName: 'obra.mid',
+      audioFileName: 'mezcla.wav',
+      visualization: 'now-line',
+      settings: DEFAULT_SETTINGS,
+      syncAnchors: [],
+      visualConfiguration,
+    });
+    const parsed = parseStateDocument(JSON.stringify(document));
+
+    expect(parsed.settings).toEqual(DEFAULT_SETTINGS);
+    expect(parsed.visualConfiguration).toEqual(visualConfiguration);
   });
 
   it('migra una configuración JSON de V1 al contrato V2', () => {
@@ -222,7 +294,7 @@ describe('estado JSON', () => {
       secondsVisible: 30,
       glow: 6,
       noteScale: 0.4,
-      quality: 'auto',
+      quality: 'ultra',
       background: '#000000',
     });
   });
