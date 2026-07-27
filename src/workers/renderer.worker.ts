@@ -68,6 +68,13 @@ let fastWindows = 0;
 let displayRefreshRate = 60;
 let previousAnimationFrame = 0;
 let frameAccumulator = 0;
+let renderOverrunFrames = 0;
+let sizeChangePending = false;
+const glowTextures = new Map<string, OffscreenCanvas>();
+const labelMetrics = new Map<
+  string,
+  { text: string; width: number; height: number }
+>();
 let hitRegions: Array<{
   noteIndex: number;
   trackIndex: number;
@@ -77,6 +84,60 @@ let hitRegions: Array<{
   width: number;
   height: number;
 }> = [];
+
+const GLOW_TEXTURE_SIZE = 128;
+const MAX_GLOW_TEXTURES = 48;
+
+const getGlowTexture = (color: string): OffscreenCanvas | null => {
+  const cached = glowTextures.get(color);
+  if (cached) return cached;
+  const texture = new OffscreenCanvas(GLOW_TEXTURE_SIZE, GLOW_TEXTURE_SIZE);
+  const textureContext = texture.getContext('2d', { alpha: true });
+  if (!textureContext) return null;
+  const center = GLOW_TEXTURE_SIZE / 2;
+  const gradient = textureContext.createRadialGradient(
+    center,
+    center,
+    0,
+    center,
+    center,
+    center,
+  );
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(0.16, color);
+  gradient.addColorStop(0.52, `${color}8f`);
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  textureContext.fillStyle = gradient;
+  textureContext.fillRect(0, 0, GLOW_TEXTURE_SIZE, GLOW_TEXTURE_SIZE);
+  if (glowTextures.size >= MAX_GLOW_TEXTURES) {
+    const oldest = glowTextures.keys().next().value;
+    if (typeof oldest === 'string') glowTextures.delete(oldest);
+  }
+  glowTextures.set(color, texture);
+  return texture;
+};
+
+const getLabelMetrics = (
+  ctx: OffscreenCanvasRenderingContext2D,
+  pitch: number,
+): { text: string; width: number; height: number } => {
+  const labels = appearance.global.noteLabels;
+  const text = noteName(pitch);
+  const key = `${labels.font}|${labels.size}|${text}`;
+  const cached = labelMetrics.get(key);
+  if (cached) return cached;
+  const measured = ctx.measureText(text);
+  const result = {
+    text,
+    width: measured.width,
+    height: Math.max(
+      labels.size,
+      measured.actualBoundingBoxAscent + measured.actualBoundingBoxDescent,
+    ),
+  };
+  labelMetrics.set(key, result);
+  return result;
+};
 
 const fallbackTrackStyle: ResolvedTrackVisualStyle = {
   ...structuredClone(DEFAULT_VISUAL_CONFIGURATION.families.Auxiliares),
@@ -279,6 +340,7 @@ const drawHorizontalScene = (
     height: number;
     centerX: number;
     alpha: number;
+    depthPriority: number;
     style: ResolvedTrackVisualStyle;
   }
 
@@ -360,6 +422,7 @@ const drawHorizontalScene = (
       centerX,
       alpha:
         (0.48 + velocity * 0.5) * Math.max(0, spatialOpacity(centerX)),
+      depthPriority: familyDepthPriority(style.family),
       style,
     };
   };
@@ -372,21 +435,23 @@ const drawHorizontalScene = (
   });
   layouts.sort(
     (left, right) =>
-      familyDepthPriority(left.style.family) -
-        familyDepthPriority(right.style.family) ||
+      left.depthPriority - right.depthPriority ||
       left.trackIndex - right.trackIndex ||
       left.noteIndex - right.noteIndex,
   );
   visibleNotes = layouts.length;
-  hitRegions = layouts.map((layout) => ({
-    noteIndex: layout.noteIndex,
-    trackIndex: layout.trackIndex,
-    midiTime: layout.start,
-    x: layout.x,
-    y: layout.y,
-    width: layout.width,
-    height: layout.height,
-  }));
+  hitRegions.length = 0;
+  for (const layout of layouts) {
+    hitRegions.push({
+      noteIndex: layout.noteIndex,
+      trackIndex: layout.trackIndex,
+      midiTime: layout.start,
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
+    });
+  }
 
   const drawLayout = (layout: NoteLayout): void => {
     const { start, velocity, style, x, y, width, height } = layout;
@@ -410,41 +475,20 @@ const drawHorizontalScene = (
           ? x + width - height * 0.5
           : centerX;
       const haloCenterY = y + height * 0.5;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = halo.alpha;
-      const gradient = ctx.createRadialGradient(
-        haloCenterX,
-        haloCenterY,
-        0,
-        haloCenterX,
-        haloCenterY,
-        halo.radius,
-      );
-      gradient.addColorStop(0, style.color);
-      gradient.addColorStop(0.18, style.color);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(
-        haloCenterX - halo.radius,
-        haloCenterY - halo.radius,
-        halo.radius * 2,
-        halo.radius * 2,
-      );
-      ctx.globalAlpha = Math.min(0.9, halo.alpha * 0.82);
-      ctx.shadowColor = style.color;
-      ctx.shadowBlur = Math.min(128, halo.radius * 0.7);
-      drawNoteShape(
-        ctx,
-        style.shape,
-        x,
-        y,
-        width,
-        height,
-        style.color,
-        style.secondaryColor,
-      );
-      ctx.restore();
+      const texture = getGlowTexture(style.color);
+      if (texture) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = halo.alpha;
+        ctx.drawImage(
+          texture,
+          haloCenterX - halo.radius,
+          haloCenterY - halo.radius,
+          halo.radius * 2,
+          halo.radius * 2,
+        );
+        ctx.restore();
+      }
     }
     ctx.globalAlpha = layout.alpha;
     drawNoteShape(
@@ -464,14 +508,9 @@ const drawHorizontalScene = (
       ctx.font = `${labels.size}px "${labels.font}"`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const text = noteName(layout.pitch);
-      const metrics = ctx.measureText(text);
-      const textHeight = Math.max(
-        labels.size,
-        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent,
-      );
+      const metrics = getLabelMetrics(ctx, layout.pitch);
       const boxWidth = metrics.width + labels.padding * 2;
-      const boxHeight = textHeight + labels.padding * 2;
+      const boxHeight = metrics.height + labels.padding * 2;
       const boxX = centerX - boxWidth / 2;
       const boxY = y + height / 2 - boxHeight / 2;
       const radius = Math.min(
@@ -511,12 +550,12 @@ const drawHorizontalScene = (
       ctx.fill();
       ctx.globalAlpha = Math.max(0.35, spatialOpacity(centerX));
       ctx.fillStyle = labels.color;
-      ctx.fillText(text, centerX, y + height / 2);
+      ctx.fillText(metrics.text, centerX, y + height / 2);
       ctx.restore();
     }
   };
 
-  layouts.forEach((layout) => drawLayout(layout));
+  for (const layout of layouts) drawLayout(layout);
 
   ctx.restore();
 };
@@ -545,11 +584,27 @@ const adaptResolution = (fps: number, p95: number): void => {
   if (slowWindows >= 1 && adaptiveRatio > 0.55) {
     adaptiveRatio = Math.max(0.55, adaptiveRatio - 0.12);
     slowWindows = 0;
-    applySize();
+    sizeChangePending = true;
   } else if (fastWindows >= 6 && adaptiveRatio < 1) {
     adaptiveRatio = Math.min(1, adaptiveRatio + 0.04);
     fastWindows = 0;
-    applySize();
+    sizeChangePending = true;
+  }
+};
+
+const reactToRenderCost = (renderCost: number): void => {
+  if (!clock.playing || settings.quality !== 'auto') return;
+  const frameBudget = 1000 / targetFps();
+  if (renderCost > frameBudget * 0.92) {
+    renderOverrunFrames += 1;
+  } else {
+    renderOverrunFrames = Math.max(0, renderOverrunFrames - 1);
+  }
+  if (renderOverrunFrames >= 2 && adaptiveRatio > 0.55) {
+    adaptiveRatio = Math.max(0.55, adaptiveRatio - 0.1);
+    renderOverrunFrames = 0;
+    fastWindows = 0;
+    sizeChangePending = true;
   }
 };
 
@@ -562,6 +617,11 @@ const renderFrame = (now: number): void => {
 
   if (clock.playing && !shouldPresentFrame(now)) return;
 
+  if (sizeChangePending) {
+    sizeChangePending = false;
+    applySize();
+  }
+
   if (clock.playing) {
     const frameDuration = Math.max(0.01, now - lastFrame);
     lastFrame = now;
@@ -570,6 +630,7 @@ const renderFrame = (now: number): void => {
   }
 
   const time = currentMidiTime(now);
+  const renderStarted = performance.now();
   context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
   renderBackdrop(context);
 
@@ -578,6 +639,7 @@ const renderFrame = (now: number): void => {
   } else {
     visibleNotes = 0;
   }
+  reactToRenderCost(performance.now() - renderStarted);
 
   if (
     clock.playing &&
@@ -650,6 +712,8 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
         adaptiveRatio = 1;
         slowWindows = 0;
         fastWindows = 0;
+        renderOverrunFrames = 0;
+        sizeChangePending = false;
         applySize();
       }
       requestRender();
@@ -660,6 +724,8 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       const fpsModeChanged =
         appearance.global.fpsMode !== message.appearance.global.fpsMode;
       appearance = message.appearance;
+      glowTextures.clear();
+      labelMetrics.clear();
       if (supersamplingChanged) applySize();
       if (fpsModeChanged) {
         slowWindows = 0;
@@ -672,6 +738,7 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       displayRefreshRate = Math.min(240, Math.max(30, message.fps));
       slowWindows = 0;
       fastWindows = 0;
+      renderOverrunFrames = 0;
       if (targetFps() !== previousTarget) resetFrameCadence();
       if (!clock.playing) {
         send({
@@ -728,6 +795,8 @@ scope.onmessage = (event: MessageEvent<RendererInboundMessage>): void => {
       adaptiveRatio = 1;
       slowWindows = 0;
       fastWindows = 0;
+      renderOverrunFrames = 0;
+      sizeChangePending = false;
       resetFrameCadence();
       applySize();
       requestRender();
