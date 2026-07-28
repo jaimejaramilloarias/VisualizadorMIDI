@@ -9,7 +9,7 @@ decisiones no afectan el JSON de estado.
 |---|---|---|
 | Archivos | MIDI local | Migrada; admite carga conjunta por arrastre con el audio |
 | Archivos | Audio WAV local | Migrada y ampliada a formatos Web Audio; admite carga conjunta y conserva la detección y omisión del silencio inicial |
-| Archivos | Demo integrada | Ampliación V2; carga desde la web MIDI, audio, preset y tarjeta final de El Intachable sin reproducción automática |
+| Archivos | Demos integradas | Ampliación V2; carga desde la web MIDI, audio y estado guardado de El Intachable, Despasillo por favor o Melodía triste sin reproducción automática |
 | Archivos | Importar/exportar configuración JSON | Migrada; contrato V2 versionado |
 | Transporte | Play/stop, inicio, seek ±3 s | Migrada: play/pausa, inicio, ±3 s, scrub y atajos de teclado |
 | Transporte | Audio offset en milisegundos | Migrada; offset negativo hace esperar la animación y positivo la adelanta |

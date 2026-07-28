@@ -45,9 +45,9 @@ ajustes, nombres de referencia y anclas de tiempo; nunca contiene los medios.
   medios nuevos quedan listos, la sincronización automática se ejecuta y aplica
   una vez por pareja, sin reproducir el audio. Las anclas restauradas desde un
   JSON se conservan.
-- El botón `Demo` descarga desde la propia aplicación el MIDI y audio incluidos
-  de `El Intachable`, aplica el preset afinado y configura automáticamente sus
-  cuatro textos de cierre sin iniciar la reproducción.
+- El menú `Demos` descarga desde la propia aplicación el MIDI, el audio y el
+  estado guardado de `El Intachable`, `Despasillo por favor` o
+  `Melodía triste`, sin iniciar la reproducción.
 - El alineador completamente local extrae chroma y ataques del audio, genera
   las mismas características desde el MIDI y calcula una ruta coarse-to-fine
   con DTW. La carga inicial aplica el resultado validado; las ejecuciones

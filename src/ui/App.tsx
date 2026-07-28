@@ -3537,10 +3537,10 @@ export function App() {
               <section>
                 <strong>1 · Archivos y demo</strong>
                 <p>
-                  Abre el menú Demos para elegir El Intachable o Despasillo por
-                  favor, ambos con audio, MIDI y cierre configurado; también
-                  puedes abrir tus propios archivos. Todo se procesa localmente
-                  y el JSON sólo guarda ajustes y anclas.
+                  Abre el menú Demos para elegir uno de los temas incluidos,
+                  cada uno con audio, MIDI y estado configurado; también puedes
+                  abrir tus propios archivos. Todo se procesa localmente y el
+                  JSON sólo guarda ajustes y anclas.
                 </p>
               </section>
               <section>

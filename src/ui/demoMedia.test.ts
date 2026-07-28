@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import melodiaTristeState from '../../public/demo/melodia-triste.midi-stage.json';
 import {
   DEFAULT_DEMO_ID,
   DEMO_CATALOG,
@@ -44,10 +45,11 @@ const successfulMediaResponse = (
 };
 
 describe('catálogo de demos', () => {
-  it('expone exactamente dos opciones estables y conserva la demo predeterminada', () => {
+  it('expone exactamente tres opciones estables y conserva la demo predeterminada', () => {
     expect(DEMO_IDS).toEqual([
       'el-intachable',
       'despasillo-por-favor',
+      'melodia-triste',
     ]);
     expect(DEFAULT_DEMO_ID).toBe('el-intachable');
     expect(Object.keys(DEMO_CATALOG)).toEqual(DEMO_IDS);
@@ -65,6 +67,14 @@ describe('catálogo de demos', () => {
       syncMode: 'state',
       stateUrl: expect.stringContaining(
         'despasillo-por-favor.midi-stage.json',
+      ),
+    });
+    expect(DEMO_CATALOG['melodia-triste']).toMatchObject({
+      id: 'melodia-triste',
+      label: 'Melodía triste',
+      syncMode: 'state',
+      stateUrl: expect.stringContaining(
+        'melodia-triste.midi-stage.json',
       ),
     });
     expect(DEMO_MEDIA).toBe(DEMO_CATALOG[DEFAULT_DEMO_ID]);
@@ -88,6 +98,9 @@ describe('catálogo de demos', () => {
       'despasillo-por-favor.midi',
       'despasillo-por-favor.mp3',
       'despasillo-por-favor.midi-stage.json',
+      'melodia-triste.midi',
+      'melodia-triste.mp3',
+      'melodia-triste.midi-stage.json',
     ]);
     expect(new Set(assetUrls).size).toBe(assetUrls.length);
   });
@@ -112,13 +125,17 @@ describe('estado de presentación de demos', () => {
     );
   });
 
-  it('exige el estado guardado para una demo sincronizada por JSON', () => {
-    expect(() =>
-      createDemoPresentationState('despasillo-por-favor'),
-    ).toThrow(
-      'La demo Despasillo por favor requiere su estado guardado.',
-    );
-  });
+  it.each([
+    ['despasillo-por-favor', 'Despasillo por favor'],
+    ['melodia-triste', 'Melodía triste'],
+  ] as const)(
+    'exige el estado guardado para la demo sincronizada %s',
+    (demoId, label) => {
+      expect(() => createDemoPresentationState(demoId)).toThrow(
+        `La demo ${label} requiere su estado guardado.`,
+      );
+    },
+  );
 });
 
 describe('carga de demos', () => {
@@ -322,6 +339,67 @@ describe('carga de demos', () => {
     });
   });
 
+  it('Melodía triste conserva su estado, sus nombres y sus 120 anclas', async () => {
+    const stateText = JSON.stringify(melodiaTristeState);
+    const fetchResource = vi.fn(
+      async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('.json')) {
+          return new Response(stateText, { status: 200 });
+        }
+        return successfulMediaResponse(input);
+      },
+    );
+
+    const result = await fetchDemoMedia(
+      'melodia-triste',
+      fetchResource,
+    );
+    const definition = DEMO_CATALOG['melodia-triste'];
+
+    expect(fetchResource.mock.calls).toEqual([
+      [definition.midiUrl, { cache: 'force-cache' }],
+      [definition.audioUrl, { cache: 'force-cache' }],
+      [definition.stateUrl, { cache: 'no-cache' }],
+    ]);
+    expect(result.definition).toBe(definition);
+    expect(result.midiFile.name.normalize('NFC')).toBe(
+      'MELODÍA TRISTE.midi',
+    );
+    expect(result.audioFile.name.normalize('NFC')).toBe(
+      'Melodía triste.mp3',
+    );
+    expect(result.presentationState.settings).toEqual({
+      secondsVisible: 11,
+      glow: 0.6,
+      noteScale: 1.4,
+      quality: 'ultra',
+      background: '#000000',
+    });
+    expect(result.presentationState.syncAnchors).toHaveLength(120);
+    expect(result.presentationState.syncAnchors[0]).toEqual({
+      id: 'auto-6-0',
+      audioTime: 0,
+      midiTime: 0.39981859410430837,
+    });
+    expect(result.presentationState.syncAnchors.at(-1)).toEqual({
+      id: 'b5f49280-7b3a-46f0-b700-ddbf688a589b',
+      audioTime: 245.4363265495245,
+      midiTime: 248.68584599999957,
+    });
+    expect(
+      result.presentationState.preserveSynchronization,
+    ).toBe(true);
+    expect(
+      result.presentationState.visualConfiguration.global.endCard,
+    ).toEqual({
+      title: '',
+      subtitle: '',
+      composerArranger: '',
+      freeText: '',
+    });
+  });
+
   it.each<{
     demoId: DemoId;
     failedSuffix: string;
@@ -338,6 +416,12 @@ describe('carga de demos', () => {
       failedSuffix: '.json',
       expectedMessage:
         'No fue posible descargar el estado de la demo (404).',
+    },
+    {
+      demoId: 'melodia-triste',
+      failedSuffix: '.midi',
+      expectedMessage:
+        'No fue posible descargar el archivo MIDI de la demo (404).',
     },
   ])(
     'informa claramente un recurso faltante de $demoId',

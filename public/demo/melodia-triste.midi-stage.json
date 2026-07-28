@@ -1,0 +1,976 @@
+{
+  "schema": "midi-visualizer-state",
+  "version": 2,
+  "savedAt": "2026-07-28T18:26:12.016Z",
+  "source": {
+    "midiFileName": "MELODÍA TRISTE.midi",
+    "audioFileName": "Melodía triste.mp3"
+  },
+  "visualization": "now-line",
+  "settings": {
+    "secondsVisible": 11,
+    "glow": 0.6,
+    "noteScale": 1.4,
+    "quality": "ultra",
+    "background": "#000000"
+  },
+  "syncAnchors": [
+    {
+      "id": "auto-6-0",
+      "audioTime": 0,
+      "midiTime": 0.39981859410430837
+    },
+    {
+      "id": "e53bb2b3-4f3e-4d3e-a4d1-2b75393115e6",
+      "audioTime": 1.3237581813263801,
+      "midiTime": 1.532954
+    },
+    {
+      "id": "df3bd12e-177d-49d5-ac47-62d79457f6e8",
+      "audioTime": 3.1349595006063766,
+      "midiTime": 1.9412349350485691
+    },
+    {
+      "id": "ce3c0e5e-9f69-429a-957b-d79f8d8043f7",
+      "audioTime": 3.555015333584183,
+      "midiTime": 2.368962
+    },
+    {
+      "id": "d1f322a0-0c6c-429f-9f81-1696e634f4dd",
+      "audioTime": 4.842693619536158,
+      "midiTime": 3.993983
+    },
+    {
+      "id": "fba5cebf-d650-4682-8877-b9319fcb0555",
+      "audioTime": 5.6306117526352475,
+      "midiTime": 4.75997
+    },
+    {
+      "id": "auto-6-1",
+      "audioTime": 6.746938775510204,
+      "midiTime": 6.397097505668934
+    },
+    {
+      "id": "auto-6-2",
+      "audioTime": 13.69378684807256,
+      "midiTime": 15.742857142857142
+    },
+    {
+      "id": "auto-6-3",
+      "audioTime": 17.042267573696144,
+      "midiTime": 20.39074829931973
+    },
+    {
+      "id": "auto-6-4",
+      "audioTime": 23.9891156462585,
+      "midiTime": 27.937324263038548
+    },
+    {
+      "id": "auto-6-5",
+      "audioTime": 27.38757369614512,
+      "midiTime": 32.43528344671201
+    },
+    {
+      "id": "7894f9a1-19fe-46c1-9f1e-1b50b93c37ed",
+      "audioTime": 27.52349823507628,
+      "midiTime": 32.577962
+    },
+    {
+      "id": "39ce681c-83b9-477e-abd1-dd6750524c48",
+      "audioTime": 28.276356830752192,
+      "midiTime": 33.529888
+    },
+    {
+      "id": "0c49ddbb-142d-458e-8912-41410330d50e",
+      "audioTime": 29.113756206372216,
+      "midiTime": 34.574823
+    },
+    {
+      "id": "auto-6-6",
+      "audioTime": 35.43392290249433,
+      "midiTime": 40.88145124716553
+    },
+    {
+      "id": "auto-6-7",
+      "audioTime": 41.08136054421769,
+      "midiTime": 47.77832199546485
+    },
+    {
+      "id": "243ec7c4-73c3-4f5e-922d-c25bf1908d2d",
+      "audioTime": 42.94368945280842,
+      "midiTime": 50.016097
+    },
+    {
+      "id": "e1d339de-9500-4d78-af57-d01b8244e536",
+      "audioTime": 43.80959195384459,
+      "midiTime": 51.07782816568173
+    },
+    {
+      "id": "6fdf0f0e-2bb6-4ad5-adea-dcb24286a46a",
+      "audioTime": 44.61476309348414,
+      "midiTime": 51.990117000000005
+    },
+    {
+      "id": "b12f76cf-1e0a-4b5a-a630-b6ff981d8789",
+      "audioTime": 46.21694167028426,
+      "midiTime": 53.73865795561529
+    },
+    {
+      "id": "02e8be7b-d17d-4510-91b4-f2fcb02e73c7",
+      "audioTime": 47.78313860516463,
+      "midiTime": 55.38007600000001
+    },
+    {
+      "id": "25822c96-1f75-4715-8fc9-897a0620fc4c",
+      "audioTime": 49.16510444591178,
+      "midiTime": 56.935046000000014
+    },
+    {
+      "id": "auto-6-8",
+      "audioTime": 51.87646258503401,
+      "midiTime": 59.57297052154195
+    },
+    {
+      "id": "dde48ada-afa9-4c12-9f4b-1ff6f21546da",
+      "audioTime": 54.99126946876716,
+      "midiTime": 63.64602300000001
+    },
+    {
+      "id": "5c257cea-3c36-4b83-bb26-0829e918c2e0",
+      "audioTime": 55.674214930025705,
+      "midiTime": 64.45903000000001
+    },
+    {
+      "id": "217026f2-cafd-4b5c-98a7-e024821e3f46",
+      "audioTime": 57.06144376645406,
+      "midiTime": 65.99102600000002
+    },
+    {
+      "id": "197a0045-4a3d-4462-b7c8-68cd3f5042b2",
+      "audioTime": 57.752377820297085,
+      "midiTime": 66.73406300000002
+    },
+    {
+      "id": "39483986-aadf-4b92-84af-91c738dbb3f5",
+      "audioTime": 61.68307648430394,
+      "midiTime": 70.287158
+    },
+    {
+      "id": "auto-6-10",
+      "audioTime": 68.46893424036281,
+      "midiTime": 77.6647619047619
+    },
+    {
+      "id": "auto-6-11",
+      "audioTime": 70.86784580498866,
+      "midiTime": 80.16362811791383
+    },
+    {
+      "id": "ca3658f5-1065-498c-a3d0-d137fdd68d30",
+      "audioTime": 74.25400068804066,
+      "midiTime": 82.478215
+    },
+    {
+      "id": "28c1aa74-76ce-4a8f-98a2-3a134189a592",
+      "audioTime": 74.77248407488516,
+      "midiTime": 82.92020300000001
+    },
+    {
+      "id": "auto-6-12",
+      "audioTime": 78.4559232050314,
+      "midiTime": 85.56117913832199
+    },
+    {
+      "id": "354d5488-7d48-49fb-a571-bafcc5b9f1b2",
+      "audioTime": 79.62953485430474,
+      "midiTime": 86.542227
+    },
+    {
+      "id": "03dc9d71-695f-4a6c-a451-2b57c9fba1a4",
+      "audioTime": 80.44685167382787,
+      "midiTime": 87.02924
+    },
+    {
+      "id": "auto-6-13",
+      "audioTime": 82.16272108843538,
+      "midiTime": 88.65977324263038
+    },
+    {
+      "id": "05d3855a-78f7-4bdb-ac41-302218e06fa8",
+      "audioTime": 85.31799053505358,
+      "midiTime": 91.99929200000001
+    },
+    {
+      "id": "bbd3334e-a118-42d3-9f46-4ddedd82258b",
+      "audioTime": 86.00040213422814,
+      "midiTime": 92.55629100000002
+    },
+    {
+      "id": "e0ff56a6-16f4-4e1c-a9f8-4df6239250f3",
+      "audioTime": 88.18150685878103,
+      "midiTime": 94.90133100000001
+    },
+    {
+      "id": "0f20e3b6-d510-42a4-bd66-1d3fdaa34760",
+      "audioTime": 88.6564480065935,
+      "midiTime": 95.342346
+    },
+    {
+      "id": "bf92ab90-9424-403e-b747-eed8e0a342a6",
+      "audioTime": 89.49162108375006,
+      "midiTime": 96.248368
+    },
+    {
+      "id": "c2a44729-239e-455a-9152-c64bddb41584",
+      "audioTime": 90.0641009447523,
+      "midiTime": 96.68938299999999
+    },
+    {
+      "id": "a2c93e26-68d7-4c03-9a12-b036c2742e34",
+      "audioTime": 90.83387337421973,
+      "midiTime": 97.54838099999999
+    },
+    {
+      "id": "0291c22a-6b9a-469d-94ee-19577a0e20fd",
+      "audioTime": 91.39983001015847,
+      "midiTime": 98.01338799999999
+    },
+    {
+      "id": "auto-6-14",
+      "audioTime": 95.85650793650792,
+      "midiTime": 103.15319727891156
+    },
+    {
+      "id": "auto-6-15",
+      "audioTime": 109.55029478458049,
+      "midiTime": 117.29678004535147
+    },
+    {
+      "id": "ae8ed53d-c702-4432-96a9-7d09960937e4",
+      "audioTime": 112.99032075319155,
+      "midiTime": 120.60650199999999
+    },
+    {
+      "id": "3263d953-5625-4b32-9966-59f110a763a1",
+      "audioTime": 114.14205360743085,
+      "midiTime": 121.604507
+    },
+    {
+      "id": "auto-6-16",
+      "audioTime": 116.14730158730158,
+      "midiTime": 123.64390022675737
+    },
+    {
+      "id": "auto-6-17",
+      "audioTime": 123.24408163265305,
+      "midiTime": 132.78975056689342
+    },
+    {
+      "id": "e7e42892-b23c-48fd-84b8-263b7f109ae1",
+      "audioTime": 124.87366586255372,
+      "midiTime": 134.51449299999996
+    },
+    {
+      "id": "a4bb9b9e-edb8-4121-a186-06801352391a",
+      "audioTime": 125.17836310648761,
+      "midiTime": 135.21151799999996
+    },
+    {
+      "id": "3271d269-fdaf-4015-a3f2-efde8a28c4e6",
+      "audioTime": 130.80356756958867,
+      "midiTime": 140.76055899999992
+    },
+    {
+      "id": "d4b4efdc-bca7-4f59-a331-b5dba192fe06",
+      "audioTime": 131.31949949271814,
+      "midiTime": 141.20254699999992
+    },
+    {
+      "id": "1913ec2e-2532-429d-9911-da6a0d4e3dc5",
+      "audioTime": 132.15571479151325,
+      "midiTime": 142.1075629999999
+    },
+    {
+      "id": "4a2d5988-1248-440b-9c54-f3b3383ac654",
+      "audioTime": 132.93072910532575,
+      "midiTime": 142.5485779999999
+    },
+    {
+      "id": "59eb9a30-96e3-4bd8-b096-0e2d45c7b1cf",
+      "audioTime": 133.79570172810688,
+      "midiTime": 143.5705779999999
+    },
+    {
+      "id": "285f0b9f-213f-42ff-a020-c6c0a90b944e",
+      "audioTime": 134.55415366174248,
+      "midiTime": 144.1745639999999
+    },
+    {
+      "id": "auto-6-18",
+      "audioTime": 136.93786848072563,
+      "midiTime": 147.2831746031746
+    },
+    {
+      "id": "24e3f686-464e-432a-bb7a-cd90a2ad6a6e",
+      "audioTime": 137.06872712076648,
+      "midiTime": 147.40161599999988
+    },
+    {
+      "id": "3733ee4f-be97-4c5d-94cb-a7b88a725b94",
+      "audioTime": 137.78045309664662,
+      "midiTime": 148.1216449999999
+    },
+    {
+      "id": "4efdc565-72a4-4f78-8c5f-a6fb8d2fea63",
+      "audioTime": 138.40721827349105,
+      "midiTime": 148.91163499999988
+    },
+    {
+      "id": "fb2130af-c401-413d-922e-d4bb6c168a44",
+      "audioTime": 139.21041939509593,
+      "midiTime": 149.72364899999988
+    },
+    {
+      "id": "f268545c-9b0e-41b6-a21e-4be9aa3443f0",
+      "audioTime": 140.0871544442134,
+      "midiTime": 150.53665599999988
+    },
+    {
+      "id": "4496976e-166c-4dde-8e1d-5a2eb0a47f58",
+      "audioTime": 141.66752577083207,
+      "midiTime": 151.90665999999987
+    },
+    {
+      "id": "42def92e-6b14-4185-91da-044a1cf4940d",
+      "audioTime": 142.50523334437705,
+      "midiTime": 152.46365899999986
+    },
+    {
+      "id": "auto-6-19",
+      "audioTime": 150.6316553287982,
+      "midiTime": 159.67755102040815
+    },
+    {
+      "id": "05315691-2175-4fcf-8ded-40219ac15406",
+      "audioTime": 154.9180753180554,
+      "midiTime": 163.1917099999999
+    },
+    {
+      "id": "1038f1d1-c064-4d22-9953-1662ba590c4e",
+      "audioTime": 155.32862311935756,
+      "midiTime": 163.53971799999988
+    },
+    {
+      "id": "126816cc-cbe0-4dbb-843e-e99233c37bd0",
+      "audioTime": 156.54230904612098,
+      "midiTime": 164.70070099999987
+    },
+    {
+      "id": "6b5e7874-8c99-4fa8-bcf1-fe2a7c06d5a3",
+      "audioTime": 158.56131490267725,
+      "midiTime": 166.07070699999986
+    },
+    {
+      "id": "2e3715bc-ca3c-4c07-9668-aa1965088147",
+      "audioTime": 159.6830341699304,
+      "midiTime": 167.09267899999986
+    },
+    {
+      "id": "4a8372d9-6316-47bf-9043-49c352a4f7fd",
+      "audioTime": 160.4313355942459,
+      "midiTime": 167.62667499999986
+    },
+    {
+      "id": "auto-6-20",
+      "audioTime": 164.32544217687075,
+      "midiTime": 171.32226757369614
+    },
+    {
+      "id": "78847baf-a92d-45e1-a48d-4bb29dbbd174",
+      "audioTime": 164.93724897274527,
+      "midiTime": 171.94573999999983
+    },
+    {
+      "id": "3728955c-d484-474d-a9f8-f7aafeffba98",
+      "audioTime": 165.49169378434235,
+      "midiTime": 172.66576899999984
+    },
+    {
+      "id": "a7e4a67d-605a-4f89-83c9-9681c4ab783d",
+      "audioTime": 166.0695381116661,
+      "midiTime": 173.22276799999983
+    },
+    {
+      "id": "auto-6-21",
+      "audioTime": 178.01922902494331,
+      "midiTime": 183.9665306122449
+    },
+    {
+      "id": "3cf8e487-a0dc-489d-8832-964c2ab049f7",
+      "audioTime": 180.4144360353362,
+      "midiTime": 185.85472299999986
+    },
+    {
+      "id": "41032916-6f8e-42a8-9553-18693dc4d6ef",
+      "audioTime": 180.77834001758626,
+      "midiTime": 186.29573799999986
+    },
+    {
+      "id": "5838f496-2332-4c10-a11e-91a468b1fc18",
+      "audioTime": 182.06737041735585,
+      "midiTime": 187.29373699999985
+    },
+    {
+      "id": "2829182c-33ae-485b-9467-2fff42292c19",
+      "audioTime": 182.54613291921973,
+      "midiTime": 187.80472299999985
+    },
+    {
+      "id": "6e63ebb6-e80a-42ec-8760-8d954b60331c",
+      "audioTime": 183.92309778797437,
+      "midiTime": 188.84972599999983
+    },
+    {
+      "id": "213b772d-0dce-4a90-bdcf-9c806c82debf",
+      "audioTime": 184.50014586896864,
+      "midiTime": 189.36071199999984
+    },
+    {
+      "id": "0f6187fc-28c6-4454-992c-60748c7ddac1",
+      "audioTime": 186.0199296551298,
+      "midiTime": 190.49870999999982
+    },
+    {
+      "id": "74690477-1ab6-4395-8920-22ac3caf822e",
+      "audioTime": 186.66418189010088,
+      "midiTime": 191.0557089999998
+    },
+    {
+      "id": "auto-6-22",
+      "audioTime": 191.71301587301585,
+      "midiTime": 194.7616326530612
+    },
+    {
+      "id": "567c2a04-068c-4854-ae4a-00c3913911dd",
+      "audioTime": 193.51843137862488,
+      "midiTime": 196.3612494999998
+    },
+    {
+      "id": "591f4215-6096-4206-a113-bf1755acb6cc",
+      "audioTime": 194.22102959621105,
+      "midiTime": 196.67476299999979
+    },
+    {
+      "id": "bdffe4b5-7457-467d-b90d-e0c4500471ca",
+      "audioTime": 196.59349035480955,
+      "midiTime": 198.6718349999998
+    },
+    {
+      "id": "3b965c22-5ccb-4ffd-8e2f-efc98ace55c7",
+      "audioTime": 198.59836734258923,
+      "midiTime": 200.62234049999975
+    },
+    {
+      "id": "0656b738-867a-411e-8feb-a8fb84ac6828",
+      "audioTime": 198.96208818315557,
+      "midiTime": 201.03981899999977
+    },
+    {
+      "id": "280fd769-3001-431c-95a2-d22203e48204",
+      "audioTime": 202.25931784694927,
+      "midiTime": 203.77979299999976
+    },
+    {
+      "id": "88aff9df-e0f5-4866-9f88-389f9308ad25",
+      "audioTime": 204.07879704825416,
+      "midiTime": 205.17372699999976
+    },
+    {
+      "id": "7b8f5c4b-6cab-46ab-a0ac-814899a157f9",
+      "audioTime": 206.35408745607634,
+      "midiTime": 205.68419249999977
+    },
+    {
+      "id": "29f27f5d-1418-4a8e-b5ef-ce049d243cb3",
+      "audioTime": 206.95765159543808,
+      "midiTime": 206.19465799999975
+    },
+    {
+      "id": "auto-6-25",
+      "audioTime": 209.70485260770974,
+      "midiTime": 208.8552380952381
+    },
+    {
+      "id": "0a6bef4b-7e3e-4540-aa75-c2da405858b6",
+      "audioTime": 213.91700296926152,
+      "midiTime": 213.6947299999997
+    },
+    {
+      "id": "fcfe2400-2ea5-432c-8412-dba0eef8b1b3",
+      "audioTime": 214.50781306526653,
+      "midiTime": 214.57772999999972
+    },
+    {
+      "id": "cab560d0-f2fc-43d1-8df0-ed0d2d13620b",
+      "audioTime": 216.3983834347645,
+      "midiTime": 216.6906799999997
+    },
+    {
+      "id": "auto-6-26",
+      "audioTime": 219.10058956916097,
+      "midiTime": 219.6503401360544
+    },
+    {
+      "id": "b5d6231c-80cf-497e-91d8-fd57a78c8023",
+      "audioTime": 220.67211352157028,
+      "midiTime": 221.00965099999968
+    },
+    {
+      "id": "9bd42c14-c373-4696-8597-77a7c80b59aa",
+      "audioTime": 221.320031298838,
+      "midiTime": 221.40366299999968
+    },
+    {
+      "id": "5e4d4af8-378d-4f3c-90dc-342382179afa",
+      "audioTime": 222.21829625131068,
+      "midiTime": 222.19365699999966
+    },
+    {
+      "id": "6f4e3858-adee-4b40-8269-a3e4ad5e8766",
+      "audioTime": 222.86125714353744,
+      "midiTime": 222.58865399999965
+    },
+    {
+      "id": "8680ad3f-0f31-4ec9-ad18-3a76cf3e0ed2",
+      "audioTime": 224.34083395444887,
+      "midiTime": 223.77265999999963
+    },
+    {
+      "id": "de5b7795-0709-41f1-b18f-382e6301f1da",
+      "audioTime": 225.8666475407013,
+      "midiTime": 225.0726729999996
+    },
+    {
+      "id": "63213bff-67c8-473d-944b-b62c5bbafdca",
+      "audioTime": 226.8439736741353,
+      "midiTime": 225.97869499999962
+    },
+    {
+      "id": "42c8b262-49c0-4a41-ad9c-fc7da795a0fd",
+      "audioTime": 227.3975985464361,
+      "midiTime": 226.4197099999996
+    },
+    {
+      "id": "213ea944-a9ef-41b8-b779-891217963920",
+      "audioTime": 230.57766120599925,
+      "midiTime": 229.57767999999962
+    },
+    {
+      "id": "4c42a672-3eee-45f3-b513-981ba25abb6a",
+      "audioTime": 231.93419143050235,
+      "midiTime": 230.9006969999996
+    },
+    {
+      "id": "fc68457c-ee16-406a-9e21-4008fa0aa072",
+      "audioTime": 233.33644682787664,
+      "midiTime": 232.08569499999962
+    },
+    {
+      "id": "auto-6-28",
+      "audioTime": 235.29324263038546,
+      "midiTime": 233.89387755102038
+    },
+    {
+      "id": "ed706bd3-d365-480c-9a36-9598689b27e3",
+      "audioTime": 237.08677169011315,
+      "midiTime": 236.1257379999996
+    },
+    {
+      "id": "auto-6-29",
+      "audioTime": 238.6917006802721,
+      "midiTime": 238.64172335600907
+    },
+    {
+      "id": "b48e4aa6-8cac-4ad2-8326-c554d8bca4b3",
+      "audioTime": 239.6685063084439,
+      "midiTime": 239.86363899999958
+    },
+    {
+      "id": "f4d4e3f6-13fe-4f0f-ada0-a27539dab171",
+      "audioTime": 240.61617887447485,
+      "midiTime": 241.04752999999957
+    },
+    {
+      "id": "auto-6-30",
+      "audioTime": 243.1960190105504,
+      "midiTime": 244.8552119999996
+    },
+    {
+      "id": "4761debb-2dd5-455f-b898-117dbd3ff4a1",
+      "audioTime": 244.92627963277243,
+      "midiTime": 247.4089679999996
+    },
+    {
+      "id": "b5f49280-7b3a-46f0-b700-ddbf688a589b",
+      "audioTime": 245.4363265495245,
+      "midiTime": 248.68584599999957
+    }
+  ],
+  "visualConfiguration": {
+    "global": {
+      "velocityBase": 67,
+      "colorToneShift": -7,
+      "opacityEdge": 0.4,
+      "opacityCenter": 1,
+      "heightScale": 0.8,
+      "glowStrength": 0.8,
+      "bumpStrength": 6,
+      "extension": false,
+      "stretch": true,
+      "audioOffsetMs": 0,
+      "fpsMode": "auto",
+      "supersampling": 3,
+      "aspectRatio": "responsive",
+      "noteLabels": {
+        "enabled": false,
+        "color": "#ffffff",
+        "size": 16,
+        "font": "Arial",
+        "backgroundColor": "#000000",
+        "backgroundOpacity": 0.72,
+        "padding": 5,
+        "borderRadius": 5
+      },
+      "endCard": {
+        "title": "",
+        "subtitle": "",
+        "composerArranger": "",
+        "freeText": ""
+      },
+      "travel": {
+        "enabled": true,
+        "intensity": 0.2,
+        "magnetZone": 1.25
+      }
+    },
+    "families": {
+      "Maderas de timbre \"redondo\"": {
+        "color": "#0394fc",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Dobles cañas": {
+        "color": "#ba1af4",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Saxofones": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Metales": {
+        "color": "#fff700",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cornos": {
+        "color": "#ffce1f",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Percusión menor": {
+        "color": "#a3a3a3",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Tambores": {
+        "color": "#d9d9d9",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Platillos": {
+        "color": "#ffffff",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Placas": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Auxiliares": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas frotadas": {
+        "color": "#a46813",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas pulsadas": {
+        "color": "#028317",
+        "secondaryColor": "#ffffff",
+        "shape": "sixPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Voces": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 1": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 2": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 3": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "hexagon",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 4": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 5": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "triangle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      }
+    },
+    "instruments": {
+      "BANDOLA": {
+        "color": "#ae00ff",
+        "shape": "sixPointStar",
+        "heightScale": 1.6,
+        "stretch": false
+      },
+      "Pista 1": {
+        "enabled": false
+      },
+      "Platillos": {
+        "enabled": false
+      },
+      "TIPLE": {
+        "enabled": false
+      },
+      "MARACAS": {
+        "enabled": false
+      },
+      "GUITARRON": {
+        "color": "#ff7b00",
+        "shape": "sixPointStar",
+        "heightScale": 2.6,
+        "extension": true,
+        "stretch": false
+      }
+    },
+    "shapeExtensions": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    },
+    "shapeStretch": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    }
+  }
+}

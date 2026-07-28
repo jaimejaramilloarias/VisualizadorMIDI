@@ -26,6 +26,7 @@ const DEMO_BASE_URL = `${import.meta.env.BASE_URL}demo/`;
 export const DEMO_IDS = [
   'el-intachable',
   'despasillo-por-favor',
+  'melodia-triste',
 ] as const;
 
 export type DemoId = (typeof DEMO_IDS)[number];
@@ -62,6 +63,16 @@ export const DEMO_CATALOG: Readonly<Record<DemoId, DemoDefinition>> = {
     audioUrl: `${DEMO_BASE_URL}despasillo-por-favor.mp3`,
     audioFileName: 'Despasillo por favor - Lucas Saboyá.mp3',
     stateUrl: `${DEMO_BASE_URL}despasillo-por-favor.midi-stage.json`,
+    syncMode: 'state',
+  },
+  'melodia-triste': {
+    id: 'melodia-triste',
+    label: 'Melodía triste',
+    midiUrl: `${DEMO_BASE_URL}melodia-triste.midi`,
+    midiFileName: 'MELODÍA TRISTE.midi',
+    audioUrl: `${DEMO_BASE_URL}melodia-triste.mp3`,
+    audioFileName: 'Melodía triste.mp3',
+    stateUrl: `${DEMO_BASE_URL}melodia-triste.midi-stage.json`,
     syncMode: 'state',
   },
 };
@@ -183,7 +194,8 @@ export const fetchDemoMedia = async (
     stateDocument,
   );
   const midiFileName =
-    stateDocument?.source.midiFileName ?? definition.midiFileName;
+    stateDocument?.source.midiFileName?.normalize('NFC') ??
+    definition.midiFileName;
   const audioFileName =
     stateDocument?.source.audioFileName?.normalize('NFC') ??
     definition.audioFileName;
