@@ -393,10 +393,11 @@ describe('carga de demos', () => {
     expect(
       result.presentationState.visualConfiguration.global.endCard,
     ).toEqual({
-      title: '',
-      subtitle: '',
-      composerArranger: '',
-      freeText: '',
+      title: 'Melodía Triste',
+      subtitle: 'León Cardona',
+      composerArranger: 'Arr. Jaime Jaramillo Arias',
+      freeText:
+        "Orquesta Filarmónica de Bogotá con Ensamble Cruza'o",
     });
   });
 
