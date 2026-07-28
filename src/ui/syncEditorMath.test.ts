@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_SYNC_ZOOM,
   detectRmsLandmarks,
+  generateAdaptiveMidiGrid,
+  insertFineTuneAnchor,
+  resolveGridAnchorDrop,
   resolveSyncViewport,
   resolveTapAnchorTime,
   snapToAudioLandmark,
@@ -47,5 +50,143 @@ describe('syncEditorMath', () => {
       zoom: MAX_SYNC_ZOOM,
       maximumStart: 120 - 120 / MAX_SYNC_ZOOM,
     });
+  });
+
+  it('genera un grid musical adaptativo con compases y pulsos', () => {
+    const lines = generateAdaptiveMidiGrid({
+      tempoMap: [
+        {
+          tick: 0,
+          seconds: 0,
+          microsecondsPerBeat: 500_000,
+        },
+      ],
+      ticksPerBeat: 480,
+      timeSignatures: [{ tick: 0, numerator: 4, denominator: 4 }],
+      visibleMidiStart: 0,
+      visibleMidiEnd: 8,
+      viewportWidth: 800,
+      targetSpacingPixels: 50,
+    });
+
+    expect(lines.length).toBeLessThanOrEqual(600);
+    expect(lines[0]).toMatchObject({
+      tick: 0,
+      midiTime: 0,
+      hierarchy: 'major',
+      kind: 'bar',
+      label: '1',
+    });
+    expect(
+      lines.some(
+        (line) =>
+          line.hierarchy === 'major' &&
+          line.kind === 'bar' &&
+          line.midiTime === 2,
+      ),
+    ).toBe(true);
+    expect(lines.some((line) => line.kind === 'beat')).toBe(true);
+  });
+
+  it('respeta cambios de tempo al convertir el grid a segundos MIDI', () => {
+    const lines = generateAdaptiveMidiGrid({
+      tempoMap: [
+        { tick: 0, seconds: 0, microsecondsPerBeat: 500_000 },
+        { tick: 960, seconds: 1, microsecondsPerBeat: 1_000_000 },
+      ],
+      ticksPerBeat: 480,
+      visibleMidiStart: 0,
+      visibleMidiEnd: 5,
+      viewportWidth: 1_200,
+      targetSpacingPixels: 40,
+    });
+
+    expect(lines.some((line) => line.tick === 960 && line.midiTime === 1)).toBe(
+      true,
+    );
+    expect(
+      lines.some((line) => line.tick === 1_440 && line.midiTime === 2),
+    ).toBe(true);
+  });
+
+  it('aplica magnetismo RMS al drop y conserva el orden de anclas', () => {
+    const resolved = resolveGridAnchorDrop({
+      requestedAudioTime: 10.16,
+      midiTime: 5,
+      anchors: [
+        { id: 'previous', audioTime: 3, midiTime: 2 },
+        { id: 'next', audioTime: 12, midiTime: 8 },
+      ],
+      audioDuration: 20,
+      landmarks: [{ time: 10, strength: 0.9 }],
+      magnetEnabled: true,
+      snapWindowSeconds: 0.2,
+    });
+
+    expect(resolved).toMatchObject({
+      audioTime: 10,
+      midiTime: 5,
+      snapped: true,
+      snapLandmarkTime: 10,
+      lowerBound: 3.001,
+      upperBound: 11.999,
+    });
+  });
+
+  it('limita un drop para que no cruce las anclas vecinas', () => {
+    const resolved = resolveGridAnchorDrop({
+      requestedAudioTime: 14,
+      midiTime: 5,
+      anchors: [
+        { id: 'previous', audioTime: 3, midiTime: 2 },
+        { id: 'next', audioTime: 12, midiTime: 8 },
+      ],
+      audioDuration: 20,
+      landmarks: [{ time: 14, strength: 1 }],
+      magnetEnabled: true,
+    });
+
+    expect(resolved.audioTime).toBeCloseTo(11.999, 3);
+    expect(resolved.snapped).toBe(false);
+  });
+
+  it('inserta una corrección fina sin eliminar las anclas existentes', () => {
+    const original = [
+      { id: 'automatic-a', audioTime: 0, midiTime: 0 },
+      { id: 'automatic-b', audioTime: 10, midiTime: 10 },
+      { id: 'automatic-c', audioTime: 20, midiTime: 20 },
+    ];
+    const result = insertFineTuneAnchor({
+      anchors: original,
+      anchor: { id: 'manual', audioTime: 7, midiTime: 5 },
+      audioDuration: 20,
+    });
+
+    expect(result).toHaveLength(4);
+    expect(result.map((anchor) => anchor.id)).toEqual([
+      'automatic-a',
+      'manual',
+      'automatic-b',
+      'automatic-c',
+    ]);
+    expect(result.find((anchor) => anchor.id === 'manual')).toEqual({
+      id: 'manual',
+      audioTime: 7,
+      midiTime: 5,
+    });
+  });
+
+  it('rechaza pulsos duplicados para conservar una línea temporal estricta', () => {
+    const original = [
+      { id: 'automatic-a', audioTime: 0, midiTime: 0 },
+      { id: 'automatic-b', audioTime: 10, midiTime: 10 },
+    ];
+    const result = insertFineTuneAnchor({
+      anchors: original,
+      anchor: { id: 'manual', audioTime: 8, midiTime: 10 },
+      audioDuration: 20,
+    });
+
+    expect(result).toEqual(original);
   });
 });

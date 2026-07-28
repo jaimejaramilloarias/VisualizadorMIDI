@@ -7,6 +7,7 @@ import {
   mapAudioToMidi,
   mapAudioToMidiClock,
   mapAudioToMidiClockWithOffset,
+  mapMidiToAudio,
   mapVisualTransportToMidiClock,
   moveSyncAnchorOnAudio,
   parseStateDocument,
@@ -193,6 +194,61 @@ describe('mapAudioToMidi', () => {
     expect(mapping.midiTime).toBeCloseTo(761.705, 8);
     expect(mapping.playbackRate).toBeCloseTo(0.98, 8);
     expect(timeline.anchors).toHaveLength(2_000);
+  });
+
+  it('invierte la identidad y la traslación de una sola ancla', () => {
+    expect(mapMidiToAudio(12.5, [])).toBe(12.5);
+    expect(
+      mapMidiToAudio(7, [
+        { id: 'translation', audioTime: 10, midiTime: 2 },
+      ]),
+    ).toBe(15);
+  });
+
+  it('invierte interpolación y extrapolación por tramos', () => {
+    const timeline = createSyncTimeline([
+      { id: 'a', audioTime: 0, midiTime: 2 },
+      { id: 'b', audioTime: 10, midiTime: 12 },
+      { id: 'c', audioTime: 20, midiTime: 24 },
+    ]);
+
+    expect(timeline.invert(7)).toBe(5);
+    expect(timeline.invert(18)).toBe(15);
+    expect(timeline.invert(30)).toBe(25);
+  });
+
+  it('mantiene ida y vuelta exacta dentro de una línea temporal monótona', () => {
+    const timeline = createSyncTimeline([
+      { id: 'a', audioTime: 1, midiTime: 0.5 },
+      { id: 'b', audioTime: 8, midiTime: 9 },
+      { id: 'c', audioTime: 21, midiTime: 19 },
+      { id: 'd', audioTime: 30, midiTime: 35 },
+    ]);
+
+    [1, 3.25, 8, 12, 21, 27, 35].forEach((audioTime) => {
+      const midiTime = timeline.map(audioTime).midiTime;
+      expect(timeline.invert(midiTime)).toBeCloseTo(audioTime, 10);
+    });
+  });
+
+  it('rechaza la inversión cuando las anclas no son monótonas', () => {
+    const timeline = createSyncTimeline([
+      { id: 'a', audioTime: 0, midiTime: 2 },
+      { id: 'b', audioTime: 10, midiTime: 1 },
+    ]);
+
+    expect(timeline.forward).toBe(false);
+    expect(timeline.invert(1.5)).toBeNull();
+    expect(mapMidiToAudio(1.5, [...timeline.anchors])).toBeNull();
+  });
+
+  it('sanea valores no finitos y no produce tiempos de audio negativos', () => {
+    const timeline = createSyncTimeline([
+      { id: 'a', audioTime: 10, midiTime: 20 },
+    ]);
+
+    expect(timeline.invert(Number.NaN)).toBe(0);
+    expect(timeline.invert(-5)).toBe(0);
   });
 });
 
