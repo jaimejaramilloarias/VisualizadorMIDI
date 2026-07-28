@@ -12,6 +12,7 @@ import {
   mapDisplayAudioToSyncTime,
   mapSyncAudioToDisplayTime,
   resolveGridAnchorDrop,
+  resolveSyncAutoScrollStart,
   resolveSyncViewport,
   resolveTapAnchorTime,
   snapToAudioLandmark,
@@ -57,6 +58,14 @@ describe('syncEditorMath', () => {
       zoom: MAX_SYNC_ZOOM,
       maximumStart: 120 - 120 / MAX_SYNC_ZOOM,
     });
+  });
+
+  it('mantiene el playhead en un tercio de la vista durante el auto scroll', () => {
+    expect(resolveSyncAutoScrollStart(5, 20, 80)).toBe(0);
+    expect(resolveSyncAutoScrollStart(30, 20, 80)).toBeCloseTo(23.6);
+    expect(resolveSyncAutoScrollStart(99, 20, 80)).toBe(80);
+    expect(resolveSyncAutoScrollStart(Number.NaN, 20, 80)).toBe(0);
+    expect(resolveSyncAutoScrollStart(30, 20, 80, 0.5)).toBe(20);
   });
 
   it('mantiene consistente el offset entre la vista y el reloj de sincronía', () => {

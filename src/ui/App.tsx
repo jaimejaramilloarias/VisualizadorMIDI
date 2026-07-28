@@ -212,6 +212,8 @@ const getLastMidiNoteOff = (
 const MAX_MIDI_SIZE = 64 * 1024 * 1024;
 const MAX_AUDIO_SIZE = 400 * 1024 * 1024;
 const RENDERER_CLOCK_CORRECTION_INTERVAL_MS = 50;
+const DEFAULT_TRANSPORT_UI_INTERVAL_MS = 80;
+const SYNC_TRANSPORT_UI_INTERVAL_MS = 1000 / 30;
 
 type AutomaticAlignmentMode = 'manual-preview' | 'auto-apply';
 
@@ -1132,6 +1134,10 @@ export function App() {
 
   useEffect(() => {
     let frame = 0;
+    const uiUpdateInterval = syncWorkspaceOpen
+      ? SYNC_TRANSPORT_UI_INTERVAL_MS
+      : DEFAULT_TRANSPORT_UI_INTERVAL_MS;
+    lastUiUpdateRef.current = 0;
     const update = (now: number) => {
       const instance = transportRef.current;
       if (instance) {
@@ -1171,7 +1177,7 @@ export function App() {
             playing: rendererPlaying,
           };
         }
-        if (now - lastUiUpdateRef.current > 80) {
+        if (now - lastUiUpdateRef.current > uiUpdateInterval) {
           setTransport(snapshot);
           lastUiUpdateRef.current = now;
         }
@@ -1180,7 +1186,7 @@ export function App() {
     };
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [syncWorkspaceOpen]);
 
   const updateSetting = useCallback(
     <Key extends keyof VisualizationSettings>(

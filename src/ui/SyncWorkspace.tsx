@@ -7,6 +7,7 @@ import { KnobControl } from './KnobControl';
 import {
   MAX_SYNC_ZOOM,
   mapSyncAudioToDisplayTime,
+  resolveSyncAutoScrollStart,
   resolveSyncViewport,
   type AudioLandmark,
   type GridFineTuneRequest,
@@ -107,6 +108,7 @@ export function SyncWorkspace({
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>('anchors');
   const [midiGhostVisible, setMidiGhostVisible] = useState(true);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null);
   const [clearArmed, setClearArmed] = useState(false);
   const timelineDuration = Math.max(transport.duration, midiDuration, 1);
@@ -148,6 +150,35 @@ export function SyncWorkspace({
   useEffect(() => {
     if (viewport.start !== viewStart) setViewStart(viewport.start);
   }, [viewStart, viewport.start]);
+
+  useEffect(() => {
+    if (
+      !autoScrollEnabled ||
+      !transport.playing ||
+      viewport.maximumStart <= 0
+    ) {
+      return;
+    }
+    const nextStart = resolveSyncAutoScrollStart(
+      transport.position,
+      viewport.duration,
+      viewport.maximumStart,
+    );
+    if (
+      Math.abs(nextStart - viewport.start) <=
+      Math.max(0.0005, viewport.duration / 100_000)
+    ) {
+      return;
+    }
+    setViewStart(nextStart);
+  }, [
+    autoScrollEnabled,
+    transport.playing,
+    transport.position,
+    viewport.duration,
+    viewport.maximumStart,
+    viewport.start,
+  ]);
 
   useEffect(() => {
     if (
@@ -222,12 +253,14 @@ export function SyncWorkspace({
   };
 
   const panBy = (delta: number) => {
+    setAutoScrollEnabled(false);
     setViewStart((current) =>
       clamp(current + delta, 0, viewport.maximumStart),
     );
   };
 
   const centerPlayhead = () => {
+    setAutoScrollEnabled(false);
     setViewStart(
       clamp(
         transport.position - viewport.duration / 2,
@@ -376,6 +409,26 @@ export function SyncWorkspace({
           </span>
         </label>
 
+        <label className="sync-follow-toggle">
+          <input
+            checked={autoScrollEnabled}
+            onChange={(event) =>
+              setAutoScrollEnabled(event.target.checked)
+            }
+            type="checkbox"
+          />
+          <span>
+            <strong>Auto scroll</strong>
+            <small>
+              {autoScrollEnabled
+                ? transport.playing
+                  ? 'Siguiendo reproducción'
+                  : 'Al reproducir'
+                : 'Desactivado'}
+            </small>
+          </span>
+        </label>
+
         <div className="sync-zoom-control">
           <button onClick={() => changeZoom(0.5)} type="button">−</button>
           <span>{zoom.toFixed(1)}×</span>
@@ -397,7 +450,10 @@ export function SyncWorkspace({
               disabled={viewport.maximumStart <= 0}
               max={viewport.maximumStart}
               min="0"
-              onChange={(event) => setViewStart(Number(event.target.value))}
+              onChange={(event) => {
+                setAutoScrollEnabled(false);
+                setViewStart(Number(event.target.value));
+              }}
               step={Math.max(0.001, viewport.duration / 1000)}
               type="range"
               value={viewport.start}

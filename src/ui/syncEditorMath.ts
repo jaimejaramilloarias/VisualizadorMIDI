@@ -81,6 +81,7 @@ export interface GridFineTuneRequest {
 }
 
 export const MAX_SYNC_ZOOM = 1024;
+export const SYNC_AUTO_SCROLL_PLAYHEAD_RATIO = 0.32;
 export const TAP_MAGNET_WINDOW_SECONDS = 0.3;
 export const GRID_MAGNET_WINDOW_SECONDS = 0.3;
 export const DEFAULT_GRID_SPACING_PIXELS = 56;
@@ -839,4 +840,32 @@ export const resolveSyncViewport = (
     zoom: safeZoom,
     maximumStart,
   };
+};
+
+export const resolveSyncAutoScrollStart = (
+  playhead: number,
+  viewportDuration: number,
+  maximumStart: number,
+  playheadRatio = SYNC_AUTO_SCROLL_PLAYHEAD_RATIO,
+): number => {
+  const safePlayhead = Number.isFinite(playhead) ? Math.max(0, playhead) : 0;
+  const safeViewportDuration =
+    Number.isFinite(viewportDuration) && viewportDuration > 0
+      ? viewportDuration
+      : 0.001;
+  const safeMaximumStart = Number.isFinite(maximumStart)
+    ? Math.max(0, maximumStart)
+    : 0;
+  const safeRatio = clamp(
+    Number.isFinite(playheadRatio)
+      ? playheadRatio
+      : SYNC_AUTO_SCROLL_PLAYHEAD_RATIO,
+    0,
+    1,
+  );
+  return clamp(
+    safePlayhead - safeViewportDuration * safeRatio,
+    0,
+    safeMaximumStart,
+  );
 };

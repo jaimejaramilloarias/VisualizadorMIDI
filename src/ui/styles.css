@@ -1891,6 +1891,7 @@ select:focus-visible {
 .sync-mode-control,
 .sync-zoom-control,
 .sync-ghost-toggle,
+.sync-follow-toggle,
 .sync-magnet {
   display: flex;
   min-width: max-content;
@@ -1972,6 +1973,7 @@ select:focus-visible {
 }
 
 .sync-ghost-toggle,
+.sync-follow-toggle,
 .sync-magnet {
   margin-left: auto;
   padding: 4px 9px;
@@ -1982,13 +1984,15 @@ select:focus-visible {
   cursor: pointer;
 }
 
-.sync-ghost-toggle {
+.sync-ghost-toggle,
+.sync-follow-toggle {
   margin-left: 0;
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.035);
 }
 
 .sync-ghost-toggle input,
+.sync-follow-toggle input,
 .sync-magnet input {
   width: 17px;
   height: 17px;
@@ -1996,6 +2000,7 @@ select:focus-visible {
 }
 
 .sync-ghost-toggle span,
+.sync-follow-toggle span,
 .sync-magnet span {
   display: flex;
   align-items: flex-start;
@@ -2003,16 +2008,27 @@ select:focus-visible {
 }
 
 .sync-ghost-toggle strong,
+.sync-follow-toggle strong,
 .sync-magnet strong {
   color: #e6eaec;
   font-size: 9px;
 }
 
 .sync-ghost-toggle small,
+.sync-follow-toggle small,
 .sync-magnet small {
   margin-top: 2px;
   color: #7e898e;
   font-size: 8px;
+}
+
+.sync-follow-toggle:has(input:checked) {
+  border-color: rgba(255, 213, 0, 0.28);
+  background: rgba(255, 213, 0, 0.075);
+}
+
+.sync-follow-toggle:has(input:checked) small {
+  color: #cbb864;
 }
 
 .sync-workspace-messages {
