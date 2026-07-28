@@ -1,25 +1,44 @@
 {
   "name": "visualizador-midi-v2",
   "version": "2.0.0-alpha.1",
+  "author": "Jaime Jaramillo Arias",
   "private": true,
   "type": "module",
+  "main": "desktop/main.mjs",
   "description": "Motor audiovisual MIDI de alta resolución y baja latencia.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build && node scripts/prepare-sites-build.mjs",
+    "desktop:build": "tsc --noEmit && vite build --mode desktop --base ./ --outDir dist/desktop/renderer",
+    "desktop:start": "npm run desktop:build && electron .",
+    "desktop:smoke": "npm run desktop:build && electron . --desktop-smoke-test",
+    "desktop:pack": "npm run desktop:build && electron-builder --dir --universal --config desktop/electron-builder.mac-universal.yml",
+    "desktop:mac:universal": "npm run desktop:build && npm run desktop:package:mac-universal",
+    "desktop:mac:catalina": "npm run desktop:build && npm run desktop:package:mac-catalina",
+    "desktop:win": "npm run desktop:build && npm run desktop:package:windows",
+    "desktop:package:mac-universal": "electron-builder --config desktop/electron-builder.mac-universal.yml --mac",
+    "desktop:package:mac-catalina": "electron-builder --config desktop/electron-builder.mac-catalina.yml --mac",
+    "desktop:package:windows": "electron-builder --config desktop/electron-builder.windows.yml --win",
     "test": "vitest run",
+    "test:desktop": "node --test desktop/*.test.mjs",
     "test:watch": "vitest",
     "test:legacy": "npm --prefix legacy/v1 test",
-    "test:all": "npm run test && npm run test:legacy"
+    "test:all": "npm run test && npm run test:desktop && npm run test:legacy"
   },
   "dependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@electron/fuses": "2.1.3",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.2",
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.4",

@@ -1,0 +1,21 @@
+appId: com.jaimejaramilloarias.midistage
+productName: MIDI Stage V2
+copyright: Copyright © 2026 Jaime Jaramillo Arias
+asar: true
+npmRebuild: false
+compression: maximum
+removePackageScripts: true
+afterPack: desktop/after-pack.cjs
+files:
+  - desktop/main.mjs
+  - desktop/security.mjs
+  - package.json
+extraResources:
+  - from: dist/desktop/renderer
+    to: renderer
+    filter:
+      - "**/*"
+extraMetadata:
+  main: desktop/main.mjs
+  description: Visualización MIDI de alta resolución con audio y sincronización local.
+publish: null

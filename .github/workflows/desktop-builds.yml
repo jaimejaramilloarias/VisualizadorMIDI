@@ -1,0 +1,430 @@
+name: Desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "codex/**"
+    paths:
+      - ".github/workflows/desktop-builds.yml"
+      - "desktop/**"
+      - "src/**"
+      - "public/**"
+      - "legacy/v1/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "vite.config.ts"
+  pull_request:
+    paths:
+      - ".github/workflows/desktop-builds.yml"
+      - "desktop/**"
+      - "src/**"
+      - "public/**"
+      - "legacy/v1/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "vite.config.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22.12.0"
+  FORCE_COLOR: "1"
+
+jobs:
+  quality:
+    name: Tests and renderer build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            legacy/v1/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix legacy/v1
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Run test suites
+        run: npm run test:all
+
+      - name: Build desktop renderer
+        run: npm run desktop:build
+
+      - name: Validate renderer output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/desktop/renderer/index.html
+          test -d dist/desktop/renderer/assets
+
+          if find dist/desktop/renderer -type f -name '*.map' -print -quit |
+            grep -q .; then
+            echo "Desktop renderer must not contain source maps."
+            exit 1
+          fi
+
+  mac:
+    name: ${{ matrix.label }}
+    needs: quality
+    if: github.event_name != 'pull_request'
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: macos-universal
+            label: macOS Universal
+            package_script: desktop:package:mac-universal
+            output: release/desktop/mac-universal
+            minimum_system: "12.0.0"
+            architecture: universal
+            cache_slot: electron-43-universal
+          - id: macos-catalina-x64
+            label: macOS Catalina x64
+            package_script: desktop:package:mac-catalina
+            output: release/desktop/mac-catalina
+            minimum_system: "10.15.0"
+            architecture: x64
+            cache_slot: electron-32-catalina
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: >-
+            ${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_slot }}-
+            ${{ hashFiles('package-lock.json', 'desktop/electron-builder*.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_slot }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package
+        shell: bash
+        env:
+          MAC_CSC_LINK_SECRET: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD_SECRET: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_P8_SECRET: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+
+          builder_args=()
+          if [[ -n "${MAC_CSC_LINK_SECRET:-}" ]]; then
+            export CSC_LINK="$MAC_CSC_LINK_SECRET"
+            export CSC_KEY_PASSWORD="${MAC_CSC_KEY_PASSWORD_SECRET:-}"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            builder_args+=(
+              "--config.mac.identity=-"
+              "--config.mac.hardenedRuntime=false"
+            )
+          fi
+
+          if [[ -n "${APPLE_API_KEY_P8_SECRET:-}" ||
+                -n "${APPLE_API_KEY_ID_SECRET:-}" ||
+                -n "${APPLE_API_ISSUER_SECRET:-}" ]]; then
+            if [[ -z "${APPLE_API_KEY_P8_SECRET:-}" ||
+                  -z "${APPLE_API_KEY_ID_SECRET:-}" ||
+                  -z "${APPLE_API_ISSUER_SECRET:-}" ||
+                  -z "${MAC_CSC_LINK_SECRET:-}" ]]; then
+              echo "Apple signing and all three notarization secrets are required together."
+              exit 1
+            fi
+
+            key_path="$RUNNER_TEMP/AuthKey-${{ matrix.id }}.p8"
+            printf '%s' "$APPLE_API_KEY_P8_SECRET" > "$key_path"
+            chmod 600 "$key_path"
+            export APPLE_API_KEY="$key_path"
+            export APPLE_API_KEY_ID="$APPLE_API_KEY_ID_SECRET"
+            export APPLE_API_ISSUER="$APPLE_API_ISSUER_SECRET"
+          fi
+
+          npm run desktop:build
+          npm run "${{ matrix.package_script }}" -- "${builder_args[@]}"
+
+      - name: Validate macOS application and artifacts
+        shell: bash
+        env:
+          MAC_CSC_LINK_SECRET: ${{ secrets.MAC_CSC_LINK }}
+          APPLE_API_KEY_P8_SECRET: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+
+          output="${{ matrix.output }}"
+          app_path="$(
+            find "$output" -type d -name 'MIDI Stage V2.app' -print -quit
+          )"
+          test -n "$app_path"
+
+          executable="$app_path/Contents/MacOS/MIDI Stage V2"
+          framework="$app_path/Contents/Frameworks/Electron Framework.framework/Versions/A/Electron Framework"
+          info_plist="$app_path/Contents/Info.plist"
+
+          test -x "$executable"
+          test -f "$framework"
+          test -f "$info_plist"
+
+          minimum_system="$(
+            /usr/libexec/PlistBuddy \
+              -c 'Print :LSMinimumSystemVersion' \
+              "$info_plist"
+          )"
+          test "$minimum_system" = "${{ matrix.minimum_system }}"
+
+          for binary in "$executable" "$framework"; do
+            archs="$(lipo -archs "$binary")"
+            if [[ "${{ matrix.architecture }}" = "universal" ]]; then
+              [[ "$archs" == *"x86_64"* ]]
+              [[ "$archs" == *"arm64"* ]]
+            else
+              test "$archs" = "x86_64"
+            fi
+          done
+
+          fuse_report="$(
+            npx --no-install electron-fuses read --app "$app_path"
+          )"
+          printf '%s\n' "$fuse_report"
+          printf '%s\n' "$fuse_report" > "$output/FUSE_REPORT.txt"
+
+          for expected in \
+            "RunAsNode is Disabled" \
+            "EnableCookieEncryption is Enabled" \
+            "EnableNodeOptionsEnvironmentVariable is Disabled" \
+            "EnableNodeCliInspectArguments is Disabled" \
+            "EnableEmbeddedAsarIntegrityValidation is Enabled" \
+            "OnlyLoadAppFromAsar is Enabled" \
+            "LoadBrowserProcessSpecificV8Snapshot is Disabled" \
+            "GrantFileProtocolExtraPrivileges is Disabled"
+          do
+            grep -Fq "$expected" <<< "$fuse_report"
+          done
+
+          if [[ "${{ matrix.architecture }}" = "universal" ]]; then
+            grep -Fq "WasmTrapHandlers is Enabled" <<< "$fuse_report"
+          fi
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          "$executable" --desktop-smoke-test
+
+          dmg="$(find "$output" -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          zip="$(find "$output" -maxdepth 1 -type f -name '*.zip' -print -quit)"
+          test -s "$dmg"
+          test -s "$zip"
+          hdiutil verify "$dmg"
+          unzip -tq "$zip"
+
+          if [[ -n "${APPLE_API_KEY_P8_SECRET:-}" &&
+                -n "${APPLE_API_KEY_ID_SECRET:-}" &&
+                -n "${APPLE_API_ISSUER_SECRET:-}" ]]; then
+            xcrun stapler validate "$app_path"
+            spctl --assess --type execute --verbose=4 "$app_path"
+          fi
+
+          (
+            cd "$output"
+            shasum -a 256 ./*.dmg ./*.zip > SHA256SUMS.txt
+          )
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDI-Stage-V2-${{ matrix.id }}-${{ github.sha }}
+          path: |
+            ${{ matrix.output }}/*.dmg
+            ${{ matrix.output }}/*.zip
+            ${{ matrix.output }}/SHA256SUMS.txt
+            ${{ matrix.output }}/FUSE_REPORT.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 45
+
+  windows:
+    name: Windows NSIS x64
+    needs: quality
+    if: github.event_name != 'pull_request'
+    runs-on: windows-2025
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: >-
+            ${{ runner.os }}-${{ runner.arch }}-electron-43-windows-
+            ${{ hashFiles('package-lock.json', 'desktop/electron-builder*.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-electron-43-windows-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build NSIS installer
+        shell: bash
+        env:
+          WIN_CSC_LINK_SECRET: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD_SECRET: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${WIN_CSC_LINK_SECRET:-}" ]]; then
+            export CSC_LINK="$WIN_CSC_LINK_SECRET"
+            export CSC_KEY_PASSWORD="${WIN_CSC_KEY_PASSWORD_SECRET:-}"
+          fi
+          npm run desktop:build
+          npm run desktop:package:windows
+
+      - name: Validate Windows application and installer
+        shell: pwsh
+        env:
+          WIN_CSC_LINK_SECRET: ${{ secrets.WIN_CSC_LINK }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $output = 'release/desktop/windows'
+          $installers = @(Get-ChildItem $output -File -Filter '*-Setup.exe')
+          if ($installers.Count -ne 1) {
+            throw "Expected one NSIS installer; found $($installers.Count)."
+          }
+
+          $installer = $installers[0]
+          $appExe = Get-Item "$output/win-unpacked/MIDI Stage V2.exe"
+          if ($installer.Length -le 0 -or $appExe.Length -le 0) {
+            throw 'Installer or application executable is empty.'
+          }
+
+          $process = Start-Process `
+            -FilePath $appExe.FullName `
+            -ArgumentList '--desktop-smoke-test' `
+            -PassThru `
+            -Wait
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged smoke test failed with $($process.ExitCode)."
+          }
+
+          $bytes = [System.IO.File]::ReadAllBytes($appExe.FullName)
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw ('Unexpected PE architecture: 0x{0:X4}' -f $machine)
+          }
+
+          $fuseLines = & .\node_modules\.bin\electron-fuses.cmd `
+            read --app $appExe.FullName 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not inspect Electron fuses.'
+          }
+
+          $fuseReport = $fuseLines -join "`n"
+          $fuseReport
+          Set-Content `
+            -Path "$output/FUSE_REPORT.txt" `
+            -Value $fuseReport `
+            -Encoding utf8
+
+          $expectedFuses = @(
+            'RunAsNode is Disabled',
+            'EnableCookieEncryption is Enabled',
+            'EnableNodeOptionsEnvironmentVariable is Disabled',
+            'EnableNodeCliInspectArguments is Disabled',
+            'EnableEmbeddedAsarIntegrityValidation is Enabled',
+            'OnlyLoadAppFromAsar is Enabled',
+            'LoadBrowserProcessSpecificV8Snapshot is Disabled',
+            'GrantFileProtocolExtraPrivileges is Disabled',
+            'WasmTrapHandlers is Enabled'
+          )
+          foreach ($expected in $expectedFuses) {
+            if (-not $fuseReport.Contains($expected)) {
+              throw "Unexpected fuse state: $expected"
+            }
+          }
+
+          if ($env:WIN_CSC_LINK_SECRET) {
+            foreach ($file in @($appExe, $installer)) {
+              $signature = Get-AuthenticodeSignature $file.FullName
+              if ($signature.Status -ne 'Valid') {
+                throw "Invalid Authenticode signature on $($file.Name)."
+              }
+            }
+          }
+          else {
+            Write-Warning 'Windows certificate absent: installer is unsigned.'
+          }
+
+          $hash = Get-FileHash $installer.FullName -Algorithm SHA256
+          $line = '{0}  {1}' -f `
+            $hash.Hash.ToLowerInvariant(), `
+            $installer.Name
+          Set-Content `
+            -Path "$output/SHA256SUMS.txt" `
+            -Value $line `
+            -Encoding ascii
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIDI-Stage-V2-windows-x64-${{ github.sha }}
+          path: |
+            release/desktop/windows/*-Setup.exe
+            release/desktop/windows/SHA256SUMS.txt
+            release/desktop/windows/FUSE_REPORT.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 45

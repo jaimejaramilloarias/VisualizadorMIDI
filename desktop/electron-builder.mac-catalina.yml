@@ -1,0 +1,33 @@
+extends: ./desktop/electron-builder.common.yml
+electronVersion: 32.3.3
+directories:
+  output: release/desktop/mac-catalina
+  buildResources: desktop/resources
+mac:
+  appId: com.jaimejaramilloarias.midistage.catalina
+  category: public.app-category.music
+  icon: desktop/resources/icon.svg
+  minimumSystemVersion: 10.15.0
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: desktop/resources/entitlements.mac.plist
+  entitlementsInherit: desktop/resources/entitlements.mac.plist
+  artifactName: MIDI-Stage-V2-${version}-macOS-Catalina-${arch}.${ext}
+  target:
+    - target: dmg
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+dmg:
+  title: MIDI Stage V2 Catalina ${version}
+  iconSize: 96
+  contents:
+    - x: 150
+      y: 190
+      type: file
+    - x: 410
+      y: 190
+      type: link
+      path: /Applications

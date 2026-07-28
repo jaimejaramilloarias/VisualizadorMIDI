@@ -1,8 +1,9 @@
 # MIDI Stage V2
 
-Aplicación web local-first para visualizar archivos MIDI con animación de alta
-resolución, audio opcional y sincronización mediante anclas. No exporta video ni
-audio: prioriza una reproducción fluida y de calidad directamente en la web.
+Aplicación audiovisual local-first para visualizar archivos MIDI con animación
+de alta resolución, audio opcional y sincronización mediante anclas. Está
+disponible en la web y como aplicación instalable para macOS y Windows. No
+exporta video ni audio: prioriza una reproducción fluida y de calidad.
 
 Los archivos MIDI y de audio se procesan en memoria en el dispositivo. El estado
 de la visualización se puede guardar como JSON, pero ese archivo solo contiene
@@ -107,6 +108,25 @@ npm test
 npm run build
 ```
 
+## Aplicaciones de escritorio
+
+MIDI Stage V2 también se distribuye como aplicación instalable. El procesamiento
+de MIDI, audio y estados JSON sigue siendo local; el usuario no necesita
+instalar Node.js ni mantener una conexión a Internet.
+
+| Edición | Sistema | Arquitectura | Instalador |
+|---|---|---|---|
+| macOS Universal | macOS 12 Monterey o posterior | Intel x64 + Apple Silicon arm64 | DMG y ZIP |
+| macOS Catalina Legacy | macOS 10.15.x; se recomienda 10.15.7 | Intel x64 | DMG y ZIP |
+| Windows | Windows 10 u 11 de 64 bits | x64 | Instalador NSIS EXE |
+
+Windows ARM64, Windows de 32 bits y Linux no forman parte de esta entrega. Los
+instaladores se publican en
+[GitHub Releases](https://github.com/jaimejaramilloarias/VisualizadorMIDI/releases).
+Consulta
+[`docs/DESKTOP_DISTRIBUTION.md`](docs/DESKTOP_DISTRIBUTION.md)
+para instalación, firma, compatibilidad y verificación.
+
 ## Estructura
 
 ```text
@@ -128,6 +148,8 @@ documenta en [`docs/BASELINE.md`](docs/BASELINE.md).
 
 ## Compatibilidad
 
-El camino de alto rendimiento requiere un navegador moderno con Web Workers,
-Web Audio y `OffscreenCanvas`. V1 conserva sus pruebas originales con
+La edición web requiere un navegador moderno con Web Workers, Web Audio y
+`OffscreenCanvas`. La edición principal de macOS requiere macOS 12 o posterior;
+Catalina 10.15 usa un paquete Intel Legacy separado. Windows requiere Windows 10
+u 11 de 64 bits. V1 conserva sus pruebas originales con
 `npm run test:legacy`.

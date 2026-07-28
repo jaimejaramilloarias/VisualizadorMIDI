@@ -1,0 +1,23 @@
+extends: ./desktop/electron-builder.common.yml
+electronVersion: 43.2.0
+directories:
+  output: release/desktop/windows
+  buildResources: desktop/resources
+win:
+  appId: com.jaimejaramilloarias.midistage
+  icon: desktop/resources/icon.svg
+  artifactName: MIDI-Stage-V2-${version}-Windows-${arch}-Setup.${ext}
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MIDI Stage V2
+  uninstallDisplayName: MIDI Stage V2
+  deleteAppDataOnUninstall: false
