@@ -12,7 +12,7 @@ mac:
   gatekeeperAssess: false
   entitlements: desktop/resources/entitlements.mac.plist
   entitlementsInherit: desktop/resources/entitlements.mac.plist
-  artifactName: MIDI-Stage-V2-${version}-macOS-Universal-${arch}.${ext}
+  artifactName: MIDI-Stage-V2-${version}-macOS-Universal.${ext}
   target:
     - target: dmg
       arch:

@@ -4,7 +4,7 @@ directories:
   output: release/desktop/mac-catalina
   buildResources: desktop/resources
 mac:
-  appId: com.jaimejaramilloarias.midistage.catalina
+  appId: com.jaimejaramilloarias.midistage
   category: public.app-category.music
   icon: desktop/resources/icon.svg
   minimumSystemVersion: 10.15.0

@@ -354,13 +354,49 @@ jobs:
             throw 'Installer or application executable is empty.'
           }
 
-          $process = Start-Process `
+          $unpackedProcess = Start-Process `
             -FilePath $appExe.FullName `
             -ArgumentList '--desktop-smoke-test' `
             -PassThru `
             -Wait
-          if ($process.ExitCode -ne 0) {
-            throw "Packaged smoke test failed with $($process.ExitCode)."
+          if ($unpackedProcess.ExitCode -ne 0) {
+            throw "Packaged smoke test failed with $($unpackedProcess.ExitCode)."
+          }
+
+          $installRoot = Join-Path $env:RUNNER_TEMP 'midi-stage-install-smoke'
+          $installProcess = Start-Process `
+            -FilePath $installer.FullName `
+            -ArgumentList @('/S', "/D=$installRoot") `
+            -PassThru `
+            -Wait
+          if ($installProcess.ExitCode -ne 0) {
+            throw "NSIS installation failed with $($installProcess.ExitCode)."
+          }
+
+          $installedExe = Get-Item "$installRoot/MIDI Stage V2.exe"
+          $installedProcess = Start-Process `
+            -FilePath $installedExe.FullName `
+            -ArgumentList '--desktop-smoke-test' `
+            -PassThru `
+            -Wait
+          if ($installedProcess.ExitCode -ne 0) {
+            throw "Installed smoke test failed with $($installedProcess.ExitCode)."
+          }
+
+          $uninstallers = @(
+            Get-ChildItem $installRoot -File -Filter 'Uninstall*.exe'
+          )
+          if ($uninstallers.Count -ne 1) {
+            throw "Expected one uninstaller; found $($uninstallers.Count)."
+          }
+
+          $uninstallProcess = Start-Process `
+            -FilePath $uninstallers[0].FullName `
+            -ArgumentList '/S' `
+            -PassThru `
+            -Wait
+          if ($uninstallProcess.ExitCode -ne 0) {
+            throw "NSIS uninstall failed with $($uninstallProcess.ExitCode)."
           }
 
           $bytes = [System.IO.File]::ReadAllBytes($appExe.FullName)
@@ -416,10 +452,12 @@ jobs:
           $line = '{0}  {1}' -f `
             $hash.Hash.ToLowerInvariant(), `
             $installer.Name
-          Set-Content `
-            -Path "$output/SHA256SUMS.txt" `
-            -Value $line `
-            -Encoding ascii
+          $checksumPath = Join-Path $output 'SHA256SUMS.txt'
+          [System.IO.File]::WriteAllText(
+            $checksumPath,
+            "$line`n",
+            [System.Text.Encoding]::ASCII
+          )
 
       - name: Upload installer
         uses: actions/upload-artifact@v6
