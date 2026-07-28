@@ -79,8 +79,14 @@ import {
 } from './mediaReadiness';
 import {
   detectRmsLandmarks,
+  insertFineTuneAnchor,
+  mapDisplayAudioToSyncTime,
   resolveTapAnchorTime,
 } from './syncEditorMath';
+import {
+  createSyncMidiProjection,
+  type SyncMidiProjection,
+} from './syncMidiProjection';
 import { resolveTransportShortcut } from './transportShortcuts';
 import {
   SyncWorkspace,
@@ -520,6 +526,8 @@ export function App() {
   );
   const [waveformPeaks, setWaveformPeaks] = useState<Float32Array | null>(null);
   const [waveformRms, setWaveformRms] = useState<Float32Array | null>(null);
+  const [syncMidiProjection, setSyncMidiProjection] =
+    useState<SyncMidiProjection | null>(null);
   const [syncMagnetEnabled, setSyncMagnetEnabled] = useState(true);
   const [tapActive, setTapActive] = useState(false);
   const [syncWorkspaceOpen, setSyncWorkspaceOpen] = useState(false);
@@ -1176,6 +1184,7 @@ export function App() {
         channels: parsed.notes.channels.slice(),
         families: parsed.notes.families.slice(),
       };
+      setSyncMidiProjection(createSyncMidiProjection(parsed));
       rendererRef.current?.setProject(parsed);
       projectRef.current = summary;
       setProject(summary);
@@ -1430,22 +1439,49 @@ export function App() {
 
   const addAnchorAtAudio = (audioTime: number, explicitMidiTime?: number) => {
     preserveImportedSyncRef.current = false;
+    const effectiveAudioTime = mapDisplayAudioToSyncTime(
+      audioTime,
+      visualConfiguration.global.audioOffsetMs,
+    );
     const midiTime =
       explicitMidiTime ??
-      mapAudioToMidiClockWithOffset(
-        audioTime,
-        visualConfiguration.global.audioOffsetMs,
-        createSyncTimeline(syncAnchors),
-      ).midiTime;
+      createSyncTimeline(syncAnchors).map(effectiveAudioTime).midiTime;
     setSyncAnchors((current) =>
       normalizeAnchors([
         ...current.filter(
-          (anchor) => Math.abs(anchor.audioTime - audioTime) > 0.001,
+          (anchor) =>
+            Math.abs(anchor.audioTime - effectiveAudioTime) > 0.001,
         ),
-        { id: createId(), audioTime, midiTime },
+        { id: createId(), audioTime: effectiveAudioTime, midiTime },
       ]),
     );
   };
+
+  const addFineTuneAnchor = useCallback(
+    (midiTime: number, audioTime: number) => {
+      preserveImportedSyncRef.current = false;
+      const id = createId();
+      const offsetMs =
+        visualConfigurationRef.current.global.audioOffsetMs;
+      const offsetSeconds = offsetMs / 1000;
+      const effectiveAudioTime = mapDisplayAudioToSyncTime(
+        audioTime,
+        offsetMs,
+      );
+      setSyncAnchors((current) =>
+        insertFineTuneAnchor({
+          anchors: current,
+          anchor: { id, audioTime: effectiveAudioTime, midiTime },
+          audioDuration:
+            transport.duration + Math.max(0, offsetSeconds),
+        }),
+      );
+      setNotice(
+        `Ajuste fino añadido: el pulso MIDI ${formatTime(midiTime)} quedó anclado en ${formatTime(audioTime)} del audio.`,
+      );
+    },
+    [transport.duration],
+  );
 
   const audioLandmarks = useMemo(
     () => detectRmsLandmarks(waveformRms, transport.duration),
@@ -1471,13 +1507,22 @@ export function App() {
           visualConfigurationRef.current.global.audioOffsetMs,
           syncTimelineRef.current,
         ).midiTime;
-    lastTapRef.current = { audioTime, midiTime, triggerTime: rawAudioTime };
+    const effectiveAudioTime = mapDisplayAudioToSyncTime(
+      audioTime,
+      visualConfigurationRef.current.global.audioOffsetMs,
+    );
+    lastTapRef.current = {
+      audioTime: effectiveAudioTime,
+      midiTime,
+      triggerTime: rawAudioTime,
+    };
     setSyncAnchors((current) =>
       normalizeAnchors([
         ...current.filter(
-          (anchor) => Math.abs(anchor.audioTime - audioTime) > 0.001,
+          (anchor) =>
+            Math.abs(anchor.audioTime - effectiveAudioTime) > 0.001,
         ),
-        { id: createId(), audioTime, midiTime },
+        { id: createId(), audioTime: effectiveAudioTime, midiTime },
       ]),
     );
   }, [audioLandmarks, project, syncMagnetEnabled]);
@@ -1768,7 +1813,11 @@ export function App() {
         current,
         id,
         nextAudioTime,
-        transport.duration,
+        transport.duration +
+          Math.max(
+            0,
+            visualConfigurationRef.current.global.audioOffsetMs / 1000,
+          ),
       ),
     );
   };
@@ -3344,10 +3393,12 @@ export function App() {
           forward={syncMappingIsForward}
           midiDuration={project?.duration ?? 0}
           midiFileName={project?.fileName ?? null}
+          midiProjection={syncMidiProjection}
           landmarks={audioLandmarks}
           magnetEnabled={syncMagnetEnabled}
           offsetMs={effectiveSyncOffset}
           onAddAnchor={(audioTime) => addAnchorAtAudio(audioTime)}
+          onAddFineTuneAnchor={addFineTuneAnchor}
           onApplyAutomaticAlignment={applyAutomaticAlignment}
           onCancelAutomaticAlignment={cancelAutomaticAlignment}
           onClearAnchors={() => {

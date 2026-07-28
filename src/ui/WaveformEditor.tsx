@@ -6,17 +6,39 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 import type { AlignmentAnchorCandidate } from '../core/alignment/types';
-import type { SyncAnchor } from '../core/state/visualizationState';
+import {
+  createSyncTimeline,
+  type SyncAnchor,
+} from '../core/state/visualizationState';
+import {
+  generateAdaptiveMidiGrid,
+  insertFineTuneAnchor,
+  mapDisplayAudioToSyncTime,
+  mapSyncAudioToDisplayTime,
+  resolveGridAnchorDrop,
+  type AudioLandmark,
+  type MidiGridLine,
+} from './syncEditorMath';
+import {
+  selectVisibleGhostNotes,
+  type SyncMidiProjection,
+} from './syncMidiProjection';
 
-type InteractionMode = 'anchors' | 'pan';
+type InteractionMode = 'anchors' | 'grid' | 'pan';
 
 interface WaveformEditorProps {
   audioDuration: number;
   editingLocked?: boolean;
   ghostMarkers?: readonly AlignmentAnchorCandidate[];
   interactionMode: InteractionMode;
+  landmarks: readonly AudioLandmark[];
+  magnetEnabled: boolean;
   markers: SyncAnchor[];
+  midiGhostVisible: boolean;
+  midiProjection: SyncMidiProjection | null;
+  offsetMs: number;
   onAdd: (audioTime: number) => void;
+  onAddGridAnchor: (midiTime: number, audioTime: number) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, audioTime: number) => void;
   onPan: (deltaSeconds: number) => void;
@@ -25,6 +47,7 @@ interface WaveformEditorProps {
   peaks: Float32Array | null;
   playhead: number;
   selectedAnchorId: string | null;
+  timelineMarkers?: readonly SyncAnchor[];
   viewDuration: number;
   viewStart: number;
 }
@@ -35,11 +58,25 @@ interface AnchorHandle {
   y: number;
 }
 
+interface GridHandle {
+  line: MidiGridLine;
+  x: number;
+  audioTime: number;
+}
+
+interface GridDragPreview {
+  audioTime: number;
+  midiTime: number;
+  snapped: boolean;
+}
+
 interface DragState {
+  didMove?: boolean;
   id?: string;
+  midiTime?: number;
   pointerStartX: number;
   viewStart: number;
-  type: 'anchor' | 'pan';
+  type: 'anchor' | 'grid' | 'pan';
 }
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
@@ -56,7 +93,8 @@ const niceGridStep = (duration: number): number => {
   const desired = Math.max(0.001, duration / 9);
   const magnitude = 10 ** Math.floor(Math.log10(desired));
   const normalized = desired / magnitude;
-  const multiplier = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  const multiplier =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
   return multiplier * magnitude;
 };
 
@@ -65,8 +103,14 @@ export function WaveformEditor({
   editingLocked = false,
   ghostMarkers = [],
   interactionMode,
+  landmarks,
+  magnetEnabled,
   markers,
+  midiGhostVisible,
+  midiProjection,
+  offsetMs,
   onAdd,
+  onAddGridAnchor,
   onDelete,
   onMove,
   onPan,
@@ -75,13 +119,37 @@ export function WaveformEditor({
   peaks,
   playhead,
   selectedAnchorId,
+  timelineMarkers,
   viewDuration,
   viewStart,
 }: WaveformEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const handlesRef = useRef<AnchorHandle[]>([]);
+  const gridHandlesRef = useRef<GridHandle[]>([]);
+  const gridPreviewRef = useRef<GridDragPreview | null>(null);
+  const pendingGridPreviewRef = useRef<GridDragPreview | null>(null);
+  const gridPreviewFrameRef = useRef<number | null>(null);
+  const [gridPreview, setGridPreview] = useState<GridDragPreview | null>(null);
   const [resizeRevision, setResizeRevision] = useState(0);
+
+  const updateGridPreview = (preview: GridDragPreview | null) => {
+    gridPreviewRef.current = preview;
+    pendingGridPreviewRef.current = preview;
+    if (preview === null) {
+      if (gridPreviewFrameRef.current !== null) {
+        window.cancelAnimationFrame(gridPreviewFrameRef.current);
+        gridPreviewFrameRef.current = null;
+      }
+      setGridPreview(null);
+      return;
+    }
+    if (gridPreviewFrameRef.current !== null) return;
+    gridPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      gridPreviewFrameRef.current = null;
+      setGridPreview(pendingGridPreviewRef.current);
+    });
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -95,6 +163,10 @@ export function WaveformEditor({
     });
     return () => {
       window.cancelAnimationFrame(frame);
+      if (gridPreviewFrameRef.current !== null) {
+        window.cancelAnimationFrame(gridPreviewFrameRef.current);
+        gridPreviewFrameRef.current = null;
+      }
       observer.disconnect();
     };
   }, []);
@@ -120,29 +192,66 @@ export function WaveformEditor({
     const audioBottom = midiY;
     const audioMiddle = (audioTop + audioBottom) / 2;
     const timeToX = (time: number): number =>
-      plotLeft + ((time - viewStart) / Math.max(0.001, viewDuration)) * plotWidth;
+      plotLeft +
+      ((time - viewStart) / Math.max(0.001, viewDuration)) * plotWidth;
     const xToTime = (x: number): number =>
       viewStart +
-      ((x - plotLeft) / Math.max(1, plotWidth)) * Math.max(0.001, viewDuration);
+      ((x - plotLeft) / Math.max(1, plotWidth)) *
+        Math.max(0.001, viewDuration);
+
+    const offsetSeconds = Number.isFinite(offsetMs) ? offsetMs / 1000 : 0;
+    const displayMarkers = markers.map((marker) => ({
+      ...marker,
+      audioTime: mapSyncAudioToDisplayTime(marker.audioTime, offsetMs),
+    }));
+    const previewAnchors =
+      gridPreview && audioDuration > 0
+        ? insertFineTuneAnchor({
+            anchors: timelineMarkers ?? markers,
+            anchor: {
+              id: 'grid-drag-preview',
+              audioTime: mapDisplayAudioToSyncTime(
+                gridPreview.audioTime,
+                offsetMs,
+              ),
+              midiTime: gridPreview.midiTime,
+            },
+            audioDuration:
+              audioDuration + Math.max(0, offsetSeconds),
+          })
+        : [...(timelineMarkers ?? markers)];
+    const midiTimeline = createSyncTimeline(previewAnchors);
+    const midiToAudioTime = (midiTime: number): number | null => {
+      const internalAudioTime = midiTimeline.invert(midiTime);
+      return internalAudioTime === null
+        ? null
+        : mapSyncAudioToDisplayTime(internalAudioTime, offsetMs);
+    };
 
     context.clearRect(0, 0, width, height);
     context.fillStyle = '#06080b';
     context.fillRect(0, 0, width, height);
 
-    const background = context.createLinearGradient(0, audioTop, 0, audioBottom);
+    const background = context.createLinearGradient(
+      0,
+      audioTop,
+      0,
+      audioBottom,
+    );
     background.addColorStop(0, 'rgba(255,255,255,.035)');
     background.addColorStop(1, 'rgba(255,255,255,.012)');
     context.fillStyle = background;
     context.fillRect(plotLeft, audioTop, plotWidth, audioBottom - audioTop);
 
-    const gridStep = niceGridStep(viewDuration);
-    const firstGrid = Math.ceil(viewStart / gridStep) * gridStep;
+    const audioGridStep = niceGridStep(viewDuration);
+    const firstAudioGrid =
+      Math.ceil(viewStart / audioGridStep) * audioGridStep;
     context.font = '600 10px system-ui';
     context.textAlign = 'center';
     for (
-      let time = firstGrid;
-      time <= viewStart + viewDuration + gridStep * 0.001;
-      time += gridStep
+      let time = firstAudioGrid;
+      time <= viewStart + viewDuration + audioGridStep * 0.001;
+      time += audioGridStep
     ) {
       const x = timeToX(time);
       context.strokeStyle = 'rgba(255,255,255,.06)';
@@ -169,16 +278,96 @@ export function WaveformEditor({
     context.lineTo(plotLeft + plotWidth, midiY);
     context.stroke();
 
+    const displayAudioToMidiTime = (audioTime: number): number => {
+      const effectiveAudioTime = audioTime + offsetSeconds;
+      return effectiveAudioTime < 0
+        ? 0
+        : midiTimeline.map(effectiveAudioTime).midiTime;
+    };
+    const visibleMidiStart = displayAudioToMidiTime(viewStart);
+    const visibleMidiEnd = displayAudioToMidiTime(
+      viewStart + viewDuration,
+    );
+    const midiRangeStart = Math.min(visibleMidiStart, visibleMidiEnd);
+    const midiRangeEnd = Math.max(visibleMidiStart, visibleMidiEnd);
+
+    if (
+      midiGhostVisible &&
+      midiProjection &&
+      midiTimeline.forward &&
+      midiRangeEnd > midiRangeStart
+    ) {
+      const selection = selectVisibleGhostNotes(
+        midiProjection,
+        midiRangeStart,
+        midiRangeEnd,
+        {
+          maximumNotes: gridPreview
+            ? Math.min(
+                4_000,
+                Math.max(1_000, Math.ceil(plotWidth * 4)),
+              )
+            : Math.min(
+                10_000,
+                Math.max(1_500, Math.ceil(plotWidth * 8)),
+              ),
+        },
+      );
+      const pitchRange = midiProjection.pitchRange;
+      if (pitchRange) {
+        const pitchSpan = Math.max(
+          1,
+          pitchRange.maximum - pitchRange.minimum + 1,
+        );
+        const laneHeight = (audioBottom - audioTop) / pitchSpan;
+        const noteHeight = clamp(laneHeight * 0.72, 1.2, 7);
+        context.save();
+        selection.notes.forEach((note) => {
+          const noteStart = midiToAudioTime(note.start);
+          const noteEnd = midiToAudioTime(note.end);
+          if (noteStart === null || noteEnd === null) return;
+          const rawX1 = timeToX(noteStart);
+          const rawX2 = timeToX(noteEnd);
+          if (
+            rawX2 < plotLeft ||
+            rawX1 > plotLeft + plotWidth
+          ) {
+            return;
+          }
+          const x1 = clamp(rawX1, plotLeft, plotLeft + plotWidth);
+          const x2 = clamp(rawX2, plotLeft, plotLeft + plotWidth);
+          const normalizedPitch =
+            (note.pitch - pitchRange.minimum) / pitchSpan;
+          const y =
+            audioBottom -
+            normalizedPitch * (audioBottom - audioTop - noteHeight) -
+            noteHeight;
+          const alpha = 0.075 + (note.velocity / 127) * 0.075;
+          context.fillStyle = `rgba(238,243,244,${alpha.toFixed(3)})`;
+          context.fillRect(
+            x1,
+            y,
+            Math.max(1, x2 - x1),
+            noteHeight,
+          );
+        });
+        context.restore();
+      }
+    }
+
     if (peaks?.length) {
       const peakCount = Math.floor(peaks.length / 2);
       const visibleStartIndex = Math.max(
         0,
-        Math.floor((viewStart / Math.max(audioDuration, 0.001)) * peakCount),
+        Math.floor(
+          (viewStart / Math.max(audioDuration, 0.001)) * peakCount,
+        ),
       );
       const visibleEndIndex = Math.min(
         peakCount - 1,
         Math.ceil(
-          ((viewStart + viewDuration) / Math.max(audioDuration, 0.001)) *
+          ((viewStart + viewDuration) /
+            Math.max(audioDuration, 0.001)) *
             peakCount,
         ),
       );
@@ -188,7 +377,7 @@ export function WaveformEditor({
       );
       const samplesPerPixel = visiblePeakCount / plotWidth;
       context.strokeStyle = '#78b9c9';
-      context.globalAlpha = 0.9;
+      context.globalAlpha = 0.86;
       context.lineWidth = 1;
       context.beginPath();
       for (let pixel = 0; pixel <= plotWidth; pixel += 1) {
@@ -220,6 +409,86 @@ export function WaveformEditor({
       context.globalAlpha = 1;
     }
 
+    const midiGridLines =
+      midiProjection && midiTimeline.forward
+        ? generateAdaptiveMidiGrid({
+            tempoMap: midiProjection.tempoMap,
+            ticksPerBeat: midiProjection.ticksPerBeat,
+            timeSignatures: midiProjection.timeSignatures,
+            visibleMidiStart: midiRangeStart,
+            visibleMidiEnd: midiRangeEnd,
+            viewportWidth: plotWidth,
+          })
+        : [];
+    const gridHandles: GridHandle[] = [];
+    midiGridLines.forEach((line) => {
+      const audioTime = midiToAudioTime(line.midiTime);
+      if (audioTime === null) return;
+      const x = timeToX(audioTime);
+      if (x < plotLeft - 20 || x > plotLeft + plotWidth + 20) return;
+      const isDragged =
+        gridPreview &&
+        Math.abs(gridPreview.midiTime - line.midiTime) < 1e-7;
+      const isMajor = line.hierarchy === 'major';
+      context.save();
+      context.strokeStyle = isDragged
+        ? gridPreview.snapped
+          ? 'rgba(255,240,139,.98)'
+          : 'rgba(255,213,0,.98)'
+        : interactionMode === 'grid'
+          ? isMajor
+            ? 'rgba(255,213,0,.42)'
+            : 'rgba(255,213,0,.18)'
+          : isMajor
+            ? 'rgba(255,213,0,.19)'
+            : 'rgba(255,213,0,.07)';
+      context.lineWidth = isDragged ? 2.5 : isMajor ? 1.2 : 1;
+      if (!isMajor && !isDragged) context.setLineDash([2, 5]);
+      context.beginPath();
+      context.moveTo(x, audioTop);
+      context.lineTo(x, audioBottom);
+      context.stroke();
+      context.setLineDash([]);
+      if (interactionMode === 'grid') {
+        context.fillStyle = isDragged
+          ? '#fff2a3'
+          : isMajor
+            ? '#ffd500'
+            : 'rgba(255,213,0,.72)';
+        context.beginPath();
+        context.moveTo(x, audioTop - 2);
+        context.lineTo(x + (isMajor ? 6 : 4), audioTop + (isMajor ? 8 : 6));
+        context.lineTo(x - (isMajor ? 6 : 4), audioTop + (isMajor ? 8 : 6));
+        context.closePath();
+        context.fill();
+        if (isMajor && line.label) {
+          context.fillStyle = 'rgba(255,225,83,.76)';
+          context.font = '800 8px system-ui';
+          context.textAlign = 'center';
+          context.fillText(`C${line.label}`, x, audioTop - 8);
+        }
+      }
+      context.restore();
+
+      const duplicatesAnchor = displayMarkers.some(
+        (anchor) => Math.abs(anchor.midiTime - line.midiTime) < 0.001,
+      );
+      const hasPreviousAnchor = displayMarkers.some(
+        (anchor) => anchor.midiTime < line.midiTime - 0.001,
+      );
+      const hasNextAnchor = displayMarkers.some(
+        (anchor) => anchor.midiTime > line.midiTime + 0.001,
+      );
+      if (
+        !duplicatesAnchor &&
+        hasPreviousAnchor &&
+        hasNextAnchor
+      ) {
+        gridHandles.push({ line, x, audioTime });
+      }
+    });
+    gridHandlesRef.current = gridHandles;
+
     ghostMarkers.forEach((marker) => {
       const anchorX = timeToX(marker.audioTime);
       if (
@@ -250,13 +519,16 @@ export function WaveformEditor({
     });
 
     const handles: AnchorHandle[] = [];
-    markers.forEach((marker, index) => {
+    displayMarkers.forEach((marker, index) => {
       const anchorX = timeToX(marker.audioTime);
       const visible =
-        anchorX >= plotLeft - 20 && anchorX <= plotLeft + plotWidth + 20;
+        anchorX >= plotLeft - 20 &&
+        anchorX <= plotLeft + plotWidth + 20;
       if (!visible) return;
       const selected = marker.id === selectedAnchorId;
-      context.strokeStyle = selected ? '#ffe55a' : 'rgba(255,213,0,.62)';
+      context.strokeStyle = selected
+        ? '#ffe55a'
+        : 'rgba(255,213,0,.62)';
       context.lineWidth = selected ? 2.5 : 1.5;
       context.beginPath();
       context.moveTo(anchorX, audioTop);
@@ -265,7 +537,13 @@ export function WaveformEditor({
 
       context.fillStyle = selected ? '#fff3a5' : '#ffd500';
       context.beginPath();
-      context.arc(anchorX, audioMiddle, selected ? 8 : 6, 0, Math.PI * 2);
+      context.arc(
+        anchorX,
+        audioMiddle,
+        selected ? 8 : 6,
+        0,
+        Math.PI * 2,
+      );
       context.fill();
       context.beginPath();
       context.moveTo(anchorX, midiY - (selected ? 9 : 7));
@@ -306,12 +584,16 @@ export function WaveformEditor({
       context.fill();
     }
 
-    if (markers.length === 0 && ghostMarkers.length === 0) {
+    if (
+      markers.length === 0 &&
+      ghostMarkers.length === 0 &&
+      !midiProjection
+    ) {
       context.fillStyle = 'rgba(225,232,234,.42)';
       context.font = '600 13px system-ui';
       context.textAlign = 'center';
       context.fillText(
-        'Toca la forma de onda para crear la primera ancla',
+        'Carga MIDI y audio para comenzar la sincronización',
         plotLeft + plotWidth / 2,
         audioMiddle,
       );
@@ -326,11 +608,17 @@ export function WaveformEditor({
   }, [
     audioDuration,
     ghostMarkers,
+    gridPreview,
+    interactionMode,
     markers,
+    midiGhostVisible,
+    midiProjection,
+    offsetMs,
     peaks,
     playhead,
     resizeRevision,
     selectedAnchorId,
+    timelineMarkers,
     viewDuration,
     viewStart,
   ]);
@@ -348,11 +636,14 @@ export function WaveformEditor({
     );
     return (
       viewStart +
-      ((x - plotLeft) / Math.max(1, plotWidth)) * Math.max(0.001, viewDuration)
+      ((x - plotLeft) / Math.max(1, plotWidth)) *
+        Math.max(0.001, viewDuration)
     );
   };
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const onPointerDown = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
     if (audioDuration <= 0) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
@@ -367,6 +658,29 @@ export function WaveformEditor({
       return;
     }
     if (editingLocked) return;
+    if (interactionMode === 'grid') {
+      const nearest = gridHandlesRef.current
+        .map((handle) => ({
+          ...handle,
+          distance: Math.abs(handle.x - x),
+        }))
+        .sort((left, right) => left.distance - right.distance)[0];
+      if (!nearest || nearest.distance > 24) return;
+      onSelect(null);
+      dragRef.current = {
+        midiTime: nearest.line.midiTime,
+        pointerStartX: x,
+        type: 'grid',
+        viewStart,
+      };
+      updateGridPreview({
+        audioTime: nearest.audioTime,
+        midiTime: nearest.line.midiTime,
+        snapped: false,
+      });
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
     const nearest = handlesRef.current
       .map((handle) => ({
         ...handle,
@@ -392,32 +706,93 @@ export function WaveformEditor({
     );
   };
 
-  const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const onPointerMove = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
     const drag = dragRef.current;
     if (!drag) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
     if (drag.type === 'pan') {
       onPan(
-        -((x - drag.pointerStartX) / Math.max(1, bounds.width)) * viewDuration,
+        -((x - drag.pointerStartX) / Math.max(1, bounds.width)) *
+          viewDuration,
       );
       drag.pointerStartX = x;
       return;
     }
+    if (drag.type === 'grid' && drag.midiTime !== undefined) {
+      if (Math.abs(x - drag.pointerStartX) > 2) drag.didMove = true;
+      const plotWidth = Math.max(
+        1,
+        Number(event.currentTarget.dataset.plotWidth || bounds.width),
+      );
+      const resolved = resolveGridAnchorDrop({
+        requestedAudioTime: timeFromClientX(
+          event.clientX,
+          event.currentTarget,
+        ),
+        midiTime: drag.midiTime,
+        anchors: markers.map((anchor) => ({
+          ...anchor,
+          audioTime: mapSyncAudioToDisplayTime(
+            anchor.audioTime,
+            offsetMs,
+          ),
+        })),
+        audioDuration,
+        landmarks,
+        magnetEnabled,
+        snapWindowSeconds: Math.min(
+          0.3,
+          Math.max(0.02, (viewDuration / plotWidth) * 14),
+        ),
+      });
+      updateGridPreview({
+        audioTime: resolved.audioTime,
+        midiTime: resolved.midiTime,
+        snapped: resolved.snapped,
+      });
+      return;
+    }
     if (!drag.id) return;
     const time = timeFromClientX(event.clientX, event.currentTarget);
-    onMove(drag.id, Math.min(audioDuration, time));
+    onMove(
+      drag.id,
+      mapDisplayAudioToSyncTime(
+        Math.min(audioDuration, time),
+        offsetMs,
+      ),
+    );
   };
 
-  const endDrag = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const endDrag = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+    commitGrid = true,
+  ) => {
+    const drag = dragRef.current;
+    if (
+      commitGrid &&
+      drag?.type === 'grid' &&
+      drag.didMove &&
+      gridPreviewRef.current
+    ) {
+      onAddGridAnchor(
+        gridPreviewRef.current.midiTime,
+        gridPreviewRef.current.audioTime,
+      );
+    }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragRef.current = null;
+    updateGridPreview(null);
   };
 
-  const onDoubleClick = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (editingLocked) return;
+  const onDoubleClick = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    if (editingLocked || interactionMode !== 'anchors') return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
     const y = event.clientY - bounds.top;
@@ -444,10 +819,10 @@ export function WaveformEditor({
 
   return (
     <canvas
-      aria-label="Editor visual de sincronía. Cada ancla vertical une un tiempo de audio con su tiempo MIDI."
+      aria-label="Editor visual de sincronía con forma de onda, MIDI fantasma, grid musical y anclas."
       className={`waveform-editor is-${interactionMode}${editingLocked ? ' is-locked' : ''}`}
       onDoubleClick={onDoubleClick}
-      onPointerCancel={endDrag}
+      onPointerCancel={(event) => endDrag(event, false)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}

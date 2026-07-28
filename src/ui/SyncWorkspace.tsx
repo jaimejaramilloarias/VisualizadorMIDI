@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AlignmentAnchorCandidate } from '../core/alignment/types';
 import type { SyncAnchor } from '../core/state/visualizationState';
 import type { TransportSnapshot } from '../core/transport/AudioTransport';
@@ -6,12 +6,14 @@ import { Icon } from './icons';
 import { KnobControl } from './KnobControl';
 import {
   MAX_SYNC_ZOOM,
+  mapSyncAudioToDisplayTime,
   resolveSyncViewport,
   type AudioLandmark,
 } from './syncEditorMath';
+import type { SyncMidiProjection } from './syncMidiProjection';
 import { WaveformEditor } from './WaveformEditor';
 
-type InteractionMode = 'anchors' | 'pan';
+type InteractionMode = 'anchors' | 'grid' | 'pan';
 
 export interface AutomaticAlignmentView {
   anchors: readonly AlignmentAnchorCandidate[];
@@ -32,8 +34,10 @@ interface SyncWorkspaceProps {
   magnetEnabled: boolean;
   midiDuration: number;
   midiFileName: string | null;
+  midiProjection: SyncMidiProjection | null;
   offsetMs: number;
   onAddAnchor: (audioTime: number) => void;
+  onAddFineTuneAnchor: (midiTime: number, audioTime: number) => void;
   onApplyAutomaticAlignment: () => void;
   onCancelAutomaticAlignment: () => void;
   onClearAnchors: () => void;
@@ -74,8 +78,10 @@ export function SyncWorkspace({
   magnetEnabled,
   midiDuration,
   midiFileName,
+  midiProjection,
   offsetMs,
   onAddAnchor,
+  onAddFineTuneAnchor,
   onApplyAutomaticAlignment,
   onCancelAutomaticAlignment,
   onClearAnchors,
@@ -99,12 +105,30 @@ export function SyncWorkspace({
   const [viewStart, setViewStart] = useState(0);
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>('anchors');
+  const [midiGhostVisible, setMidiGhostVisible] = useState(true);
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null);
   const [clearArmed, setClearArmed] = useState(false);
   const timelineDuration = Math.max(transport.duration, midiDuration, 1);
   const viewport = resolveSyncViewport(timelineDuration, zoom, viewStart);
   const selectedAnchor =
     anchors.find((anchor) => anchor.id === selectedAnchorId) ?? null;
+  const selectedAnchorDisplayTime = selectedAnchor
+    ? Math.max(
+        0,
+        mapSyncAudioToDisplayTime(selectedAnchor.audioTime, offsetMs),
+      )
+    : null;
+  const editorTimelineMarkers = useMemo(
+    () =>
+      automaticAlignment.status === 'preview'
+        ? automaticAlignment.anchors.map((anchor, index) => ({
+            id: `automatic-preview-${index}`,
+            audioTime: anchor.audioTime,
+            midiTime: anchor.midiTime,
+          }))
+        : anchors,
+    [anchors, automaticAlignment],
+  );
   const alignmentLocked =
     automaticAlignment.status === 'analyzing' ||
     automaticAlignment.status === 'preview';
@@ -210,7 +234,10 @@ export function SyncWorkspace({
       clamp(
         selectedAnchor.audioTime + delta,
         0,
-        Math.max(0, transport.duration),
+        Math.max(
+          0,
+          transport.duration + Math.max(0, offsetMs / 1000),
+        ),
       ),
     );
   };
@@ -299,6 +326,24 @@ export function SyncWorkspace({
             Anclas
           </button>
           <button
+            aria-pressed={interactionMode === 'grid'}
+            className={interactionMode === 'grid' ? 'is-active' : ''}
+            disabled={
+              alignmentLocked ||
+              !midiProjection ||
+              anchors.length < 2
+            }
+            onClick={() => setInteractionMode('grid')}
+            title={
+              anchors.length < 2
+                ? 'Aplica primero la alineación automática o crea al menos dos anclas'
+                : 'Arrastra un pulso del grid para crear una corrección local'
+            }
+            type="button"
+          >
+            Ajustar grid
+          </button>
+          <button
             aria-pressed={interactionMode === 'pan'}
             className={interactionMode === 'pan' ? 'is-active' : ''}
             onClick={() => setInteractionMode('pan')}
@@ -307,6 +352,19 @@ export function SyncWorkspace({
             Desplazar
           </button>
         </div>
+
+        <label className="sync-ghost-toggle">
+          <input
+            checked={midiGhostVisible}
+            disabled={!midiProjection}
+            onChange={(event) => setMidiGhostVisible(event.target.checked)}
+            type="checkbox"
+          />
+          <span>
+            <strong>MIDI fantasma</strong>
+            <small>{midiProjection?.noteCount.toLocaleString('es-CO') ?? 0} notas</small>
+          </span>
+        </label>
 
         <div className="sync-zoom-control">
           <button onClick={() => changeZoom(0.5)} type="button">−</button>
@@ -353,7 +411,7 @@ export function SyncWorkspace({
             <>
               <span
                 className="sync-anchor-badge"
-                title={`Audio ${formatTime(selectedAnchor.audioTime)} · pulso MIDI ${formatTime(selectedAnchor.midiTime)}`}
+                title={`Audio ${formatTime(selectedAnchorDisplayTime ?? 0)} · pulso MIDI ${formatTime(selectedAnchor.midiTime)}`}
               >
                 {selectedIndex + 1}
               </span>
@@ -564,9 +622,9 @@ export function SyncWorkspace({
             type="checkbox"
           />
           <span>
-            <strong>Magnetismo de tap</strong>
+            <strong>Magnetismo RMS</strong>
             <small>
-              {landmarks.length} picos RMS disponibles para el próximo tap
+              {landmarks.length} picos para tap y ajuste de grid
             </small>
           </span>
         </label>
@@ -608,11 +666,17 @@ export function SyncWorkspace({
               : []
           }
           interactionMode={interactionMode}
+          landmarks={landmarks}
+          magnetEnabled={magnetEnabled}
           markers={anchors}
+          midiGhostVisible={midiGhostVisible}
+          midiProjection={midiProjection}
+          offsetMs={offsetMs}
           onAdd={(audioTime) => {
             onAddAnchor(audioTime);
             setSelectedAnchorId(null);
           }}
+          onAddGridAnchor={onAddFineTuneAnchor}
           onDelete={onDeleteAnchor}
           onMove={onMoveAnchor}
           onPan={panBy}
@@ -621,12 +685,19 @@ export function SyncWorkspace({
           peaks={peaks}
           playhead={transport.position}
           selectedAnchorId={selectedAnchorId}
+          timelineMarkers={editorTimelineMarkers}
           viewDuration={viewport.duration}
           viewStart={viewport.start}
         />
         <div className="sync-editor-legend">
           <span><i className="is-audio" />Ancla vertical: posición en el audio</span>
           <span><i className="is-midi" />Pulso MIDI asociado</span>
+          {midiGhostVisible && midiProjection && (
+            <span><i className="is-ghost" />Rectángulos: MIDI fantasma</span>
+          )}
+          {interactionMode === 'grid' && (
+            <span><i className="is-grid" />Arrastra una línea para afinar el tramo local</span>
+          )}
           {automaticAlignment.status === 'preview' && (
             <span><i className="is-automatic" />Línea discontinua: propuesta automática</span>
           )}

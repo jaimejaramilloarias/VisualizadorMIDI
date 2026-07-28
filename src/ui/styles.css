@@ -1832,6 +1832,7 @@ input:focus-visible {
 .sync-transport,
 .sync-mode-control,
 .sync-zoom-control,
+.sync-ghost-toggle,
 .sync-magnet {
   display: flex;
   min-width: max-content;
@@ -1912,6 +1913,7 @@ input:focus-visible {
   text-align: center;
 }
 
+.sync-ghost-toggle,
 .sync-magnet {
   margin-left: auto;
   padding: 4px 9px;
@@ -1922,23 +1924,33 @@ input:focus-visible {
   cursor: pointer;
 }
 
+.sync-ghost-toggle {
+  margin-left: 0;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.sync-ghost-toggle input,
 .sync-magnet input {
   width: 17px;
   height: 17px;
   accent-color: var(--accent);
 }
 
+.sync-ghost-toggle span,
 .sync-magnet span {
   display: flex;
   align-items: flex-start;
   flex-direction: column;
 }
 
+.sync-ghost-toggle strong,
 .sync-magnet strong {
   color: #e6eaec;
   font-size: 9px;
 }
 
+.sync-ghost-toggle small,
 .sync-magnet small {
   margin-top: 2px;
   color: #7e898e;
@@ -2016,6 +2028,10 @@ input:focus-visible {
   cursor: grabbing;
 }
 
+.waveform-editor.is-grid {
+  cursor: ew-resize;
+}
+
 .waveform-editor.is-locked:not(.is-pan) {
   cursor: default;
 }
@@ -2060,6 +2076,18 @@ input:focus-visible {
     var(--accent) 0 3px,
     transparent 3px 5px
   );
+}
+
+.sync-editor-legend i.is-ghost {
+  width: 12px;
+  height: 5px;
+  background: rgba(238, 243, 244, 0.34);
+}
+
+.sync-editor-legend i.is-grid {
+  width: 2px;
+  height: 10px;
+  background: rgba(255, 213, 0, 0.72);
 }
 
 .sync-toolbar-group {

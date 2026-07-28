@@ -71,6 +71,23 @@ export const DEFAULT_MAXIMUM_GRID_LINES = 600;
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
 
+export const mapDisplayAudioToSyncTime = (
+  displayAudioTime: number,
+  offsetMs: number,
+): number =>
+  Math.max(
+    0,
+    (Number.isFinite(displayAudioTime) ? displayAudioTime : 0) +
+      (Number.isFinite(offsetMs) ? offsetMs : 0) / 1000,
+  );
+
+export const mapSyncAudioToDisplayTime = (
+  syncAudioTime: number,
+  offsetMs: number,
+): number =>
+  (Number.isFinite(syncAudioTime) ? syncAudioTime : 0) -
+  (Number.isFinite(offsetMs) ? offsetMs : 0) / 1000;
+
 const finitePositive = (value: number, fallback: number): number =>
   Number.isFinite(value) && value > 0 ? value : fallback;
 

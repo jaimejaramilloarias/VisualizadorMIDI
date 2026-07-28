@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { mapAudioToMidiClock } from '../core/state/visualizationState';
 import {
   MAX_SYNC_ZOOM,
   detectRmsLandmarks,
   generateAdaptiveMidiGrid,
   insertFineTuneAnchor,
+  mapDisplayAudioToSyncTime,
+  mapSyncAudioToDisplayTime,
   resolveGridAnchorDrop,
   resolveSyncViewport,
   resolveTapAnchorTime,
@@ -50,6 +53,13 @@ describe('syncEditorMath', () => {
       zoom: MAX_SYNC_ZOOM,
       maximumStart: 120 - 120 / MAX_SYNC_ZOOM,
     });
+  });
+
+  it('mantiene consistente el offset entre la vista y el reloj de sincronía', () => {
+    expect(mapDisplayAudioToSyncTime(8, 1_500)).toBe(9.5);
+    expect(mapSyncAudioToDisplayTime(9.5, 1_500)).toBe(8);
+    expect(mapDisplayAudioToSyncTime(0.5, -1_000)).toBe(0);
+    expect(mapSyncAudioToDisplayTime(0, 1_000)).toBe(-1);
   });
 
   it('genera un grid musical adaptativo con compases y pulsos', () => {
@@ -174,6 +184,28 @@ describe('syncEditorMath', () => {
       audioTime: 7,
       midiTime: 5,
     });
+  });
+
+  it('limita el cambio de tempo al intervalo de las anclas vecinas', () => {
+    const original = [
+      { id: 'a', audioTime: 0, midiTime: 0 },
+      { id: 'b', audioTime: 10, midiTime: 10 },
+      { id: 'c', audioTime: 20, midiTime: 20 },
+      { id: 'd', audioTime: 30, midiTime: 30 },
+    ];
+    const refined = insertFineTuneAnchor({
+      anchors: original,
+      anchor: { id: 'manual', audioTime: 17, midiTime: 15 },
+      audioDuration: 30,
+    });
+
+    expect(mapAudioToMidiClock(5, refined)).toEqual(
+      mapAudioToMidiClock(5, original),
+    );
+    expect(mapAudioToMidiClock(25, refined)).toEqual(
+      mapAudioToMidiClock(25, original),
+    );
+    expect(mapAudioToMidiClock(13.5, refined).playbackRate).toBeCloseTo(5 / 7);
   });
 
   it('rechaza pulsos duplicados para conservar una línea temporal estricta', () => {
