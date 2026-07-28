@@ -63,8 +63,10 @@ import {
 import type { RenderTelemetry } from '../renderer/protocol';
 import { Icon, type IconName } from './icons';
 import {
-  createDemoPresentationState,
+  DEMO_CATALOG,
+  DEMO_IDS,
   fetchDemoMedia,
+  type DemoId,
 } from './demoMedia';
 import { selectDroppedMedia } from './fileDrop';
 import { KnobControl } from './KnobControl';
@@ -348,6 +350,43 @@ function ToolButton({
       <Icon name={icon} />
       {!compact && <span>{label}</span>}
     </button>
+  );
+}
+
+function DemoPicker({
+  disabled,
+  loading,
+  onSelect,
+}: {
+  disabled: boolean;
+  loading: boolean;
+  onSelect: (demoId: DemoId) => void;
+}) {
+  return (
+    <label
+      className={`demo-picker${loading ? ' is-loading' : ''}`}
+      title={loading ? 'Cargando demo…' : 'Elegir demo'}
+    >
+      <Icon name="sparkles" />
+      <select
+        aria-label="Elegir demo"
+        disabled={disabled}
+        onChange={(event) => {
+          const demoId = event.currentTarget.value as DemoId;
+          if (DEMO_IDS.includes(demoId)) onSelect(demoId);
+        }}
+        value=""
+      >
+        <option disabled value="">
+          {loading ? 'Cargando demo…' : 'Demos'}
+        </option>
+        {DEMO_IDS.map((demoId) => (
+          <option key={demoId} value={demoId}>
+            {DEMO_CATALOG[demoId].label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -1288,22 +1327,32 @@ export function App() {
     refreshWaveformPeaks,
   ]);
 
-  const loadDemo = useCallback(async () => {
+  const loadDemo = useCallback(async (demoId: DemoId) => {
     if (demoLoadInFlightRef.current) return;
+    const requestedDemo = DEMO_CATALOG[demoId];
     demoLoadInFlightRef.current = true;
     setDemoLoading(true);
     transportRef.current?.pause();
-    setNotice('Descargando la demo de El Intachable…');
+    invalidateAutomaticAlignment();
+    setTapActive(false);
+    lastTapRef.current = null;
+    setNotice(`Descargando la demo ${requestedDemo.label}…`);
     try {
-      const { midiFile, audioFile } = await fetchDemoMedia();
-      const demoState = createDemoPresentationState();
+      const {
+        midiFile,
+        audioFile,
+        definition,
+        presentationState,
+      } = await fetchDemoMedia(demoId);
 
-      preserveImportedSyncRef.current = false;
+      preserveImportedSyncRef.current =
+        definition.syncMode === 'state' &&
+        presentationState.preserveSynchronization;
       preserveNextMidiPaletteRef.current = true;
       lastAutoAttemptedPairRef.current = null;
-      setSettings(demoState.settings);
-      setVisualConfiguration(demoState.visualConfiguration);
-      setSyncAnchors([]);
+      setSettings(presentationState.settings);
+      setVisualConfiguration(presentationState.visualConfiguration);
+      setSyncAnchors(presentationState.syncAnchors);
 
       await Promise.all([
         loadMidi(midiFile),
@@ -1321,7 +1370,9 @@ export function App() {
         );
       }
       setNotice(
-        'Demo lista. La sincronización automática de MIDI y audio está comenzando…',
+        presentationState.preserveSynchronization
+          ? `${definition.label} lista con ${presentationState.syncAnchors.length} anclas de sincronización guardadas.`
+          : `${definition.label} lista. La sincronización automática de MIDI y audio está comenzando…`,
       );
     } catch (error) {
       setNotice(
@@ -1333,7 +1384,7 @@ export function App() {
       demoLoadInFlightRef.current = false;
       setDemoLoading(false);
     }
-  }, [loadAudio, loadMidi]);
+  }, [invalidateAutomaticAlignment, loadAudio, loadMidi]);
 
   const openSyncWorkspace = useCallback(() => {
     refreshWaveformPeaks();
@@ -2101,12 +2152,10 @@ export function App() {
           </span>
         </div>
         <nav aria-label="Acciones principales" className="file-actions">
-          <ToolButton
-            accent
+          <DemoPicker
             disabled={demoLoading || busy !== null}
-            icon="sparkles"
-            label={demoLoading ? 'Cargando demo…' : 'Demo'}
-            onClick={() => void loadDemo()}
+            loading={demoLoading}
+            onSelect={(demoId) => void loadDemo(demoId)}
           />
           <span className="toolbar-divider" />
           <ToolButton
@@ -3482,9 +3531,10 @@ export function App() {
               <section>
                 <strong>1 · Archivos y demo</strong>
                 <p>
-                  Pulsa Demo para cargar El Intachable con audio, MIDI y cierre
-                  configurado, o abre tus propios archivos. Todo se procesa
-                  localmente; el JSON sólo guarda ajustes y anclas.
+                  Abre el menú Demos para elegir El Intachable o Despasillo por
+                  favor, ambos con audio, MIDI y cierre configurado; también
+                  puedes abrir tus propios archivos. Todo se procesa localmente
+                  y el JSON sólo guarda ajustes y anclas.
                 </p>
               </section>
               <section>

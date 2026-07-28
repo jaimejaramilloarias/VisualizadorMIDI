@@ -31,7 +31,8 @@ body,
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -41,7 +42,8 @@ button {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid rgba(255, 213, 0, 0.88);
   outline-offset: 2px;
 }
@@ -214,6 +216,62 @@ input:focus-visible {
 .tool-button:disabled {
   opacity: 0.42;
   cursor: wait;
+}
+
+.demo-picker {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 11px 0 13px;
+  gap: 8px;
+  color: #17100b;
+  border-radius: 13px;
+  background: var(--accent);
+  box-shadow: 0 8px 22px rgba(255, 213, 0, 0.18);
+  font-weight: 850;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.demo-picker:hover {
+  background: #ffe033;
+}
+
+.demo-picker:active {
+  transform: scale(0.98);
+}
+
+.demo-picker > svg {
+  width: 20px;
+}
+
+.demo-picker select {
+  min-width: 154px;
+  height: 44px;
+  padding: 0 22px 0 0;
+  color: inherit;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.demo-picker select:disabled {
+  cursor: wait;
+}
+
+.demo-picker:has(select:disabled) {
+  opacity: 0.54;
+}
+
+.demo-picker option {
+  color: #e9eef0;
+  background: #171a1e;
+  font-weight: 700;
 }
 
 .toolbar-divider {
@@ -2603,6 +2661,21 @@ input:focus-visible {
 
   .tool-button span {
     display: none;
+  }
+
+  .demo-picker {
+    width: 44px;
+    padding: 0;
+    place-items: center;
+  }
+
+  .demo-picker select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    opacity: 0;
   }
 }
 

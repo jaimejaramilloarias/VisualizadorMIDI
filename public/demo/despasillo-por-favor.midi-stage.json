@@ -1,0 +1,744 @@
+{
+  "schema": "midi-visualizer-state",
+  "version": 2,
+  "savedAt": "2026-07-28T17:00:50.169Z",
+  "source": {
+    "midiFileName": "DESPASILLO POR FAVOR.midi",
+    "audioFileName": "Despasillo por favor - Lucas Saboyá.mp3"
+  },
+  "visualization": "now-line",
+  "settings": {
+    "secondsVisible": 12,
+    "glow": 0.6,
+    "noteScale": 0.8,
+    "quality": "ultra",
+    "background": "#000000"
+  },
+  "syncAnchors": [
+    {
+      "id": "auto-5-0",
+      "audioTime": 0,
+      "midiTime": 1.649251700680272
+    },
+    {
+      "id": "auto-5-1",
+      "audioTime": 7.89641723356009,
+      "midiTime": 7.54657596371882
+    },
+    {
+      "id": "7d9dafd4-fdea-4a87-9d72-1cb8f861e542",
+      "audioTime": 16.662993497478595,
+      "midiTime": 13.33338
+    },
+    {
+      "id": "b5b7c12f-57c6-4a6d-af61-c03c43eb1d63",
+      "audioTime": 17.58348326263405,
+      "midiTime": 14.000049
+    },
+    {
+      "id": "auto-5-2",
+      "audioTime": 18.041814058956916,
+      "midiTime": 14.243537414965985
+    },
+    {
+      "id": "b9b21069-3445-4441-b44a-91b66bccd564",
+      "audioTime": 18.607622174502396,
+      "midiTime": 14.666718
+    },
+    {
+      "id": "5e081b20-3010-4f05-9f20-73c51d4cfe5e",
+      "audioTime": 20.27460778035596,
+      "midiTime": 16.000056
+    },
+    {
+      "id": "18bf7a31-2a19-4393-bdbb-e5e687de5aef",
+      "audioTime": 29.253956379952662,
+      "midiTime": 22.666746
+    },
+    {
+      "id": "e4707955-980a-4d55-ae99-5135fbe1aa89",
+      "audioTime": 30.967886599158106,
+      "midiTime": 24.000084
+    },
+    {
+      "id": "auto-5-3",
+      "audioTime": 36.08362811791383,
+      "midiTime": 27.737414965986392
+    },
+    {
+      "id": "auto-5-4",
+      "audioTime": 54.12544217687074,
+      "midiTime": 40.93142857142857
+    },
+    {
+      "id": "auto-5-5",
+      "audioTime": 72.16725623582767,
+      "midiTime": 54.27537414965986
+    },
+    {
+      "id": "454fe6a7-d9cd-4086-bbf2-f1eeae95a1de",
+      "audioTime": 83.08436874015366,
+      "midiTime": 62.666886
+    },
+    {
+      "id": "ac3e7ff9-a95a-4f4b-ab81-22d6f87af582",
+      "audioTime": 84.99475954690855,
+      "midiTime": 64.000224
+    },
+    {
+      "id": "auto-5-6",
+      "audioTime": 85.56117913832199,
+      "midiTime": 64.5707029478458
+    },
+    {
+      "id": "auto-5-7",
+      "audioTime": 90.20907029478458,
+      "midiTime": 67.56934240362811
+    },
+    {
+      "id": "58744e9d-0a0e-4898-acde-fa4e25b28aa2",
+      "audioTime": 92.28134467782456,
+      "midiTime": 69.333576
+    },
+    {
+      "id": "110f2248-c3f1-47e6-b32a-f93449c5a8af",
+      "audioTime": 93.17933581294888,
+      "midiTime": 70.00024499999999
+    },
+    {
+      "id": "auto-5-8",
+      "audioTime": 94.17033291509233,
+      "midiTime": 70.71791383219954
+    },
+    {
+      "id": "auto-5-9",
+      "audioTime": 96.4562358276644,
+      "midiTime": 72.06730158730159
+    },
+    {
+      "id": "6850f6fb-b4b9-4381-afd2-ad651de8e463",
+      "audioTime": 99.58078680446538,
+      "midiTime": 74.666928
+    },
+    {
+      "id": "6f238e7a-efca-4eec-997b-b7f66217dedf",
+      "audioTime": 101.43343412766559,
+      "midiTime": 76.000266
+    },
+    {
+      "id": "b183603f-fa8d-4ec9-812a-a79874c0a2c2",
+      "audioTime": 103.27050498065638,
+      "midiTime": 77.333604
+    },
+    {
+      "id": "3635daa8-9823-4553-bba7-f2da63aa4159",
+      "audioTime": 104.35360922440755,
+      "midiTime": 78.00027299999999
+    },
+    {
+      "id": "auto-5-11",
+      "audioTime": 108.25088435374148,
+      "midiTime": 80.81333333333333
+    },
+    {
+      "id": "cf7d74ce-8994-432b-9614-5ec4d392c141",
+      "audioTime": 109.06796412159376,
+      "midiTime": 81.333618
+    },
+    {
+      "id": "cec942c5-0f2c-49af-81a9-b38778c2f96b",
+      "audioTime": 110.26072814116942,
+      "midiTime": 82.000287
+    },
+    {
+      "id": "efde77a4-ba3d-482d-b5c7-5f52ab3e4150",
+      "audioTime": 113.05018142827285,
+      "midiTime": 84.000294
+    },
+    {
+      "id": "auto-5-13",
+      "audioTime": 126.2926984126984,
+      "midiTime": 93.55755102040816
+    },
+    {
+      "id": "auto-5-14",
+      "audioTime": 144.33451247165533,
+      "midiTime": 106.65160997732426
+    },
+    {
+      "id": "auto-5-15",
+      "audioTime": 162.37632653061223,
+      "midiTime": 119.7956462585034
+    },
+    {
+      "id": "auto-5-16",
+      "audioTime": 169.52308390022674,
+      "midiTime": 125.34312925170067
+    },
+    {
+      "id": "771ae428-e2e7-4d12-84d6-2943ff791d17",
+      "audioTime": 171.69441232743762,
+      "midiTime": 126.66711
+    },
+    {
+      "id": "3a9535e0-edfe-496a-88f1-3c702235664b",
+      "audioTime": 173.52984612429583,
+      "midiTime": 128.000448
+    },
+    {
+      "id": "auto-5-17",
+      "audioTime": 175.48837397165335,
+      "midiTime": 129.09142857142857
+    },
+    {
+      "id": "auto-5-18",
+      "audioTime": 180.41814058956916,
+      "midiTime": 132.98965986394558
+    },
+    {
+      "id": "auto-5-19",
+      "audioTime": 198.45995464852606,
+      "midiTime": 147.33315192743763
+    },
+    {
+      "id": "auto-5-20",
+      "audioTime": 214.65260770975055,
+      "midiTime": 160.22730158730158
+    },
+    {
+      "id": "6de2b909-ea73-47b0-9178-1aad1615e6bf",
+      "audioTime": 215.55680016918626,
+      "midiTime": 160.66717900000003
+    },
+    {
+      "id": "1a8fe04d-062a-4345-a1ba-1a663a18992d",
+      "audioTime": 216.0977499678823,
+      "midiTime": 161.000513
+    },
+    {
+      "id": "auto-5-21",
+      "audioTime": 216.50176870748297,
+      "midiTime": 161.12689342403627
+    },
+    {
+      "id": "a39d7388-9fba-4cab-93b4-259a4d7f338a",
+      "audioTime": 216.91567585941047,
+      "midiTime": 161.33384700000002
+    },
+    {
+      "id": "e1d3994a-28ab-42f9-ae8d-4dfadb86ee91",
+      "audioTime": 218.80444208031645,
+      "midiTime": 162.0031191796875
+    },
+    {
+      "id": "auto-5-22",
+      "audioTime": 219.9002267573696,
+      "midiTime": 162.8261224489796
+    },
+    {
+      "id": "0307cc95-e019-4694-80f6-a3386ee125f5",
+      "audioTime": 225.65381263820856,
+      "midiTime": 167.3364711796875
+    },
+    {
+      "id": "51ce11ae-6a61-40ba-af32-22c7ab643553",
+      "audioTime": 226.84480043044775,
+      "midiTime": 168.0031401796875
+    },
+    {
+      "id": "e6ea16c0-71a8-4f6a-99f5-3ce352363f13",
+      "audioTime": 227.60855624522375,
+      "midiTime": 168.6698091796875
+    },
+    {
+      "id": "31cffe26-4354-478e-9674-281c24d86d75",
+      "audioTime": 229.64500631337762,
+      "midiTime": 170.00314717968752
+    },
+    {
+      "id": "auto-5-23",
+      "audioTime": 230.59576571415795,
+      "midiTime": 170.62258503401358
+    },
+    {
+      "id": "auto-5-24",
+      "audioTime": 234.5435827664399,
+      "midiTime": 173.42131519274375
+    },
+    {
+      "id": "47bf4201-ae4b-412f-b149-024a3b38af7a",
+      "audioTime": 250.22206363627265,
+      "midiTime": 184.6698651796875
+    },
+    {
+      "id": "78a42107-65aa-4250-86d5-3f4fd458e7b2",
+      "audioTime": 251.91323838332045,
+      "midiTime": 186.0032031796875
+    },
+    {
+      "id": "auto-5-25",
+      "audioTime": 252.5853968253968,
+      "midiTime": 186.36544217687074
+    },
+    {
+      "id": "ea42c235-e01e-431b-855d-51160599e5eb",
+      "audioTime": 253.6922771227424,
+      "midiTime": 187.33654117968752
+    },
+    {
+      "id": "72da9ffc-f12b-44b0-b005-ec7bad395133",
+      "audioTime": 264.91402310092514,
+      "midiTime": 195.3365691796875
+    },
+    {
+      "id": "35bfe974-0c53-4054-b52b-f8db41157de4",
+      "audioTime": 266.13878389284287,
+      "midiTime": 196.00323817968751
+    },
+    {
+      "id": "auto-5-26",
+      "audioTime": 270.6272108843537,
+      "midiTime": 199.4095238095238
+    },
+    {
+      "id": "d1be3a21-cccc-49f0-ab6b-21d8774fc741",
+      "audioTime": 281.345108040268,
+      "midiTime": 207.3366111796875
+    },
+    {
+      "id": "5b3d93b5-ae0f-47cf-b0e3-53595d7848ea",
+      "audioTime": 282.1568969534938,
+      "midiTime": 208.0032801796875
+    },
+    {
+      "id": "2dc467e1-30ec-4411-86cb-97907fac3fb1",
+      "audioTime": 283.07084662258694,
+      "midiTime": 208.6699491796875
+    },
+    {
+      "id": "a7166155-81af-4d24-822c-2cdd58339824",
+      "audioTime": 284.7950152362868,
+      "midiTime": 210.0032871796875
+    },
+    {
+      "id": "auto-5-27",
+      "audioTime": 288.66902494331066,
+      "midiTime": 212.7534693877551
+    },
+    {
+      "id": "93cfa0e3-6fda-4e70-b011-5872cda8e171",
+      "audioTime": 303.81652449580986,
+      "midiTime": 224.0033361796875
+    },
+    {
+      "id": "6db071c5-3fac-4a1a-8a7d-6d96b12eb567",
+      "audioTime": 306.44111396689624,
+      "midiTime": 226.0033431796875
+    },
+    {
+      "id": "b9414b5c-4321-428a-a4af-3bf5bbe9c69c",
+      "audioTime": 309.1732301036581,
+      "midiTime": 228.00335017968752
+    },
+    {
+      "id": "f1c646fa-d94d-4a18-bbd7-3b60c648ad79",
+      "audioTime": 309.8943979143076,
+      "midiTime": 228.6700191796875
+    },
+    {
+      "id": "d84bb3eb-141b-4226-bf58-8efd0e2e97e1",
+      "audioTime": 310.73411478460343,
+      "midiTime": 229.3366881796875
+    },
+    {
+      "id": "29eb6cd3-a4c4-4a92-9ecf-179135f1ba44",
+      "audioTime": 311.58843895488997,
+      "midiTime": 230.0033571796875
+    },
+    {
+      "id": "613326a4-3c23-4628-a044-18d606ffde4e",
+      "audioTime": 312.53657755160145,
+      "midiTime": 230.6700261796875
+    },
+    {
+      "id": "10ae4599-da0d-414c-8cb5-05ab5eda906e",
+      "audioTime": 315.99215578385196,
+      "midiTime": 232.13762079394527
+    },
+    {
+      "id": "auto-5-29",
+      "audioTime": 320.85665718629383,
+      "midiTime": 234.7105167939453
+    }
+  ],
+  "visualConfiguration": {
+    "global": {
+      "velocityBase": 67,
+      "colorToneShift": 4,
+      "opacityEdge": 0.8,
+      "opacityCenter": 0.85,
+      "heightScale": 0.8,
+      "glowStrength": 0.8,
+      "bumpStrength": 6,
+      "extension": false,
+      "stretch": true,
+      "audioOffsetMs": 0,
+      "fpsMode": "auto",
+      "supersampling": 3,
+      "aspectRatio": "responsive",
+      "noteLabels": {
+        "enabled": false,
+        "color": "#ffffff",
+        "size": 16,
+        "font": "Arial",
+        "backgroundColor": "#000000",
+        "backgroundOpacity": 0.72,
+        "padding": 5,
+        "borderRadius": 5
+      },
+      "endCard": {
+        "title": "Despasillo por Favor",
+        "subtitle": "Lucas Saboyá",
+        "composerArranger": "Arr. Jaime Jaramillo Arias",
+        "freeText": "Orquesta Filarmónica de Bogotá"
+      },
+      "travel": {
+        "enabled": true,
+        "intensity": 0.2,
+        "magnetZone": 1.25
+      }
+    },
+    "families": {
+      "Maderas de timbre \"redondo\"": {
+        "color": "#0394fc",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Dobles cañas": {
+        "color": "#ba1af4",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Saxofones": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Metales": {
+        "color": "#fff700",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cornos": {
+        "color": "#ffce1f",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Percusión menor": {
+        "color": "#a3a3a3",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Tambores": {
+        "color": "#d9d9d9",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Platillos": {
+        "color": "#ffffff",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Placas": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Auxiliares": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas frotadas": {
+        "color": "#a46813",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas pulsadas": {
+        "color": "#028317",
+        "secondaryColor": "#ffffff",
+        "shape": "sixPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Voces": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 1": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 2": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 3": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "hexagon",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 4": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 5": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "triangle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      }
+    },
+    "instruments": {
+      "BANDOLA": {
+        "color": "#368128",
+        "shape": "hexagon"
+      },
+      "Pista 1": {
+        "enabled": false,
+        "family": "Maderas de timbre \"redondo\""
+      },
+      "Platillos": {
+        "enabled": false
+      },
+      "TIPLE": {
+        "enabled": false
+      },
+      "MARACAS": {
+        "enabled": false
+      },
+      "Tri‡ngulo": {
+        "enabled": false
+      },
+      "Marimba": {
+        "enabled": true,
+        "family": "Placas",
+        "color": "#00ffbf",
+        "shape": "hexagon"
+      },
+      "Piano": {
+        "enabled": true,
+        "color": "#9b9797",
+        "shape": "triangle"
+      },
+      "Viol’n I": {
+        "family": "Cuerdas frotadas",
+        "shape": "diamond"
+      },
+      "Viol’n II": {
+        "family": "Cuerdas frotadas"
+      }
+    },
+    "shapeExtensions": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    },
+    "shapeStretch": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    }
+  }
+}
