@@ -49,10 +49,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -115,17 +115,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Cache Electron downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Caches/electron
@@ -142,6 +142,7 @@ jobs:
       - name: Build and package
         shell: bash
         env:
+          FORCE_COLOR: "0"
           MAC_CSC_LINK_SECRET: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD_SECRET: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           APPLE_API_KEY_P8_SECRET: ${{ secrets.APPLE_API_KEY_P8 }}
@@ -187,6 +188,7 @@ jobs:
       - name: Validate macOS application and artifacts
         shell: bash
         env:
+          FORCE_COLOR: "0"
           MAC_CSC_LINK_SECRET: ${{ secrets.MAC_CSC_LINK }}
           APPLE_API_KEY_P8_SECRET: ${{ secrets.APPLE_API_KEY_P8 }}
           APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
@@ -271,7 +273,7 @@ jobs:
           )
 
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: MIDI-Stage-V2-${{ matrix.id }}-${{ github.sha }}
           path: |
@@ -292,17 +294,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Cache Electron downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/AppData/Local/electron/Cache
@@ -333,6 +335,7 @@ jobs:
       - name: Validate Windows application and installer
         shell: pwsh
         env:
+          FORCE_COLOR: "0"
           WIN_CSC_LINK_SECRET: ${{ secrets.WIN_CSC_LINK }}
         run: |
           $ErrorActionPreference = 'Stop'
@@ -418,7 +421,7 @@ jobs:
             -Encoding ascii
 
       - name: Upload installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: MIDI-Stage-V2-windows-x64-${{ github.sha }}
           path: |
