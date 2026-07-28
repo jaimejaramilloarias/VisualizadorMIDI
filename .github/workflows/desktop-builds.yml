@@ -228,7 +228,8 @@ jobs:
           done
 
           fuse_report="$(
-            npx --no-install electron-fuses read --app "$app_path"
+            npx --no-install electron-fuses read --app "$app_path" |
+              perl -pe 's/\e\[[0-9;]*m//g'
           )"
           printf '%s\n' "$fuse_report"
           printf '%s\n' "$fuse_report" > "$output/FUSE_REPORT.txt"
@@ -375,7 +376,7 @@ jobs:
             throw 'Could not inspect Electron fuses.'
           }
 
-          $fuseReport = $fuseLines -join "`n"
+          $fuseReport = ($fuseLines -join "`n") -replace "$([char]27)\[[0-9;]*m", ''
           $fuseReport
           Set-Content `
             -Path "$output/FUSE_REPORT.txt" `
