@@ -209,6 +209,7 @@ const dispatchTouchTap = (
 
 const mountEditor = (
   interactionMode: 'anchors' | 'grid' | 'pan',
+  overrides: Partial<EditorProps> = {},
 ): MountedEditor => {
   const callbacks: CallbackSpies = {
     onAdd: vi.fn(),
@@ -246,6 +247,7 @@ const mountEditor = (
         selectedAnchorId: null,
         viewDuration: 20,
         viewStart: 0,
+        ...overrides,
       }),
     );
   });
@@ -331,8 +333,9 @@ afterEach(() => {
 
 const renderEditor = (
   interactionMode: 'anchors' | 'grid' | 'pan',
+  overrides: Partial<EditorProps> = {},
 ): MountedEditor => {
-  const mounted = mountEditor(interactionMode);
+  const mounted = mountEditor(interactionMode, overrides);
   mountedRoots.push(mounted.root);
   return mounted;
 };
@@ -399,8 +402,12 @@ describe('WaveformEditor interactions', () => {
 
     expect(callbacks.onAddGridAnchor).toHaveBeenCalledTimes(1);
     expect(callbacks.onAddGridAnchor).toHaveBeenCalledWith(
-      expect.closeTo(8, 6),
-      expect.closeTo(9, 6),
+      {
+        continuityAudioTime: expect.closeTo(6, 6),
+        continuityMidiTime: expect.closeTo(6, 6),
+        targetAudioTime: expect.closeTo(9, 6),
+        targetMidiTime: expect.closeTo(8, 6),
+      },
     );
     expect(callbacks.onSeek).not.toHaveBeenCalled();
     expect(callbacks.onAdd).not.toHaveBeenCalled();
@@ -563,5 +570,32 @@ describe('WaveformEditor interactions', () => {
     );
 
     expect(callbacks.onAdd).not.toHaveBeenCalled();
+  });
+
+  it('el último grid draggable emite el par anterior + objetivo respetando offset', () => {
+    const offsetMs = 1_500;
+    const { callbacks, canvas } = renderEditor('grid', {
+      markers: [
+        { id: 'start-offset', audioTime: 1.5, midiTime: 0 },
+        { id: 'middle-offset', audioTime: 11.5, midiTime: 10 },
+      ],
+      offsetMs,
+    });
+    const lastGridX = xForTime(20);
+    const movedX = xForTime(19);
+
+    dispatchPointer(canvas, 'pointerdown', lastGridX, 180);
+    dispatchPointer(canvas, 'pointermove', movedX, 180);
+    dispatchPointer(canvas, 'pointerup', movedX, 180);
+    dispatchClick(canvas, movedX, 180);
+
+    expect(callbacks.onAddGridAnchor).toHaveBeenCalledTimes(1);
+    expect(callbacks.onAddGridAnchor).toHaveBeenCalledWith({
+      continuityAudioTime: expect.closeTo(18, 6),
+      continuityMidiTime: expect.closeTo(18, 6),
+      targetAudioTime: expect.closeTo(19, 6),
+      targetMidiTime: expect.closeTo(20, 6),
+    });
+    expect(callbacks.onSeek).not.toHaveBeenCalled();
   });
 });

@@ -79,9 +79,10 @@ import {
 } from './mediaReadiness';
 import {
   detectRmsLandmarks,
-  insertFineTuneAnchor,
+  insertFineTuneAnchorPair,
   mapDisplayAudioToSyncTime,
   resolveTapAnchorTime,
+  type GridFineTuneRequest,
 } from './syncEditorMath';
 import {
   createSyncMidiProjection,
@@ -1458,29 +1459,48 @@ export function App() {
   };
 
   const addFineTuneAnchor = useCallback(
-    (midiTime: number, audioTime: number) => {
+    (request: GridFineTuneRequest) => {
       preserveImportedSyncRef.current = false;
-      const id = createId();
+      const continuityId = createId();
+      const targetId = createId();
       const offsetMs =
         visualConfigurationRef.current.global.audioOffsetMs;
       const offsetSeconds = offsetMs / 1000;
       const effectiveAudioTime = mapDisplayAudioToSyncTime(
-        audioTime,
+        request.targetAudioTime,
         offsetMs,
       );
-      setSyncAnchors((current) =>
-        insertFineTuneAnchor({
-          anchors: current,
-          anchor: { id, audioTime: effectiveAudioTime, midiTime },
-          audioDuration:
-            transport.duration + Math.max(0, offsetSeconds),
-        }),
+      const continuityAudioTime = mapDisplayAudioToSyncTime(
+        request.continuityAudioTime,
+        offsetMs,
       );
+      const nextAnchors = insertFineTuneAnchorPair({
+        anchors: syncAnchors,
+        continuityAnchor: {
+          audioTime: continuityAudioTime,
+          id: continuityId,
+          midiTime: request.continuityMidiTime,
+        },
+        targetAnchor: {
+          id: targetId,
+          audioTime: effectiveAudioTime,
+          midiTime: request.targetMidiTime,
+        },
+        audioDuration:
+          transport.duration + Math.max(0, offsetSeconds),
+      });
+      if (!nextAnchors.some((anchor) => anchor.id === targetId)) {
+        setNotice(
+          'El ajuste no se aplicó porque cruzaría otra ancla o ya coincide con la sincronización actual.',
+        );
+        return;
+      }
+      setSyncAnchors(nextAnchors);
       setNotice(
-        `Ajuste fino añadido: el pulso MIDI ${formatTime(midiTime)} quedó anclado en ${formatTime(audioTime)} del audio.`,
+        `Ajuste fino añadido entre ${formatTime(request.continuityMidiTime)} y ${formatTime(request.targetMidiTime)} MIDI; el tempo anterior quedó intacto.`,
       );
     },
-    [transport.duration],
+    [syncAnchors, transport.duration],
   );
 
   const audioLandmarks = useMemo(

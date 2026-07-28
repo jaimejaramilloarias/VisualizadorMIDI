@@ -13,11 +13,12 @@ import {
 } from '../core/state/visualizationState';
 import {
   generateAdaptiveMidiGrid,
-  insertFineTuneAnchor,
+  insertFineTuneAnchorPair,
   mapDisplayAudioToSyncTime,
   mapSyncAudioToDisplayTime,
   resolveGridAnchorDrop,
   type AudioLandmark,
+  type GridFineTuneRequest,
   type MidiGridLine,
 } from './syncEditorMath';
 import {
@@ -39,7 +40,7 @@ interface WaveformEditorProps {
   midiProjection: SyncMidiProjection | null;
   offsetMs: number;
   onAdd: (audioTime: number) => void;
-  onAddGridAnchor: (midiTime: number, audioTime: number) => void;
+  onAddGridAnchor: (request: GridFineTuneRequest) => void;
   onMove: (id: string, audioTime: number) => void;
   onPan: (deltaSeconds: number) => void;
   onSeek: (time: number) => void;
@@ -60,6 +61,8 @@ interface AnchorHandle {
 }
 
 interface GridHandle {
+  continuityAudioTime: number;
+  continuityLine: MidiGridLine;
   line: MidiGridLine;
   x: number;
   audioTime: number;
@@ -67,6 +70,8 @@ interface GridHandle {
 
 interface GridDragPreview {
   audioTime: number;
+  continuityAudioTime: number;
+  continuityMidiTime: number;
   midiTime: number;
   snapped: boolean;
 }
@@ -80,6 +85,8 @@ interface TouchTapState {
 interface DragState {
   didMove?: boolean;
   id?: string;
+  continuityAudioTime?: number;
+  continuityMidiTime?: number;
   midiTime?: number;
   pointerId: number;
   pointerLastX: number;
@@ -222,9 +229,17 @@ export function WaveformEditor({
     }));
     const previewAnchors =
       gridPreview && audioDuration > 0
-        ? insertFineTuneAnchor({
+        ? insertFineTuneAnchorPair({
             anchors: timelineMarkers ?? markers,
-            anchor: {
+            continuityAnchor: {
+              audioTime: mapDisplayAudioToSyncTime(
+                gridPreview.continuityAudioTime,
+                offsetMs,
+              ),
+              id: 'grid-continuity-preview',
+              midiTime: gridPreview.continuityMidiTime,
+            },
+            targetAnchor: {
               id: 'grid-drag-preview',
               audioTime: mapDisplayAudioToSyncTime(
                 gridPreview.audioTime,
@@ -434,12 +449,17 @@ export function WaveformEditor({
             visibleMidiStart: midiRangeStart,
             visibleMidiEnd: midiRangeEnd,
             viewportWidth: plotWidth,
+            includePrecedingLine: true,
           })
         : [];
     const gridHandles: GridHandle[] = [];
-    midiGridLines.forEach((line) => {
+    midiGridLines.forEach((line, lineIndex) => {
+      const continuityLine = midiGridLines[lineIndex - 1];
       const audioTime = midiToAudioTime(line.midiTime);
       if (audioTime === null) return;
+      const continuityAudioTime = continuityLine
+        ? midiToAudioTime(continuityLine.midiTime)
+        : null;
       const x = timeToX(audioTime);
       if (x < plotLeft - 20 || x > plotLeft + plotWidth + 20) return;
       const isDragged =
@@ -492,15 +512,21 @@ export function WaveformEditor({
       const hasPreviousAnchor = displayMarkers.some(
         (anchor) => anchor.midiTime < line.midiTime - 0.001,
       );
-      const hasNextAnchor = displayMarkers.some(
-        (anchor) => anchor.midiTime > line.midiTime + 0.001,
-      );
       if (
+        displayMarkers.length >= 2 &&
         !duplicatesAnchor &&
         hasPreviousAnchor &&
-        hasNextAnchor
+        continuityLine &&
+        continuityAudioTime !== null &&
+        continuityLine.midiTime < line.midiTime - 1e-9
       ) {
-        gridHandles.push({ line, x, audioTime });
+        gridHandles.push({
+          continuityAudioTime,
+          continuityLine,
+          line,
+          x,
+          audioTime,
+        });
       }
     });
     gridHandlesRef.current = gridHandles;
@@ -780,6 +806,8 @@ export function WaveformEditor({
       if (!nearest || nearest.distance > 24) return;
       onSelect(null);
       dragRef.current = {
+        continuityAudioTime: nearest.continuityAudioTime,
+        continuityMidiTime: nearest.continuityLine.midiTime,
         midiTime: nearest.line.midiTime,
         pointerId: event.pointerId,
         pointerLastX: x,
@@ -789,6 +817,8 @@ export function WaveformEditor({
       };
       updateGridPreview({
         audioTime: nearest.audioTime,
+        continuityAudioTime: nearest.continuityAudioTime,
+        continuityMidiTime: nearest.continuityLine.midiTime,
         midiTime: nearest.line.midiTime,
         snapped: false,
       });
@@ -815,7 +845,12 @@ export function WaveformEditor({
       drag.pointerLastX = x;
       return;
     }
-    if (drag.type === 'grid' && drag.midiTime !== undefined) {
+    if (
+      drag.type === 'grid' &&
+      drag.continuityAudioTime !== undefined &&
+      drag.continuityMidiTime !== undefined &&
+      drag.midiTime !== undefined
+    ) {
       if (!drag.didMove) return;
       const plotWidth = Math.max(
         1,
@@ -827,13 +862,20 @@ export function WaveformEditor({
           event.currentTarget,
         ),
         midiTime: drag.midiTime,
-        anchors: markers.map((anchor) => ({
-          ...anchor,
-          audioTime: mapSyncAudioToDisplayTime(
-            anchor.audioTime,
-            offsetMs,
-          ),
-        })),
+        anchors: [
+          ...markers.map((anchor) => ({
+            ...anchor,
+            audioTime: mapSyncAudioToDisplayTime(
+              anchor.audioTime,
+              offsetMs,
+            ),
+          })),
+          {
+            id: 'grid-continuity-bound',
+            audioTime: drag.continuityAudioTime,
+            midiTime: drag.continuityMidiTime,
+          },
+        ],
         audioDuration,
         landmarks,
         magnetEnabled,
@@ -844,6 +886,8 @@ export function WaveformEditor({
       });
       updateGridPreview({
         audioTime: resolved.audioTime,
+        continuityAudioTime: drag.continuityAudioTime,
+        continuityMidiTime: drag.continuityMidiTime,
         midiTime: resolved.midiTime,
         snapped: resolved.snapped,
       });
@@ -879,10 +923,14 @@ export function WaveformEditor({
       completedGridDrag &&
       gridPreviewRef.current
     ) {
-      onAddGridAnchor(
-        gridPreviewRef.current.midiTime,
-        gridPreviewRef.current.audioTime,
-      );
+      onAddGridAnchor({
+        continuityAudioTime:
+          gridPreviewRef.current.continuityAudioTime,
+        continuityMidiTime:
+          gridPreviewRef.current.continuityMidiTime,
+        targetMidiTime: gridPreviewRef.current.midiTime,
+        targetAudioTime: gridPreviewRef.current.audioTime,
+      });
     }
     if (commitGrid && !drag?.didMove) {
       registerTouchTap(event);

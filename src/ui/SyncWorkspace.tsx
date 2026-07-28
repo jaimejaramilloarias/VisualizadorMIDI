@@ -9,6 +9,7 @@ import {
   mapSyncAudioToDisplayTime,
   resolveSyncViewport,
   type AudioLandmark,
+  type GridFineTuneRequest,
 } from './syncEditorMath';
 import type { SyncMidiProjection } from './syncMidiProjection';
 import { WaveformEditor } from './WaveformEditor';
@@ -37,7 +38,7 @@ interface SyncWorkspaceProps {
   midiProjection: SyncMidiProjection | null;
   offsetMs: number;
   onAddAnchor: (audioTime: number) => void;
-  onAddFineTuneAnchor: (midiTime: number, audioTime: number) => void;
+  onAddFineTuneAnchor: (request: GridFineTuneRequest) => void;
   onApplyAutomaticAlignment: () => void;
   onCancelAutomaticAlignment: () => void;
   onClearAnchors: () => void;
@@ -156,6 +157,15 @@ export function SyncWorkspace({
       setSelectedAnchorId(null);
     }
   }, [anchors, selectedAnchorId]);
+
+  useEffect(() => {
+    if (
+      interactionMode === 'grid' &&
+      (!midiProjection || anchors.length < 2)
+    ) {
+      setInteractionMode('anchors');
+    }
+  }, [anchors.length, interactionMode, midiProjection]);
 
   useEffect(() => {
     if (!clearArmed) return;
@@ -697,7 +707,7 @@ export function SyncWorkspace({
           )}
           {interactionMode === 'grid' && (
             <>
-              <span><i className="is-grid" />Arrastra una línea para afinar el tramo local</span>
+              <span><i className="is-grid" />Arrastra una línea: fija la anterior y ajusta desde ahí</span>
               <span>Arrastra cualquier ancla, incluida la última, para reposicionarla</span>
             </>
           )}

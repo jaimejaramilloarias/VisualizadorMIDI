@@ -3,6 +3,7 @@ import type {
   TimeSignaturePoint,
 } from '../core/midi/types';
 import {
+  createSyncTimeline,
   normalizeAnchors,
   type SyncAnchor,
 } from '../core/state/visualizationState';
@@ -33,6 +34,7 @@ export interface AdaptiveMidiGridOptions {
   viewportWidth: number;
   targetSpacingPixels?: number;
   maximumLines?: number;
+  includePrecedingLine?: boolean;
 }
 
 export interface GridAnchorDropOptions {
@@ -60,6 +62,22 @@ export interface FineTuneAnchorOptions {
   anchor: SyncAnchor;
   audioDuration: number;
   minimumGapSeconds?: number;
+}
+
+export interface FineTuneAnchorPairOptions {
+  anchors: readonly SyncAnchor[];
+  continuityAnchor: Pick<SyncAnchor, 'id' | 'midiTime'> &
+    Partial<Pick<SyncAnchor, 'audioTime'>>;
+  targetAnchor: SyncAnchor;
+  audioDuration: number;
+  minimumGapSeconds?: number;
+}
+
+export interface GridFineTuneRequest {
+  continuityAudioTime: number;
+  continuityMidiTime: number;
+  targetMidiTime: number;
+  targetAudioTime: number;
 }
 
 export const MAX_SYNC_ZOOM = 1024;
@@ -306,6 +324,7 @@ export const generateAdaptiveMidiGrid = ({
   viewportWidth,
   targetSpacingPixels = DEFAULT_GRID_SPACING_PIXELS,
   maximumLines = DEFAULT_MAXIMUM_GRID_LINES,
+  includePrecedingLine = false,
 }: AdaptiveMidiGridOptions): MidiGridLine[] => {
   const safeTicksPerBeat = finitePositive(ticksPerBeat, 480);
   const normalizedTempoMap = normalizeTempoMap(tempoMap);
@@ -369,7 +388,13 @@ export const generateAdaptiveMidiGrid = ({
     ) ?? Math.ceil(idealStep / safeTicksPerBeat);
   const stepTicks = stepInBeats * safeTicksPerBeat;
   const byTick = new Map<string, MidiGridLine>();
-  const firstGridIndex = Math.ceil(startTick / stepTicks - 1e-9);
+  const firstVisibleGridIndex = Math.ceil(
+    startTick / stepTicks - 1e-9,
+  );
+  const firstGridIndex = Math.max(
+    0,
+    firstVisibleGridIndex - (includePrecedingLine ? 1 : 0),
+  );
   const lastGridIndex = Math.floor(endTick / stepTicks + 1e-9);
 
   for (
@@ -394,18 +419,25 @@ export const generateAdaptiveMidiGrid = ({
     );
   }
 
+  const barCollectionStartTick = includePrecedingLine
+    ? Math.min(startTick, firstGridIndex * stepTicks)
+    : startTick;
   const bars = collectBarTicks(
-    startTick,
+    barCollectionStartTick,
     endTick,
     safeTicksPerBeat,
     normalizeTimeSignatures(timeSignatures),
   );
+  const precedingBar = includePrecedingLine
+    ? [...bars].reverse().find((bar) => bar.tick < startTick - 1e-9)
+    : undefined;
   const majorBudget = Math.max(1, Math.floor(lineLimit / 2));
   const barStride = Math.max(1, Math.ceil(bars.length / majorBudget));
   bars.forEach((bar, index) => {
     if (
       index !== 0 &&
       index !== bars.length - 1 &&
+      bar.tick !== precedingBar?.tick &&
       (bar.barNumber - 1) % barStride !== 0
     ) {
       return;
@@ -638,6 +670,150 @@ export const insertFineTuneAnchor = ({
     ...withoutSameId,
     { ...anchor, audioTime: resolved.audioTime, midiTime: resolved.midiTime },
   ]);
+};
+
+export const insertFineTuneAnchorPair = ({
+  anchors,
+  continuityAnchor,
+  targetAnchor,
+  audioDuration,
+  minimumGapSeconds = 0.001,
+}: FineTuneAnchorPairOptions): SyncAnchor[] => {
+  const original = normalizeAnchors([...anchors]);
+  if (
+    original.length < 2 ||
+    !continuityAnchor.id ||
+    !targetAnchor.id ||
+    continuityAnchor.id === targetAnchor.id ||
+    !Number.isFinite(continuityAnchor.midiTime) ||
+    !Number.isFinite(targetAnchor.audioTime) ||
+    !Number.isFinite(targetAnchor.midiTime) ||
+    continuityAnchor.midiTime < 0 ||
+    targetAnchor.audioTime < 0 ||
+    targetAnchor.midiTime <= continuityAnchor.midiTime + 1e-9 ||
+    original.some((anchor) => anchor.id === targetAnchor.id) ||
+    original.some(
+      (anchor) =>
+        anchor.id === continuityAnchor.id &&
+        Math.abs(anchor.midiTime - continuityAnchor.midiTime) > 1e-9,
+    ) ||
+    original.some(
+      (anchor) =>
+        Math.abs(anchor.midiTime - targetAnchor.midiTime) <= 1e-9,
+    )
+  ) {
+    return original;
+  }
+
+  const baselineTimeline = createSyncTimeline(original);
+  if (!baselineTimeline.forward) return original;
+  const safeDuration = Math.max(
+    0,
+    Number.isFinite(audioDuration) ? audioDuration : 0,
+  );
+  const continuityAudioTime = baselineTimeline.invert(
+    continuityAnchor.midiTime,
+  );
+  const originalTargetAudioTime = baselineTimeline.invert(
+    targetAnchor.midiTime,
+  );
+  if (
+    continuityAudioTime === null ||
+    !Number.isFinite(continuityAudioTime) ||
+    continuityAudioTime < 0 ||
+    continuityAudioTime > safeDuration ||
+    (continuityAnchor.audioTime !== undefined &&
+      (!Number.isFinite(continuityAnchor.audioTime) ||
+        Math.abs(
+          continuityAnchor.audioTime - continuityAudioTime,
+        ) > 1e-7)) ||
+    Math.abs(
+      baselineTimeline.map(continuityAudioTime).midiTime -
+        continuityAnchor.midiTime,
+    ) > 1e-7 ||
+    originalTargetAudioTime === null ||
+    !Number.isFinite(originalTargetAudioTime) ||
+    Math.abs(targetAnchor.audioTime - originalTargetAudioTime) <= 1e-9
+  ) {
+    return original;
+  }
+
+  const existingContinuity = original.find(
+    (anchor) =>
+      Math.abs(anchor.midiTime - continuityAnchor.midiTime) <= 1e-9,
+  );
+  let withContinuity = original;
+  if (!existingContinuity) {
+    withContinuity = normalizeAnchors([
+      ...original,
+      {
+        id: continuityAnchor.id,
+        audioTime: continuityAudioTime,
+        midiTime: continuityAnchor.midiTime,
+      },
+    ]);
+    const insertedContinuity = withContinuity.find(
+      (anchor) => anchor.id === continuityAnchor.id,
+    );
+    const preservedOriginal = original.every((anchor) =>
+      withContinuity.some(
+        (candidate) =>
+          candidate.id === anchor.id &&
+          candidate.audioTime === anchor.audioTime &&
+          candidate.midiTime === anchor.midiTime,
+      ),
+    );
+    if (
+      !insertedContinuity ||
+      !preservedOriginal ||
+      Math.abs(
+        insertedContinuity.audioTime - continuityAudioTime,
+      ) > 1e-9 ||
+      Math.abs(
+        insertedContinuity.midiTime - continuityAnchor.midiTime,
+      ) > 1e-9 ||
+      !createSyncTimeline(withContinuity).forward
+    ) {
+      return original;
+    }
+  }
+
+  const withTarget = insertFineTuneAnchor({
+    anchors: withContinuity,
+    anchor: targetAnchor,
+    audioDuration,
+    minimumGapSeconds,
+  });
+  const insertedTarget = withTarget.find(
+    (anchor) => anchor.id === targetAnchor.id,
+  );
+  const actualContinuity = withTarget.find(
+    (anchor) =>
+      Math.abs(anchor.midiTime - continuityAnchor.midiTime) <= 1e-9,
+  );
+  const preservedBaseline = original.every((anchor) =>
+    withTarget.some(
+      (candidate) =>
+        candidate.id === anchor.id &&
+        candidate.audioTime === anchor.audioTime &&
+        candidate.midiTime === anchor.midiTime,
+    ),
+  );
+  if (
+    !insertedTarget ||
+    !actualContinuity ||
+    Math.abs(
+      actualContinuity.audioTime - continuityAudioTime,
+    ) > 1e-9 ||
+    !preservedBaseline ||
+    Math.abs(
+      insertedTarget.audioTime - originalTargetAudioTime,
+    ) <= 1e-9 ||
+    !createSyncTimeline(withTarget).forward
+  ) {
+    return original;
+  }
+  return withTarget;
 };
 
 export const resolveSyncViewport = (

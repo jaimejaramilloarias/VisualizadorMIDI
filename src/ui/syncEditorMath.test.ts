@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { mapAudioToMidiClock } from '../core/state/visualizationState';
+import {
+  createSyncTimeline,
+  mapAudioToMidiClock,
+} from '../core/state/visualizationState';
 import {
   MAX_SYNC_ZOOM,
   detectRmsLandmarks,
   generateAdaptiveMidiGrid,
   insertFineTuneAnchor,
+  insertFineTuneAnchorPair,
   mapDisplayAudioToSyncTime,
   mapSyncAudioToDisplayTime,
   resolveGridAnchorDrop,
@@ -220,5 +224,234 @@ describe('syncEditorMath', () => {
     });
 
     expect(result).toEqual(original);
+  });
+
+  it('convierte un ajuste de grid en el par línea anterior + línea movida', () => {
+    const result = insertFineTuneAnchorPair({
+      anchors: [
+        { id: 'start', audioTime: 0, midiTime: 0 },
+        { id: 'end', audioTime: 20, midiTime: 20 },
+      ],
+      continuityAnchor: {
+        id: 'grid-previous',
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'grid-moved',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 20,
+    });
+
+    expect(result).toContainEqual({
+      id: 'grid-previous',
+      audioTime: 6,
+      midiTime: 6,
+    });
+    expect(result).toContainEqual({
+      id: 'grid-moved',
+      audioTime: 9,
+      midiTime: 8,
+    });
+  });
+
+  it('conserva exactamente mapeo y velocidad antes de la línea anterior', () => {
+    const original = [
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'end', audioTime: 20, midiTime: 20 },
+    ];
+    const refined = insertFineTuneAnchorPair({
+      anchors: original,
+      continuityAnchor: {
+        id: 'grid-previous',
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'grid-moved',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 20,
+    });
+
+    [0, 1.25, 4, 5.999].forEach((audioTime) => {
+      expect(mapAudioToMidiClock(audioTime, refined)).toEqual(
+        mapAudioToMidiClock(audioTime, original),
+      );
+    });
+  });
+
+  it('reutiliza la ancla existente de la línea anterior sin duplicarla', () => {
+    const result = insertFineTuneAnchorPair({
+      anchors: [
+        { id: 'start', audioTime: 0, midiTime: 0 },
+        { id: 'existing-previous', audioTime: 6, midiTime: 6 },
+        { id: 'end', audioTime: 20, midiTime: 20 },
+      ],
+      continuityAnchor: {
+        id: 'should-not-be-created',
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'grid-moved',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 20,
+    });
+
+    expect(
+      result.filter((anchor) => Math.abs(anchor.midiTime - 6) < 1e-9),
+    ).toEqual([
+      {
+        id: 'existing-previous',
+        audioTime: 6,
+        midiTime: 6,
+      },
+    ]);
+    expect(
+      result.some((anchor) => anchor.id === 'should-not-be-created'),
+    ).toBe(false);
+  });
+
+  it('ajusta la última línea sin ancla posterior y conserva el offset visible', () => {
+    const offsetMs = 1_500;
+    const original = [
+      { id: 'start', audioTime: 1.5, midiTime: 0 },
+      { id: 'middle', audioTime: 11.5, midiTime: 10 },
+    ];
+    const previousTimeline = createSyncTimeline(original);
+    const previousInternalTime = previousTimeline.invert(18);
+    const targetInternalTime = mapDisplayAudioToSyncTime(21, offsetMs);
+    const refined = insertFineTuneAnchorPair({
+      anchors: original,
+      continuityAnchor: {
+        id: 'last-previous',
+        midiTime: 18,
+      },
+      targetAnchor: {
+        id: 'last-moved',
+        audioTime: targetInternalTime,
+        midiTime: 20,
+      },
+      audioDuration: targetInternalTime,
+    });
+
+    expect(previousInternalTime).toBe(19.5);
+    expect(refined).toContainEqual({
+      id: 'last-previous',
+      audioTime: 19.5,
+      midiTime: 18,
+    });
+    expect(refined).toContainEqual({
+      id: 'last-moved',
+      audioTime: 22.5,
+      midiTime: 20,
+    });
+    expect(mapSyncAudioToDisplayTime(19.5, offsetMs)).toBe(18);
+    expect(mapSyncAudioToDisplayTime(22.5, offsetMs)).toBe(21);
+  });
+
+  it('mantiene la continuidad exacta aunque esté a menos de 1 ms de otra ancla', () => {
+    const original = [
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'nearby', audioTime: 6.0005, midiTime: 6.0005 },
+      { id: 'end', audioTime: 20, midiTime: 20 },
+    ];
+    const refined = insertFineTuneAnchorPair({
+      anchors: original,
+      continuityAnchor: {
+        id: 'exact-continuity',
+        audioTime: 6,
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'moved',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 20,
+    });
+
+    expect(refined).toContainEqual({
+      id: 'exact-continuity',
+      audioTime: 6,
+      midiTime: 6,
+    });
+    [1, 5.9999].forEach((audioTime) => {
+      expect(mapAudioToMidiClock(audioTime, refined)).toEqual(
+        mapAudioToMidiClock(audioTime, original),
+      );
+    });
+  });
+
+  it('incluye el compás inmediatamente anterior fuera del viewport', () => {
+    const lines = generateAdaptiveMidiGrid({
+      tempoMap: [
+        { tick: 0, seconds: 0, microsecondsPerBeat: 500_000 },
+      ],
+      ticksPerBeat: 480,
+      timeSignatures: [{ tick: 0, numerator: 4, denominator: 4 }],
+      visibleMidiStart: 5,
+      visibleMidiEnd: 21,
+      viewportWidth: 100,
+      targetSpacingPixels: 60,
+      includePrecedingLine: true,
+    });
+    const preceding = lines
+      .filter((line) => line.midiTime < 5)
+      .at(-1);
+
+    expect(preceding).toMatchObject({
+      kind: 'bar',
+      midiTime: 4,
+    });
+  });
+
+  it('revierte todo el par si el objetivo termina limitado a su posición original', () => {
+    const original = [
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'end', audioTime: 10, midiTime: 10 },
+    ];
+    const refined = insertFineTuneAnchorPair({
+      anchors: original,
+      continuityAnchor: {
+        id: 'continuity',
+        audioTime: 6,
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'target',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 8,
+    });
+
+    expect(refined).toEqual(original);
+  });
+
+  it('rechaza un gesto cuyo mapa base cambió durante el arrastre', () => {
+    const original = [
+      { id: 'start', audioTime: 0, midiTime: 0 },
+      { id: 'end', audioTime: 20, midiTime: 20 },
+    ];
+    const refined = insertFineTuneAnchorPair({
+      anchors: original,
+      continuityAnchor: {
+        id: 'stale-continuity',
+        audioTime: 6.1,
+        midiTime: 6,
+      },
+      targetAnchor: {
+        id: 'target',
+        audioTime: 9,
+        midiTime: 8,
+      },
+      audioDuration: 20,
+    });
+
+    expect(refined).toEqual(original);
   });
 });
