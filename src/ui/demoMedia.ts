@@ -51,7 +51,8 @@ export const DEMO_CATALOG: Readonly<Record<DemoId, DemoDefinition>> = {
     midiFileName: 'EL INTACHABLE.midi',
     audioUrl: `${DEMO_BASE_URL}el-intachable.mp3`,
     audioFileName: 'El intachable.mp3',
-    syncMode: 'auto',
+    stateUrl: `${DEMO_BASE_URL}el-intachable.midi-stage.json`,
+    syncMode: 'state',
   },
   'despasillo-por-favor': {
     id: 'despasillo-por-favor',

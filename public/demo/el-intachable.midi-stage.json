@@ -1,0 +1,542 @@
+{
+  "schema": "midi-visualizer-state",
+  "version": 2,
+  "savedAt": "2026-07-28T17:08:32.827Z",
+  "source": {
+    "midiFileName": "EL INTACHABLE.midi",
+    "audioFileName": "El intachable.mp3"
+  },
+  "visualization": "now-line",
+  "settings": {
+    "secondsVisible": 8,
+    "glow": 0.6,
+    "noteScale": 1.4,
+    "quality": "ultra",
+    "background": "#000000"
+  },
+  "syncAnchors": [
+    {
+      "id": "auto-10-0",
+      "audioTime": 0,
+      "midiTime": 0.14993197278911563
+    },
+    {
+      "id": "auto-10-1",
+      "audioTime": 11.99455782312925,
+      "midiTime": 12.244444444444444
+    },
+    {
+      "id": "auto-10-2",
+      "audioTime": 23.9891156462585,
+      "midiTime": 24.08907029478458
+    },
+    {
+      "id": "auto-10-3",
+      "audioTime": 31.785578231292515,
+      "midiTime": 31.6356462585034
+    },
+    {
+      "id": "auto-10-4",
+      "audioTime": 32.88507936507936,
+      "midiTime": 33.78467120181406
+    },
+    {
+      "id": "auto-10-5",
+      "audioTime": 34.08453514739229,
+      "midiTime": 35.7837641723356
+    },
+    {
+      "id": "auto-10-6",
+      "audioTime": 35.98367346938775,
+      "midiTime": 38.13269841269841
+    },
+    {
+      "id": "auto-10-7",
+      "audioTime": 39.08226757369614,
+      "midiTime": 41.2312925170068
+    },
+    {
+      "id": "auto-10-8",
+      "audioTime": 40.381678004535146,
+      "midiTime": 42.830566893424034
+    },
+    {
+      "id": "auto-10-9",
+      "audioTime": 41.83102040816326,
+      "midiTime": 44.27990929705215
+    },
+    {
+      "id": "auto-10-10",
+      "audioTime": 47.978231292517,
+      "midiTime": 49.97732426303855
+    },
+    {
+      "id": "auto-10-11",
+      "audioTime": 59.97278911564626,
+      "midiTime": 61.52208616780045
+    },
+    {
+      "id": "auto-10-12",
+      "audioTime": 71.9673469387755,
+      "midiTime": 72.8669387755102
+    },
+    {
+      "id": "auto-10-13",
+      "audioTime": 73.11682539682539,
+      "midiTime": 74.01641723356009
+    },
+    {
+      "id": "auto-10-14",
+      "audioTime": 74.4162358276644,
+      "midiTime": 76.06548752834466
+    },
+    {
+      "id": "auto-10-15",
+      "audioTime": 76.61523809523808,
+      "midiTime": 78.26448979591837
+    },
+    {
+      "id": "auto-10-16",
+      "audioTime": 79.11410430839001,
+      "midiTime": 80.31356009070295
+    },
+    {
+      "id": "auto-10-17",
+      "audioTime": 83.96190476190476,
+      "midiTime": 84.91147392290249
+    },
+    {
+      "id": "auto-10-18",
+      "audioTime": 95.956462585034,
+      "midiTime": 96.90603174603174
+    },
+    {
+      "id": "auto-10-19",
+      "audioTime": 107.95102040816326,
+      "midiTime": 108.60072562358276
+    },
+    {
+      "id": "auto-10-20",
+      "audioTime": 131.94013605442177,
+      "midiTime": 132.19002267573694
+    },
+    {
+      "id": "auto-10-21",
+      "audioTime": 163.9673469387755,
+      "midiTime": 163.7669189257813
+    },
+    {
+      "id": "auto-10-22",
+      "audioTime": 166.4716553287982,
+      "midiTime": 166.13277892578117
+    },
+    {
+      "id": "auto-10-23",
+      "audioTime": 168.08798185941043,
+      "midiTime": 167.76186613627027
+    },
+    {
+      "id": "auto-10-24",
+      "audioTime": 170.19319727891155,
+      "midiTime": 169.6625249257813
+    },
+    {
+      "id": "auto-10-25",
+      "audioTime": 173.03673469387755,
+      "midiTime": 172.2859245507813
+    },
+    {
+      "id": "auto-10-26",
+      "audioTime": 175.00226757369614,
+      "midiTime": 174.2341290507812
+    },
+    {
+      "id": "auto-10-27",
+      "audioTime": 176.69841269841268,
+      "midiTime": 175.9396469882812
+    },
+    {
+      "id": "f85d6703-56b7-41ad-8f05-0ccd7c63e2d6",
+      "audioTime": 177.9519111531444,
+      "midiTime": 176.99398898828122
+    },
+    {
+      "id": "6294b36b-2b98-4976-bd1e-fa5d7fc20d4f",
+      "audioTime": 178.18860489865648,
+      "midiTime": 177.2221529882812
+    },
+    {
+      "id": "7a070d0f-ae59-44dd-a6c0-73c31ef24a24",
+      "audioTime": 178.8846370070351,
+      "midiTime": 177.7882149882812
+    },
+    {
+      "id": "auto-10-28",
+      "audioTime": 179.13680785998903,
+      "midiTime": 178.07124598828125
+    },
+    {
+      "id": "b5a1f573-3a54-4133-b8a3-17b98dd8206a",
+      "audioTime": 179.3514334060551,
+      "midiTime": 178.28865598828122
+    },
+    {
+      "id": "4245ea21-d601-4e75-bffb-4fa38c95b177",
+      "audioTime": 180.43552617096756,
+      "midiTime": 178.76144261328122
+    },
+    {
+      "id": "auto-10-31",
+      "audioTime": 182.94607515921697,
+      "midiTime": 180.45962861328124
+    }
+  ],
+  "visualConfiguration": {
+    "global": {
+      "velocityBase": 67,
+      "colorToneShift": -6,
+      "opacityEdge": 0.8,
+      "opacityCenter": 0.85,
+      "heightScale": 1.1,
+      "glowStrength": 0.8,
+      "bumpStrength": 6,
+      "extension": false,
+      "stretch": true,
+      "audioOffsetMs": 0,
+      "fpsMode": "auto",
+      "supersampling": 3,
+      "aspectRatio": "responsive",
+      "noteLabels": {
+        "enabled": false,
+        "color": "#ffffff",
+        "size": 16,
+        "font": "Arial",
+        "backgroundColor": "#000000",
+        "backgroundOpacity": 0.72,
+        "padding": 5,
+        "borderRadius": 5
+      },
+      "endCard": {
+        "title": "El Intachable (Pasillo)",
+        "subtitle": "Juan Domingo Córdoba",
+        "composerArranger": "Arr. Jaime Jaramillo Arias",
+        "freeText": "Interpreta la Orquesta Filarmónica de Bogotá con Ensamble Cruza'o"
+      },
+      "travel": {
+        "enabled": true,
+        "intensity": 0.2,
+        "magnetZone": 1.25
+      }
+    },
+    "families": {
+      "Maderas de timbre \"redondo\"": {
+        "color": "#0394fc",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Dobles cañas": {
+        "color": "#ba1af4",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Saxofones": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Metales": {
+        "color": "#fff700",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cornos": {
+        "color": "#ffce1f",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Percusión menor": {
+        "color": "#a3a3a3",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Tambores": {
+        "color": "#d9d9d9",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Platillos": {
+        "color": "#ffffff",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Placas": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Auxiliares": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "roundedSquare",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas frotadas": {
+        "color": "#a46813",
+        "secondaryColor": "#ffffff",
+        "shape": "diamond",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Cuerdas pulsadas": {
+        "color": "#028317",
+        "secondaryColor": "#ffffff",
+        "shape": "sixPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Voces": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 1": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "square",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 2": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "circle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 3": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "hexagon",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 4": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "fourPointStar",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      },
+      "Custom 5": {
+        "color": "#ffd500",
+        "secondaryColor": "#ffffff",
+        "shape": "triangle",
+        "heightScale": 1,
+        "glowStrength": 0.1,
+        "bumpStrength": 1.1,
+        "extension": true,
+        "stretch": true,
+        "travel": {
+          "enabled": true,
+          "intensity": 1,
+          "magnetZone": 1
+        }
+      }
+    },
+    "instruments": {
+      "BANDOLA": {
+        "color": "#368128",
+        "shape": "hexagon"
+      },
+      "Pista 1": {
+        "enabled": false
+      },
+      "Platillos": {
+        "enabled": false
+      },
+      "TIPLE": {
+        "enabled": false
+      },
+      "MARACAS": {
+        "enabled": false
+      }
+    },
+    "shapeExtensions": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    },
+    "shapeStretch": {
+      "circle": true,
+      "square": true,
+      "roundedSquare": true,
+      "diamond": true,
+      "hexagon": true,
+      "fourPointStar": true,
+      "sixPointStar": true,
+      "triangle": true
+    }
+  }
+}

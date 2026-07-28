@@ -14,6 +14,27 @@ const successfulMediaResponse = (
   input: RequestInfo | URL,
 ): Response => {
   const url = String(input);
+  if (url.endsWith('.json')) {
+    const presentation = createDemoPresentationState();
+    return new Response(
+      JSON.stringify({
+        schema: 'midi-visualizer-state',
+        version: 2,
+        savedAt: '2026-07-28T17:08:32.827Z',
+        source: {
+          midiFileName: 'EL INTACHABLE.midi',
+          audioFileName: 'El intachable.mp3',
+        },
+        visualization: 'now-line',
+        settings: presentation.settings,
+        syncAnchors: [
+          { id: 'fixture-anchor', audioTime: 0, midiTime: 0 },
+        ],
+        visualConfiguration: presentation.visualConfiguration,
+      }),
+      { status: 200 },
+    );
+  }
   return new Response(
     url.endsWith('.midi')
       ? new Uint8Array([0x4d, 0x54, 0x68, 0x64])
@@ -33,7 +54,10 @@ describe('catálogo de demos', () => {
     expect(DEMO_CATALOG['el-intachable']).toMatchObject({
       id: 'el-intachable',
       label: 'El Intachable',
-      syncMode: 'auto',
+      syncMode: 'state',
+      stateUrl: expect.stringContaining(
+        'el-intachable.midi-stage.json',
+      ),
     });
     expect(DEMO_CATALOG['despasillo-por-favor']).toMatchObject({
       id: 'despasillo-por-favor',
@@ -60,6 +84,7 @@ describe('catálogo de demos', () => {
     expect(assetUrls.map((url) => url.split('/').at(-1))).toEqual([
       'el-intachable.midi',
       'el-intachable.mp3',
+      'el-intachable.midi-stage.json',
       'despasillo-por-favor.midi',
       'despasillo-por-favor.mp3',
       'despasillo-por-favor.midi-stage.json',
@@ -97,14 +122,61 @@ describe('estado de presentación de demos', () => {
 });
 
 describe('carga de demos', () => {
-  it('la llamada compatible sin id carga El Intachable con dos requests paralelos', async () => {
-    const fetchResource = vi.fn(async (input: RequestInfo | URL) =>
-      successfulMediaResponse(input),
+  it('la llamada sin id carga El Intachable con su estado actualizado', async () => {
+    const visualConfiguration =
+      createDemoPresentationState().visualConfiguration;
+    const lastAnchor = {
+      id: 'auto-10-31',
+      audioTime: 182.94607515921697,
+      midiTime: 180.45962861328124,
+    };
+    const syncAnchors = Array.from({ length: 35 }, (_, index) => {
+      if (index === 0) {
+        return {
+          id: 'auto-10-0',
+          audioTime: 0,
+          midiTime: 0.14993197278911563,
+        };
+      }
+      if (index === 34) return lastAnchor;
+      const progress = index / 34;
+      return {
+        id: `intachable-anchor-${index}`,
+        audioTime: lastAnchor.audioTime * progress,
+        midiTime:
+          0.14993197278911563 +
+          (lastAnchor.midiTime - 0.14993197278911563) * progress,
+      };
+    });
+    const stateText = JSON.stringify({
+      schema: 'midi-visualizer-state',
+      version: 2,
+      savedAt: '2026-07-28T17:08:32.827Z',
+      source: {
+        midiFileName: 'EL INTACHABLE.midi',
+        audioFileName: 'El intachable.mp3',
+      },
+      visualization: 'now-line',
+      settings: {
+        secondsVisible: 8,
+        glow: 0.6,
+        noteScale: 1.4,
+        quality: 'ultra',
+        background: '#000000',
+      },
+      syncAnchors,
+      visualConfiguration,
+    });
+    const fetchResource = vi.fn(
+      async (input: RequestInfo | URL) =>
+        String(input).endsWith('.json')
+          ? new Response(stateText, { status: 200 })
+          : successfulMediaResponse(input),
     );
 
     const pending = fetchDemoMedia(undefined, fetchResource);
 
-    expect(fetchResource).toHaveBeenCalledTimes(2);
+    expect(fetchResource).toHaveBeenCalledTimes(3);
     const result = await pending;
     expect(fetchResource).toHaveBeenCalledWith(
       DEMO_CATALOG['el-intachable'].midiUrl,
@@ -113,6 +185,10 @@ describe('carga de demos', () => {
     expect(fetchResource).toHaveBeenCalledWith(
       DEMO_CATALOG['el-intachable'].audioUrl,
       { cache: 'force-cache' },
+    );
+    expect(fetchResource).toHaveBeenCalledWith(
+      DEMO_CATALOG['el-intachable'].stateUrl,
+      { cache: 'no-cache' },
     );
     expect(result.definition).toBe(
       DEMO_CATALOG['el-intachable'],
@@ -127,10 +203,13 @@ describe('carga de demos', () => {
       size: 3,
       type: 'audio/mpeg',
     });
-    expect(result.presentationState.syncAnchors).toEqual([]);
+    expect(result.presentationState.syncAnchors).toHaveLength(35);
+    expect(result.presentationState.syncAnchors.at(-1)).toEqual(
+      lastAnchor,
+    );
     expect(
       result.presentationState.preserveSynchronization,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('Despasillo solicita MIDI, audio y estado en paralelo y conserva sus 71 anclas', async () => {
