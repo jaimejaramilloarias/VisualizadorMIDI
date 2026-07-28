@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react';
@@ -39,9 +40,9 @@ interface WaveformEditorProps {
   offsetMs: number;
   onAdd: (audioTime: number) => void;
   onAddGridAnchor: (midiTime: number, audioTime: number) => void;
-  onDelete: (id: string) => void;
   onMove: (id: string, audioTime: number) => void;
   onPan: (deltaSeconds: number) => void;
+  onSeek: (time: number) => void;
   onSelect: (id: string | null) => void;
   onZoom: (factor: number, focusTime: number) => void;
   peaks: Float32Array | null;
@@ -70,17 +71,28 @@ interface GridDragPreview {
   snapped: boolean;
 }
 
+interface TouchTapState {
+  at: number;
+  clientX: number;
+  clientY: number;
+}
+
 interface DragState {
   didMove?: boolean;
   id?: string;
   midiTime?: number;
+  pointerId: number;
+  pointerLastX: number;
   pointerStartX: number;
-  viewStart: number;
+  pointerType: string;
   type: 'anchor' | 'grid' | 'pan';
 }
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
+
+const pointerDragThreshold = (pointerType: string): number =>
+  pointerType === 'touch' ? 10 : pointerType === 'pen' ? 6 : 4;
 
 const formatTime = (seconds: number): string => {
   const safe = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
@@ -111,9 +123,9 @@ export function WaveformEditor({
   offsetMs,
   onAdd,
   onAddGridAnchor,
-  onDelete,
   onMove,
   onPan,
+  onSeek,
   onSelect,
   onZoom,
   peaks,
@@ -125,6 +137,10 @@ export function WaveformEditor({
 }: WaveformEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  const ignoreNativeDoubleClickUntilRef = useRef(0);
+  const lastPointerTypeRef = useRef('');
+  const lastTouchTapRef = useRef<TouchTapState | null>(null);
+  const suppressNextClickRef = useRef(false);
   const handlesRef = useRef<AnchorHandle[]>([]);
   const gridHandlesRef = useRef<GridHandle[]>([]);
   const gridPreviewRef = useRef<GridDragPreview | null>(null);
@@ -641,23 +657,119 @@ export function WaveformEditor({
     );
   };
 
+  const nearestAnchorAtX = (
+    x: number,
+    maximumDistance: number,
+  ): AnchorHandle | null => {
+    const uniqueHandles = new Map<string, AnchorHandle>();
+    for (const handle of handlesRef.current) {
+      if (!uniqueHandles.has(handle.id)) uniqueHandles.set(handle.id, handle);
+    }
+    const nearest = [...uniqueHandles.values()]
+      .map((handle) => ({
+        ...handle,
+        distance: Math.abs(handle.x - x),
+      }))
+      .sort((left, right) => left.distance - right.distance)[0];
+    return nearest && nearest.distance <= maximumDistance ? nearest : null;
+  };
+
+  const addAnchorAtClientX = (
+    clientX: number,
+    canvas: HTMLCanvasElement,
+    hitDistance: number,
+  ): boolean => {
+    const bounds = canvas.getBoundingClientRect();
+    const x = clientX - bounds.left;
+    if (nearestAnchorAtX(x, hitDistance)) return false;
+    onAdd(
+      clamp(
+        timeFromClientX(clientX, canvas),
+        0,
+        audioDuration,
+      ),
+    );
+    return true;
+  };
+
+  const registerTouchTap = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    if (
+      event.pointerType !== 'touch' ||
+      event.isPrimary === false ||
+      editingLocked ||
+      interactionMode !== 'anchors'
+    ) {
+      lastTouchTapRef.current = null;
+      return;
+    }
+    const now = Date.now();
+    const previous = lastTouchTapRef.current;
+    const isDoubleTap =
+      previous !== null &&
+      now - previous.at <= 400 &&
+      Math.hypot(
+        event.clientX - previous.clientX,
+        event.clientY - previous.clientY,
+      ) <= 24;
+    if (!isDoubleTap) {
+      lastTouchTapRef.current = {
+        at: now,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+      return;
+    }
+    lastTouchTapRef.current = null;
+    ignoreNativeDoubleClickUntilRef.current = now + 700;
+    addAnchorAtClientX(event.clientX, event.currentTarget, 18);
+  };
+
   const onPointerDown = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
-    if (audioDuration <= 0) return;
+    if (
+      audioDuration <= 0 ||
+      event.isPrimary === false ||
+      event.button !== 0 ||
+      dragRef.current
+    ) {
+      return;
+    }
+    suppressNextClickRef.current = false;
+    lastPointerTypeRef.current = event.pointerType;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
     if (interactionMode === 'pan') {
       dragRef.current = {
+        pointerId: event.pointerId,
+        pointerLastX: x,
         pointerStartX: x,
+        pointerType: event.pointerType,
         type: 'pan',
-        viewStart,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
     if (editingLocked) return;
+    const nearestAnchor = nearestAnchorAtX(
+      x,
+      event.pointerType === 'touch' ? 18 : 12,
+    );
+    if (nearestAnchor) {
+      onSelect(nearestAnchor.id);
+      dragRef.current = {
+        id: nearestAnchor.id,
+        pointerId: event.pointerId,
+        pointerLastX: x,
+        pointerStartX: x,
+        pointerType: event.pointerType,
+        type: 'anchor',
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
     if (interactionMode === 'grid') {
       const nearest = gridHandlesRef.current
         .map((handle) => ({
@@ -669,9 +781,11 @@ export function WaveformEditor({
       onSelect(null);
       dragRef.current = {
         midiTime: nearest.line.midiTime,
+        pointerId: event.pointerId,
+        pointerLastX: x,
         pointerStartX: x,
+        pointerType: event.pointerType,
         type: 'grid',
-        viewStart,
       };
       updateGridPreview({
         audioTime: nearest.audioTime,
@@ -681,48 +795,28 @@ export function WaveformEditor({
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
-    const nearest = handlesRef.current
-      .map((handle) => ({
-        ...handle,
-        distance: Math.hypot(handle.x - x, handle.y - y),
-      }))
-      .sort((left, right) => left.distance - right.distance)[0];
-    if (nearest && nearest.distance <= 18) {
-      onSelect(nearest.id);
-      dragRef.current = {
-        id: nearest.id,
-        pointerStartX: x,
-        type: 'anchor',
-        viewStart,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-      return;
-    }
-    onAdd(
-      Math.min(
-        audioDuration,
-        timeFromClientX(event.clientX, event.currentTarget),
-      ),
-    );
   };
 
   const onPointerMove = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
     const drag = dragRef.current;
-    if (!drag) return;
+    if (!drag || drag.pointerId !== event.pointerId) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
+    const threshold = pointerDragThreshold(drag.pointerType);
+    if (Math.abs(x - drag.pointerStartX) > threshold) drag.didMove = true;
     if (drag.type === 'pan') {
+      if (!drag.didMove) return;
       onPan(
-        -((x - drag.pointerStartX) / Math.max(1, bounds.width)) *
+        -((x - drag.pointerLastX) / Math.max(1, bounds.width)) *
           viewDuration,
       );
-      drag.pointerStartX = x;
+      drag.pointerLastX = x;
       return;
     }
     if (drag.type === 'grid' && drag.midiTime !== undefined) {
-      if (Math.abs(x - drag.pointerStartX) > 2) drag.didMove = true;
+      if (!drag.didMove) return;
       const plotWidth = Math.max(
         1,
         Number(event.currentTarget.dataset.plotWidth || bounds.width),
@@ -756,6 +850,7 @@ export function WaveformEditor({
       return;
     }
     if (!drag.id) return;
+    if (!drag.didMove) return;
     const time = timeFromClientX(event.clientX, event.currentTarget);
     onMove(
       drag.id,
@@ -771,10 +866,17 @@ export function WaveformEditor({
     commitGrid = true,
   ) => {
     const drag = dragRef.current;
-    if (
-      commitGrid &&
+    if (drag && drag.pointerId !== event.pointerId) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const endX = event.clientX - bounds.left;
+    const completedGridDrag =
       drag?.type === 'grid' &&
       drag.didMove &&
+      Math.abs(endX - drag.pointerStartX) >
+        pointerDragThreshold(drag.pointerType);
+    if (
+      commitGrid &&
+      completedGridDrag &&
       gridPreviewRef.current
     ) {
       onAddGridAnchor(
@@ -782,6 +884,13 @@ export function WaveformEditor({
         gridPreviewRef.current.audioTime,
       );
     }
+    if (commitGrid && !drag?.didMove) {
+      registerTouchTap(event);
+    } else if (event.pointerType === 'touch') {
+      lastTouchTapRef.current = null;
+    }
+    suppressNextClickRef.current =
+      commitGrid && Boolean(drag?.didMove);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -789,24 +898,48 @@ export function WaveformEditor({
     updateGridPreview(null);
   };
 
-  const onDoubleClick = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (editingLocked || interactionMode !== 'anchors') return;
+  const onClick = (event: ReactMouseEvent<HTMLCanvasElement>) => {
+    if (audioDuration <= 0) return;
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const nearest = handlesRef.current
-      .map((handle) => ({
-        ...handle,
-        distance: Math.hypot(handle.x - x, handle.y - y),
-      }))
-      .sort((left, right) => left.distance - right.distance)[0];
-    if (nearest && nearest.distance <= 20) onDelete(nearest.id);
+    const anchorHitDistance =
+      lastPointerTypeRef.current === 'touch' ? 18 : 12;
+    if (!nearestAnchorAtX(x, anchorHitDistance)) onSelect(null);
+    onSeek(
+      clamp(
+        timeFromClientX(event.clientX, event.currentTarget),
+        0,
+        audioDuration,
+      ),
+    );
+  };
+
+  const onDoubleClick = (
+    event: ReactMouseEvent<HTMLCanvasElement>,
+  ) => {
+    if (
+      audioDuration <= 0 ||
+      editingLocked ||
+      interactionMode !== 'anchors' ||
+      Date.now() < ignoreNativeDoubleClickUntilRef.current ||
+      suppressNextClickRef.current
+    ) {
+      return;
+    }
+    addAnchorAtClientX(
+      event.clientX,
+      event.currentTarget,
+      lastPointerTypeRef.current === 'touch' ? 18 : 14,
+    );
   };
 
   const onWheel = (event: ReactWheelEvent<HTMLCanvasElement>) => {
     event.preventDefault();
+    if (dragRef.current) return;
     if (event.ctrlKey || event.metaKey) {
       onZoom(
         event.deltaY < 0 ? 1.25 : 0.8,
@@ -821,6 +954,7 @@ export function WaveformEditor({
     <canvas
       aria-label="Editor visual de sincronía con forma de onda, MIDI fantasma, grid musical y anclas."
       className={`waveform-editor is-${interactionMode}${editingLocked ? ' is-locked' : ''}`}
+      onClick={onClick}
       onDoubleClick={onDoubleClick}
       onPointerCancel={(event) => endDrag(event, false)}
       onPointerDown={onPointerDown}

@@ -677,9 +677,9 @@ export function SyncWorkspace({
             setSelectedAnchorId(null);
           }}
           onAddGridAnchor={onAddFineTuneAnchor}
-          onDelete={onDeleteAnchor}
           onMove={onMoveAnchor}
           onPan={panBy}
+          onSeek={onSeek}
           onSelect={setSelectedAnchorId}
           onZoom={changeZoom}
           peaks={peaks}
@@ -696,7 +696,10 @@ export function SyncWorkspace({
             <span><i className="is-ghost" />Rectángulos: MIDI fantasma</span>
           )}
           {interactionMode === 'grid' && (
-            <span><i className="is-grid" />Arrastra una línea para afinar el tramo local</span>
+            <>
+              <span><i className="is-grid" />Arrastra una línea para afinar el tramo local</span>
+              <span>Arrastra cualquier ancla, incluida la última, para reposicionarla</span>
+            </>
           )}
           {automaticAlignment.status === 'preview' && (
             <span><i className="is-automatic" />Línea discontinua: propuesta automática</span>
@@ -706,7 +709,10 @@ export function SyncWorkspace({
           ) : (
             <>
               <span>Arrastra cualquier extremo para reubicar la ancla completa</span>
-              <span>Doble clic para eliminar</span>
+              <span>Clic: mueve el playhead</span>
+              {interactionMode === 'anchors' && (
+                <span>Doble clic en un espacio libre: crea una ancla</span>
+              )}
             </>
           )}
         </div>
